@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">UpnpDlna</string>
+    <string name="searchLAN">Im lokalen Netzwerk suchen</string>
 </resources>

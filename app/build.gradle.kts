@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.upnpdlna"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -58,5 +58,11 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation(libs.org.jupnp)
+    implementation("org.jupnp", "org.jupnp.android", "3.0.3")
+    implementation("org.jupnp", "org.jupnp.support", "3.0.3")
     implementation(libs.nanohttpd)
+    implementation("org.eclipse.jetty", "jetty-server", "9.4.57.v20241219")
+    implementation("org.eclipse.jetty", "jetty-servlet", "9.4.57.v20241219")
+    implementation("org.eclipse.jetty", "jetty-client", "9.4.57.v20241219")
+    implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
 }
