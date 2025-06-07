@@ -9,23 +9,32 @@ import android.os.IBinder
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.ListView
 import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.upnpdlna.ui.theme.UpnpDlnaTheme
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
+import com.yausername.youtubedl_android.YoutubeDLRequest
 import org.jupnp.android.AndroidUpnpService
 import org.jupnp.android.AndroidUpnpServiceImpl
+import org.jupnp.model.action.ActionInvocation
+import org.jupnp.model.message.UpnpResponse
 import org.jupnp.model.meta.Device
 import org.jupnp.model.meta.LocalDevice
 import org.jupnp.model.meta.RemoteDevice
+import org.jupnp.model.meta.Service
 import org.jupnp.registry.DefaultRegistryListener
 import org.jupnp.registry.Registry
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import org.jupnp.support.avtransport.callback.SetAVTransportURI
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 
 class BrowserActivity : ListActivity() {
@@ -81,6 +90,8 @@ class DeviceDisplay(var device: Device<*, *, *>) {
     }
 }
 
+
+
 class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay>?, private val activity: MainActivity) : DefaultRegistryListener() {
     /* Discovery performance optimization for very slow Android devices! */
     override fun remoteDeviceDiscoveryStarted(registry: Registry, device: RemoteDevice) {
@@ -134,15 +145,28 @@ class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay
             } else {
                 listAdapter.add(d)
             }
+            listAdapter.notifyDataSetInvalidated()
         }
     }
 
     fun deviceRemoved(device: Device<*, *, *>) {
         val d = DeviceDisplay(device)
         this.activity.runOnUiThread {
-            listAdapter?.remove(d)
+            listAdapter!!.remove(d)
+            listAdapter.notifyDataSetInvalidated()
         }
     }
+}
+
+class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String): SetAVTransportURI(service, url) {
+    override fun failure(
+        invocation: ActionInvocation<*>?,
+        operation: UpnpResponse?,
+        defaultMsg: String?
+    ) {
+        TODO("Not yet implemented")
+    }
+
 }
 
 class MainActivity : ComponentActivity() {
@@ -152,6 +176,8 @@ class MainActivity : ComponentActivity() {
     private var registryListener: BrowseRegistryListener? = null
 
     private var upnpService: AndroidUpnpService? = null
+
+    var executorService: ExecutorService = Executors.newFixedThreadPool(4)
 
     private val serviceConnection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
@@ -182,14 +208,54 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
-        listAdapter = ArrayAdapter<DeviceDisplay>(this, R.layout.main_layout, R.id.devices)
+        listAdapter = ArrayAdapter<DeviceDisplay>(this, android.R.layout.simple_list_item_1, R.id.devices)
+        findViewById<ListView>(R.id.devices)
         registryListener = BrowseRegistryListener(listAdapter, this)
+        findViewById<Button>(R.id.button).setOnClickListener { this.test(it) }
         applicationContext.bindService(
             Intent(this, AndroidUpnpServiceImpl::class.java),
             serviceConnection,
             BIND_AUTO_CREATE
         )
     }
+
+    fun test(v: View) {
+        executorService.execute {
+            val youtubeUrl = "https://youtu.be/CSK0WxG1Qr0"
+            Log.i("YoutubeDL", "Requesting: $youtubeUrl")
+            try {
+                YoutubeDL.getInstance().init(v.context)
+                val request = YoutubeDLRequest(youtubeUrl)
+                val streamInfo = YoutubeDL.getInstance().getInfo(request)
+                val kodiStream = streamInfo.formats?.find {
+                    println(it.formatNote)
+                    println(it.format)
+                    println(it.url)
+                    it.formatNote?.contains("720p") == true
+                }
+                val kodiDevice = upnpService!!.get()!!.registry!!.devices.find {
+                    it.displayString.lowercase().contains("kodi")
+                }
+                val avTransportService = kodiDevice!!.services.find {
+                    println(it.serviceId)
+                    println(it.serviceType)
+                    println(it.device.displayString)
+                    it.serviceId.toString().contains("AVTransport")
+                }
+                /*
+                val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(avTransportService,
+                    kodiStream!!.url.toString()
+                )
+                setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
+                setAVTransportURIAction.run()
+
+                 */
+            } catch (e: YoutubeDLException) {
+                Log.e("YoutubeDL", "failed to initialize youtubedl-android", e)
+            }
+        }
+    }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -198,40 +264,6 @@ class MainActivity : ComponentActivity() {
         }
         // This will stop the UPnP service if nobody else is bound to it
         applicationContext.unbindService(serviceConnection)
-    }
-
-    fun test(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        /*
-        setContent {
-            UpnpDlnaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
-
-         */
-        val youtubeUrl = "https://www.youtube.com/watch?v=1LnZEGttZeE"
-        try {
-            val process = ProcessBuilder("yt-dlp", "-g", youtubeUrl)
-                .redirectErrorStream(true)
-                .start()
-
-            val reader = BufferedReader(
-                InputStreamReader(process.inputStream)
-            )
-            val streamUrl = reader.readLine()
-            Log.i("yt-dlp", "Stream URL: $streamUrl")
-
-            // Hier kannst du die Stream-URL an den DLNA-Renderer senden
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 }
 
