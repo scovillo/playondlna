@@ -166,7 +166,7 @@ class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay
     }
 }
 
-class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String): SetAVTransportURI(service, url) {
+class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String, metaData: String): SetAVTransportURI(service, url, metaData) {
     override fun failure(
         invocation: ActionInvocation<*>?,
         operation: UpnpResponse?,
@@ -286,7 +286,18 @@ class MainActivity : ComponentActivity() {
                     it.serviceId.toString().contains("AVTransport")
                 }
                 val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(avTransportService,
-                    url
+                    url, """
+                        <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
+                                   xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
+                                   xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
+                          <item id="${videoInfo.id}" parentID="0" restricted="1">
+                            <dc:title>${videoInfo.title}</dc:title>
+                            <dc:creator>${videoInfo.uploader}</dc:creator>
+                            <upnp:class>object.item.videoItem</upnp:class>
+                            <res protocolInfo="http-get:*:video/mp4:*">$url</res>
+                          </item>
+                        </DIDL-Lite>
+                    """.trimIndent()
                 )
                 setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
                 setAVTransportURIAction.run()
