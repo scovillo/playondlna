@@ -5,5 +5,5 @@
     <string name="idle">Idle</string>
     <string name="collecting">Collecting</string>
     <string name="preparing">Preparing</string>
-    <string name="playing">Playing</string>
+    <string name="ready">Ready</string>
 </resources>

@@ -1,6 +1,5 @@
 package com.example.upnpdlna
 
-import android.app.ListActivity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ComponentName
@@ -9,22 +8,23 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.ArrayAdapter
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.upnpdlna.ui.theme.UpnpDlnaTheme
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.yausername.youtubedl_android.mapper.VideoInfo
 import org.jupnp.android.AndroidUpnpService
 import org.jupnp.android.AndroidUpnpServiceImpl
 import org.jupnp.controlpoint.ActionCallback
@@ -45,62 +45,10 @@ import java.util.Enumeration
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
-class BrowserActivity : ListActivity() {
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // menu.add(0, 0, 0, R.string.searchLAN).setIcon(R.drawable.ic_menu_search)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        /*
-        when (item.itemId) {
-            0 -> {
-                if (upnpService == null) {
-                    break
-                }
-                Toast.makeText(this, R.string.searchingLAN, Toast.LENGTH_SHORT).show()
-                upnpService.getRegistry().removeAllRemoteDevices()
-                upnpService.getControlPoint().search()
-            }
-        }
-        return false
-    } // ...
-
-         */
-        return true
-    }
-}
-
-class DeviceDisplay(var device: Device<*, *, *>) {
-    override fun equals(o: Any?): Boolean {
-        if (this === o) {
-            return true
-        }
-        if (o == null || javaClass != o.javaClass) {
-            return false
-        }
-        val that = o as DeviceDisplay
-        return device == that.device
-    }
-
-    override fun hashCode(): Int {
-        return device.hashCode()
-    }
-
-    override fun toString(): String {
-        val name =
-            if (device.details != null && device.details.friendlyName != null)
-                device.details.friendlyName
-            else
-                device.displayString
-        // Display a little star while the device is being loaded (see performance optimization earlier)
-        return if (device.isFullyHydrated) name else "$name *"
-    }
-}
-
-
-
-class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay>?, private val activity: MainActivity) : DefaultRegistryListener() {
+class BrowseRegistryListener(
+    private val listAdapter: DeviceListAdapter,
+    private val activity: MainActivity
+) : DefaultRegistryListener() {
     /* Discovery performance optimization for very slow Android devices! */
     override fun remoteDeviceDiscoveryStarted(registry: Registry, device: RemoteDevice) {
         deviceAdded(device)
@@ -108,20 +56,17 @@ class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay
 
     override fun remoteDeviceDiscoveryFailed(
         registry: Registry, device: RemoteDevice,
-        ex: java.lang.Exception?
+        ex: Exception?
     ) {
-        /*
-        runOnUiThread(Runnable {
+        this.activity.runOnUiThread(Runnable {
             Toast.makeText(
-                this@BrowserActivity,
+                this.activity,
                 ("Discovery failed of '" + device.displayString + "': "
                         + (ex?.toString() ?: "Couldn't retrieve device/service descriptors")),
                 Toast.LENGTH_LONG
             ).show()
         })
         deviceRemoved(device)
-
-         */
     }
 
     /* End of optimization, you can remove the whole block if your Android handset is fast (>= 600 Mhz) */
@@ -142,31 +87,27 @@ class BrowseRegistryListener(private val listAdapter: ArrayAdapter<DeviceDisplay
     }
 
     fun deviceAdded(device: Device<*, *, *>) {
-        println("Add device: ${device.displayString}")
-        val d = DeviceDisplay(device)
+        if (!device.type.type.contains("MediaRenderer")) {
+            return
+        }
+        Log.i("BrowseRegistryListener", "Add device: ${device.displayString}")
+        val deviceDisplay = DeviceDisplay(device)
         this.activity.runOnUiThread {
-            val position: Int = listAdapter!!.getPosition(d)
-            if (position >= 0) {
-                // Device already in the list, re-set new value at same position
-                listAdapter.remove(d)
-                listAdapter.insert(d, position)
-            } else {
-                listAdapter.add(d)
-            }
-            listAdapter.notifyDataSetInvalidated()
+            listAdapter.add(deviceDisplay)
         }
     }
 
     fun deviceRemoved(device: Device<*, *, *>) {
-        val d = DeviceDisplay(device)
+        Log.i("BrowseRegistryListener", "Remove device: ${device.displayString}")
+        val deviceDisplay = DeviceDisplay(device)
         this.activity.runOnUiThread {
-            listAdapter!!.remove(d)
-            listAdapter.notifyDataSetInvalidated()
+            listAdapter.remove(deviceDisplay)
         }
     }
 }
 
-class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String, metaData: String): SetAVTransportURI(service, url, metaData) {
+class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String, metaData: String) :
+    SetAVTransportURI(service, url, metaData) {
     override fun failure(
         invocation: ActionInvocation<*>?,
         operation: UpnpResponse?,
@@ -179,13 +120,27 @@ class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String, me
 
 class MainActivity : ComponentActivity() {
 
-    private var listAdapter: ArrayAdapter<DeviceDisplay>? = null
-
     private var registryListener: BrowseRegistryListener? = null
 
     private var upnpService: AndroidUpnpService? = null
 
     private val executorService = Executors.newFixedThreadPool(4)
+
+    private var currentVideo: VideoInfo? = null
+
+    val listAdapter = DeviceListAdapter(
+        mutableListOf<DeviceDisplay>()
+    ) { item: DeviceDisplay ->
+        if (currentVideo == null) {
+            return@DeviceListAdapter
+        }
+        this.play(item.device)
+        Toast.makeText(
+            this@MainActivity,
+            "Auf $item gestartet",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 
     private val serviceConnection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
@@ -193,13 +148,13 @@ class MainActivity : ComponentActivity() {
             upnpService!!.get().startup()
 
             // Clear the list
-            listAdapter!!.clear()
+            listAdapter.clear()
 
             // Get ready for future device advertisements
             upnpService!!.get().registry.addListener(registryListener)
 
             // Now add all devices to the list we already know about
-            for (device in upnpService!!.registry.devices) {
+            for (device in upnpService!!.registry.devices.filter { it.type.type.contains("MediaRenderer") }) {
                 registryListener!!.deviceAdded(device)
             }
 
@@ -216,7 +171,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
-        listAdapter = ArrayAdapter<DeviceDisplay>(this, android.R.layout.simple_list_item_1, R.id.devices)
         registryListener = BrowseRegistryListener(listAdapter, this)
         executorService.execute {
             applicationContext.bindService(
@@ -236,6 +190,11 @@ class MainActivity : ComponentActivity() {
                 )
             ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         }
+
+        val recyclerView = findViewById<RecyclerView>(R.id.devices)
+        recyclerView.setLayoutManager(LinearLayoutManager(this))
+
+        recyclerView.setAdapter(listAdapter)
 
         val sendIntent = intent
         if (sendIntent.action == Intent.ACTION_SEND) {
@@ -263,51 +222,51 @@ class MainActivity : ComponentActivity() {
                 val request = YoutubeDLRequest(url)
                 val rootDir = this.getExternalFilesDir(null)
                 request.addOption("-o", "${rootDir}/%(title)s-%(id)s.%(ext)s")
-                request.addOption("-f", "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]")
+                request.addOption(
+                    "-f",
+                    "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]"
+                )
                 request.addOption("--merge-output-format", "mp4")
                 val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-                YoutubeDL.getInstance().execute(request, null, fun(a: Float, b: Long, c: String) {
-                    val progress = if (a > 0) a else 0.0f
-                    progressBar.progress = progress.roundToInt()
-                    println(a)
-                    println(b)
-                    println(c)
-                })
+                YoutubeDL.getInstance()
+                    .execute(request, null, fun(percentage: Float, status: Long, message: String) {
+                        val progress = if (percentage > 0) percentage else 0.0f
+                        progressBar.progress = progress.roundToInt()
+                        Log.i("YoutubeDL", "$percentage%, Status $status, $message")
+                    })
                 progressBar.progress = 100
-                statusTextView.setText(R.string.playing)
-                val url = "http://${getLocalIpAddress()}:$serverPort/${videoInfo.id}"
-                println("Video available under: $url")
-                val kodiDevice = upnpService!!.get()!!.registry!!.devices.find {
-                    it.displayString.lowercase().contains("kodi")
-                }
-                val avTransportService = kodiDevice!!.services.find {
-                    println(it.serviceId)
-                    println(it.serviceType)
-                    println(it.device.displayString)
-                    it.serviceId.toString().contains("AVTransport")
-                }
-                val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(avTransportService,
-                    url, """
+                statusTextView.setText(R.string.ready)
+                currentVideo = videoInfo
+            } catch (e: YoutubeDLException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun play(device: Device<*, *, *>) {
+        val url = "http://${getLocalIpAddress()}:$serverPort/${currentVideo!!.id}"
+        println("Video available under: $url")
+        val avTransportService = device.services.find {
+            it.serviceId.toString().contains("AVTransport")
+        }
+        val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(
+            avTransportService,
+            url, """
                         <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
                                    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
                                    xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-                          <item id="${videoInfo.id}" parentID="0" restricted="1">
-                            <dc:title>${videoInfo.title}</dc:title>
-                            <dc:creator>${videoInfo.uploader}</dc:creator>
+                          <item id="${currentVideo!!.id}" parentID="0" restricted="1">
+                            <dc:title>${currentVideo!!.title}</dc:title>
+                            <dc:creator>${currentVideo!!.uploader}</dc:creator>
                             <upnp:class>object.item.videoItem</upnp:class>
                             <res protocolInfo="http-get:*:video/mp4:*">$url</res>
                           </item>
                         </DIDL-Lite>
                     """.trimIndent()
-                )
-                setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
-                setAVTransportURIAction.run()
-            } catch (e: YoutubeDLException) {
-                Log.e("YoutubeDL", "failed to initialize youtubedl-android", e)
-            }
-        }
+        )
+        setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
+        setAVTransportURIAction.run()
     }
-
 
     override fun onDestroy() {
         super.onDestroy()
