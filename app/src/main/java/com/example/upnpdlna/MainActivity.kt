@@ -275,7 +275,7 @@ class MainActivity : ComponentActivity() {
                 })
                 progressBar.progress = 100
                 statusTextView.setText(R.string.playing)
-                val url = "http://${getLocalIpAddress()}:63791/${videoInfo.id}"
+                val url = "http://${getLocalIpAddress()}:$serverPort/${videoInfo.id}"
                 println("Video available under: $url")
                 val kodiDevice = upnpService!!.get()!!.registry!!.devices.find {
                     it.displayString.lowercase().contains("kodi")

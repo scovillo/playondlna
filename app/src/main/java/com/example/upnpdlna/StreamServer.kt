@@ -24,6 +24,8 @@ fun getRandomFreePort(): Int {
     }
 }
 
+val serverPort = getRandomFreePort()
+
 class VideoHttpServer(port: Int, val dir: File) : NanoHTTPD(port) {
 
     override fun serve(session: IHTTPSession): Response {
@@ -81,7 +83,7 @@ class WebServerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        server = VideoHttpServer(63791, this.getExternalFilesDir(null)!!)
+        server = VideoHttpServer(serverPort, this.getExternalFilesDir(null)!!)
         try {
             server!!.start()
             Log.i("WebServerService", "Http Server started!")
@@ -90,7 +92,7 @@ class WebServerService : Service() {
         }
         val notification: Notification = NotificationCompat.Builder(this, "http_channel")
             .setContentTitle("HTTP-Streaming aktiv")
-            .setContentText("Server läuft auf Port 63791")
+            .setContentText("Server läuft auf Port $serverPort")
             .build()
         startForeground(1, notification)
     }
