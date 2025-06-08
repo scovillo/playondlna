@@ -12,6 +12,8 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.ArrayAdapter
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +43,7 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 class BrowserActivity : ListActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -215,24 +218,32 @@ class MainActivity : ComponentActivity() {
         setContentView(R.layout.main_layout)
         listAdapter = ArrayAdapter<DeviceDisplay>(this, android.R.layout.simple_list_item_1, R.id.devices)
         registryListener = BrowseRegistryListener(listAdapter, this)
-        applicationContext.bindService(
-            Intent(this, AndroidUpnpServiceImpl::class.java),
-            serviceConnection,
-            BIND_AUTO_CREATE
-        )
-        getSystemService<NotificationManager?>(NotificationManager::class.java)
-            .createNotificationChannel(NotificationChannel(
-            "http_channel",
-            "HTTP Server",
-            NotificationManager.IMPORTANCE_LOW
-        ))
-        ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
+        executorService.execute {
+            applicationContext.bindService(
+                Intent(this, AndroidUpnpServiceImpl::class.java),
+                serviceConnection,
+                BIND_AUTO_CREATE
+            )
+        }
+        executorService.execute {
+            getSystemService<NotificationManager?>(NotificationManager::class.java)
+                .createNotificationChannel(
+                    NotificationChannel(
+                        "http_channel",
+                        "HTTP Server",
+                        NotificationManager.IMPORTANCE_LOW
+                    )
+                )
+            ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
+        }
 
         val sendIntent = intent
         if (sendIntent.action == Intent.ACTION_SEND) {
             if (sendIntent.type == "text/plain") {
                 val url = sendIntent.extras?.getString("android.intent.extra.TEXT")
                 if (url != null) {
+                    val srcTextView = findViewById<TextView>(R.id.src)
+                    srcTextView.text = url
                     this.startPlayback(url)
                 }
             }
@@ -251,11 +262,18 @@ class MainActivity : ComponentActivity() {
                 request.addOption("-o", "${rootDir}/%(title)s-%(id)s.%(ext)s")
                 request.addOption("-f", "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]")
                 request.addOption("--merge-output-format", "mp4")
+                val statusTextView = findViewById<TextView>(R.id.status)
+                val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+                statusTextView.setText(R.string.preparing)
                 YoutubeDL.getInstance().execute(request, null, fun(a: Float, b: Long, c: String) {
+                    val progress = if (a > 0) a else 0.0f
+                    progressBar.progress = progress.roundToInt()
                     println(a)
                     println(b)
                     println(c)
                 })
+                progressBar.progress = 100
+                statusTextView.setText(R.string.playing)
                 val url = "http://${getLocalIpAddress()}:63791/${videoInfo.id}"
                 println("Video available under: $url")
                 val kodiDevice = upnpService!!.get()!!.registry!!.devices.find {
