@@ -68,5 +68,4 @@ dependencies {
     implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
     implementation("io.github.junkfood02.youtubedl-android", "library", "0.17.4")
     implementation("io.github.junkfood02.youtubedl-android", "ffmpeg", "0.17.4")
-    implementation("io.github.junkfood02.youtubedl-android", "aria2c", "0.17.4")
 }
