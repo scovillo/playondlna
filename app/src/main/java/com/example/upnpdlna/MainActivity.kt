@@ -254,17 +254,18 @@ class MainActivity : ComponentActivity() {
         executorService.execute {
             Log.i("YoutubeDL", "Requesting: $url")
             try {
+                val statusTextView = findViewById<TextView>(R.id.status)
+                statusTextView.setText(R.string.collecting)
                 YoutubeDL.getInstance().init(this)
                 FFmpeg.getInstance().init(this)
                 val videoInfo = YoutubeDL.getInstance().getInfo(url)
+                statusTextView.setText(R.string.preparing)
                 val request = YoutubeDLRequest(url)
                 val rootDir = this.getExternalFilesDir(null)
                 request.addOption("-o", "${rootDir}/%(title)s-%(id)s.%(ext)s")
                 request.addOption("-f", "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]")
                 request.addOption("--merge-output-format", "mp4")
-                val statusTextView = findViewById<TextView>(R.id.status)
                 val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-                statusTextView.setText(R.string.preparing)
                 YoutubeDL.getInstance().execute(request, null, fun(a: Float, b: Long, c: String) {
                     val progress = if (a > 0) a else 0.0f
                     progressBar.progress = progress.roundToInt()
