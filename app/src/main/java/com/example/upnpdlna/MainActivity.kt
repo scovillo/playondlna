@@ -1,6 +1,8 @@
 package com.example.upnpdlna
 
 import android.app.ListActivity
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -15,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
 import com.example.upnpdlna.ui.theme.UpnpDlnaTheme
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
@@ -38,7 +41,6 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 import java.util.concurrent.Executors
-
 
 class BrowserActivity : ListActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -218,6 +220,14 @@ class MainActivity : ComponentActivity() {
             serviceConnection,
             BIND_AUTO_CREATE
         )
+        getSystemService<NotificationManager?>(NotificationManager::class.java)
+            .createNotificationChannel(NotificationChannel(
+            "http_channel",
+            "HTTP Server",
+            NotificationManager.IMPORTANCE_LOW
+        ))
+        ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
+
         val sendIntent = intent
         if (sendIntent.action == Intent.ACTION_SEND) {
             if (sendIntent.type == "text/plain") {
@@ -241,16 +251,12 @@ class MainActivity : ComponentActivity() {
                 request.addOption("-o", "${rootDir}/%(title)s-%(id)s.%(ext)s")
                 request.addOption("-f", "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]")
                 request.addOption("--merge-output-format", "mp4")
-                val youtubeDLResponse = YoutubeDL.getInstance().execute(request, null, fun(a: Float, b: Long, c: String) {
+                YoutubeDL.getInstance().execute(request, null, fun(a: Float, b: Long, c: String) {
                     println(a)
                     println(b)
                     println(c)
                 })
-                val videoFile = rootDir!!.listFiles()!!.find { it.name.contains(videoInfo.id!!) }!!
-                val server = VideoHttpServer(63791, videoFile)
-                server.start()
-
-                val url = "http://${getLocalIpAddress()}:63791/"
+                val url = "http://${getLocalIpAddress()}:63791/${videoInfo.id}"
                 println("Video available under: $url")
                 val kodiDevice = upnpService!!.get()!!.registry!!.devices.find {
                     it.displayString.lowercase().contains("kodi")
