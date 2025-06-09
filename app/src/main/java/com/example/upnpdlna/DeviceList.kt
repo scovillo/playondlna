@@ -4,9 +4,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import org.jupnp.model.meta.Device
+
 
 class DeviceDisplay(var device: Device<*, *, *>) {
     override fun equals(o: Any?): Boolean {
@@ -58,8 +60,12 @@ class DeviceListAdapter(
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         val item = itemList[position]
-        holder.textView.text = item.device.displayString
+        holder.textView.text = item.toString()
         holder.textView.setOnClickListener { v -> listener.onDeviceClick(item) }
+        val bgColorRes: Int = if (position % 2 == 0) R.color.dark_grey else R.color.very_dark_grey
+        holder.itemView.setBackgroundColor(
+            ContextCompat.getColor(holder.itemView.context, bgColorRes)
+        )
     }
 
     override fun getItemCount(): Int {

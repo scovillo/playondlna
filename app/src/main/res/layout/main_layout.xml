@@ -38,6 +38,14 @@
         android:progress="0"
         android:progressDrawable="@drawable/progress_bar" />
 
+    <TextView
+        android:id="@+id/availablePlayersTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:text="Available Players"
+        android:textColor="@color/white" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/devices"
         android:layout_width="match_parent"
