@@ -10,7 +10,12 @@ import fi.iki.elonen.NanoHTTPD
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
+import java.net.SocketException
+import java.util.Enumeration
 
 fun getRandomFreePort(): Int {
     try {
@@ -25,6 +30,33 @@ fun getRandomFreePort(): Int {
 }
 
 val serverPort = getRandomFreePort()
+
+fun getLocalIpAddress(): String? {
+    try {
+        val interfaces: Enumeration<NetworkInterface?> = NetworkInterface.getNetworkInterfaces()
+        while (interfaces.hasMoreElements()) {
+            val networkInterface: NetworkInterface? = interfaces.nextElement()
+
+            // Nur aktive Interfaces, keine Loopbacks etc.
+            if (!networkInterface!!.isUp() || networkInterface.isLoopback) {
+                continue
+            }
+
+            val addresses: Enumeration<InetAddress?> = networkInterface.getInetAddresses()
+            while (addresses.hasMoreElements()) {
+                val inetAddress: InetAddress? = addresses.nextElement()
+
+                // Nur IPv4 & keine Loopback-Adresse
+                if (!inetAddress!!.isLoopbackAddress && inetAddress is Inet4Address) {
+                    return inetAddress.hostAddress
+                }
+            }
+        }
+    } catch (e: SocketException) {
+        e.printStackTrace()
+    }
+    return null
+}
 
 class VideoHttpServer(port: Int, val dir: File) : NanoHTTPD(port) {
 
@@ -91,8 +123,8 @@ class WebServerService : Service() {
             e.printStackTrace()
         }
         val notification: Notification = NotificationCompat.Builder(this, "http_channel")
-            .setContentTitle("HTTP-Streaming aktiv")
-            .setContentText("Server läuft auf Port $serverPort")
+            .setContentTitle("HTTP-Streaming active")
+            .setContentText("Server running on http://${getLocalIpAddress()}:$serverPort/")
             .build()
         startForeground(1, notification)
     }

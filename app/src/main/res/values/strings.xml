@@ -3,7 +3,6 @@
     <string name="search_lan">Im lokalen Netzwerk suchen</string>
     <string name="src_link">Source link</string>
     <string name="idle">Idle</string>
-    <string name="collecting">Collecting</string>
     <string name="preparing">Preparing</string>
     <string name="ready">Ready</string>
 </resources>

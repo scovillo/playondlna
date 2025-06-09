@@ -12,19 +12,13 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.upnpdlna.ui.theme.UpnpDlnaTheme
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
 import org.jupnp.android.AndroidUpnpService
 import org.jupnp.android.AndroidUpnpServiceImpl
 import org.jupnp.controlpoint.ActionCallback
@@ -37,11 +31,6 @@ import org.jupnp.model.meta.Service
 import org.jupnp.registry.DefaultRegistryListener
 import org.jupnp.registry.Registry
 import org.jupnp.support.avtransport.callback.SetAVTransportURI
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
-import java.net.SocketException
-import java.util.Enumeration
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
@@ -126,7 +115,7 @@ class MainActivity : ComponentActivity() {
 
     private val executorService = Executors.newFixedThreadPool(4)
 
-    private var currentVideo: VideoInfo? = null
+    private var currentVideo: VideoFile? = null
 
     val listAdapter = DeviceListAdapter(
         mutableListOf<DeviceDisplay>()
@@ -214,29 +203,36 @@ class MainActivity : ComponentActivity() {
             Log.i("YoutubeDL", "Requesting: $url")
             try {
                 val statusTextView = findViewById<TextView>(R.id.status)
-                statusTextView.setText(R.string.collecting)
+                statusTextView.setText(R.string.preparing)
                 YoutubeDL.getInstance().init(this)
                 FFmpeg.getInstance().init(this)
-                val videoInfo = YoutubeDL.getInstance().getInfo(url)
-                statusTextView.setText(R.string.preparing)
                 val request = YoutubeDLRequest(url)
                 val rootDir = this.getExternalFilesDir(null)
-                request.addOption("-o", "${rootDir}/%(title)s-%(id)s.%(ext)s")
+                request.addOption(
+                    "-o",
+                    "${rootDir}/%(title)s$videoFileNameSeparator%(id)s$videoFileNameSeparator%(uploader)s"
+                )
                 request.addOption(
                     "-f",
                     "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]"
                 )
                 request.addOption("--merge-output-format", "mp4")
                 val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+                val extractor = YoutubeDlFileName("${rootDir!!.path}/", ".mp4")
+                var fileName: String? = null
                 YoutubeDL.getInstance()
                     .execute(request, null, fun(percentage: Float, status: Long, message: String) {
                         val progress = if (percentage > 0) percentage else 0.0f
                         progressBar.progress = progress.roundToInt()
+                        if (fileName == null) {
+                            fileName = extractor.extract(message)
+                        }
                         Log.i("YoutubeDL", "$percentage%, Status $status, $message")
                     })
                 progressBar.progress = 100
+                Log.i("YoutubeDL", "Final filename: $fileName")
+                currentVideo = VideoFile(fileName!!)
                 statusTextView.setText(R.string.ready)
-                currentVideo = videoInfo
             } catch (e: YoutubeDLException) {
                 e.printStackTrace()
             }
@@ -244,25 +240,14 @@ class MainActivity : ComponentActivity() {
     }
 
     fun play(device: Device<*, *, *>) {
-        val url = "http://${getLocalIpAddress()}:$serverPort/${currentVideo!!.id}"
-        println("Video available under: $url")
+        println("Video available under: ${currentVideo!!.url}")
         val avTransportService = device.services.find {
             it.serviceId.toString().contains("AVTransport")
         }
         val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(
             avTransportService,
-            url, """
-                        <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
-                                   xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
-                                   xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-                          <item id="${currentVideo!!.id}" parentID="0" restricted="1">
-                            <dc:title>${currentVideo!!.title}</dc:title>
-                            <dc:creator>${currentVideo!!.uploader}</dc:creator>
-                            <upnp:class>object.item.videoItem</upnp:class>
-                            <res protocolInfo="http-get:*:video/mp4:*">$url</res>
-                          </item>
-                        </DIDL-Lite>
-                    """.trimIndent()
+            currentVideo!!.url,
+            currentVideo!!.metaData
         )
         setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
         setAVTransportURIAction.run()
@@ -276,47 +261,4 @@ class MainActivity : ComponentActivity() {
         // This will stop the UPnP service if nobody else is bound to it
         applicationContext.unbindService(serviceConnection)
     }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    UpnpDlnaTheme {
-        Greeting("Android")
-    }
-}
-
-fun getLocalIpAddress(): String? {
-    try {
-        val interfaces: Enumeration<NetworkInterface?> = NetworkInterface.getNetworkInterfaces()
-        while (interfaces.hasMoreElements()) {
-            val networkInterface: NetworkInterface? = interfaces.nextElement()
-
-            // Nur aktive Interfaces, keine Loopbacks etc.
-            if (!networkInterface!!.isUp() || networkInterface.isLoopback) {
-                continue
-            }
-
-            val addresses: Enumeration<InetAddress?> = networkInterface.getInetAddresses()
-            while (addresses.hasMoreElements()) {
-                val inetAddress: InetAddress? = addresses.nextElement()
-
-                // Nur IPv4 & keine Loopback-Adresse
-                if (!inetAddress!!.isLoopbackAddress && inetAddress is Inet4Address) {
-                    return inetAddress.hostAddress
-                }
-            }
-        }
-    } catch (e: SocketException) {
-        e.printStackTrace()
-    }
-    return null
 }
