@@ -15,7 +15,7 @@ class VideoFile(val fileName: String) {
 
     val uploader: String
         get() {
-            return this.fileName.split(videoFileNameSeparator)[2]
+            return this.fileName.split(videoFileNameSeparator)[2].replace(".mp4", "")
         }
 
     val url: String
