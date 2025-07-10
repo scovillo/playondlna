@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">UpnpDlna</string>
+    <string name="app_name">PlayOnDlna</string>
     <string name="search_lan">Im lokalen Netzwerk suchen</string>
     <string name="src_link">Source link</string>
     <string name="idle">Idle</string>
