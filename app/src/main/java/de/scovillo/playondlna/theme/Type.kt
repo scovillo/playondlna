@@ -1,4 +1,4 @@
-package com.example.upnpdlna.ui.theme
+package de.scovillo.playondlna.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

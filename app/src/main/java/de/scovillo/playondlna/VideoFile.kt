@@ -1,4 +1,4 @@
-package com.example.upnpdlna
+package de.scovillo.playondlna
 
 const val videoFileNameSeparator = "+|-"
 

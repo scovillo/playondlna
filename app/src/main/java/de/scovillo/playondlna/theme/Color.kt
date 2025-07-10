@@ -1,4 +1,4 @@
-package com.example.upnpdlna.ui.theme
+package de.scovillo.playondlna.theme
 
 import androidx.compose.ui.graphics.Color
 

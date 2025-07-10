@@ -1,4 +1,4 @@
-package com.example.upnpdlna
+package de.scovillo.playondlna
 
 class YoutubeDlFileName(private val rootDir: String, private val fileExtension: String) {
 

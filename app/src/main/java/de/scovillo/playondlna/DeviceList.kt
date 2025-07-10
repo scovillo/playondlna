@@ -1,4 +1,4 @@
-package com.example.upnpdlna
+package de.scovillo.playondlna
 
 import android.view.LayoutInflater
 import android.view.View

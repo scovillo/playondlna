@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.upnpdlna"
+    namespace = "de.scovillo.playondlna"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.upnpdlna"
+        applicationId = "de.scovillo.youtube2dlna"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

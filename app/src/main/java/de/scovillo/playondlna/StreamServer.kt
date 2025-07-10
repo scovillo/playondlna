@@ -1,4 +1,4 @@
-package com.example.upnpdlna
+package de.scovillo.playondlna
 
 import android.app.Notification
 import android.app.Service
