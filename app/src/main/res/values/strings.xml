@@ -5,4 +5,5 @@
     <string name="idle">Idle</string>
     <string name="preparing">Preparing</string>
     <string name="ready">Ready</string>
+    <string name="error">Error</string>
 </resources>

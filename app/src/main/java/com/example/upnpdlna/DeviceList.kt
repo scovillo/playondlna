@@ -11,14 +11,14 @@ import org.jupnp.model.meta.Device
 
 
 class DeviceDisplay(var device: Device<*, *, *>) {
-    override fun equals(o: Any?): Boolean {
-        if (this === o) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) {
             return true
         }
-        if (o == null || javaClass != o.javaClass) {
+        if (other == null || javaClass != other.javaClass) {
             return false
         }
-        val that = o as DeviceDisplay
+        val that = other as DeviceDisplay
         return device == that.device
     }
 
@@ -32,7 +32,6 @@ class DeviceDisplay(var device: Device<*, *, *>) {
                 device.details.friendlyName
             else
                 device.displayString
-        // Display a little star while the device is being loaded (see performance optimization earlier)
         return if (device.isFullyHydrated) name else "$name *"
     }
 }
@@ -49,7 +48,7 @@ class DeviceListAdapter(
     RecyclerView.Adapter<DeviceListAdapter.DeviceViewHolder?>() {
 
     class DeviceViewHolder(itemView: View) : ViewHolder(itemView) {
-        var textView: TextView = itemView.findViewById<TextView?>(R.id.textViewItem)
+        var textView: TextView = itemView.findViewById(R.id.textViewItem)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {

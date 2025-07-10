@@ -38,7 +38,6 @@ class BrowseRegistryListener(
     private val listAdapter: DeviceListAdapter,
     private val activity: MainActivity
 ) : DefaultRegistryListener() {
-    /* Discovery performance optimization for very slow Android devices! */
     override fun remoteDeviceDiscoveryStarted(registry: Registry, device: RemoteDevice) {
         deviceAdded(device)
     }
@@ -58,7 +57,6 @@ class BrowseRegistryListener(
         deviceRemoved(device)
     }
 
-    /* End of optimization, you can remove the whole block if your Android handset is fast (>= 600 Mhz) */
     override fun remoteDeviceAdded(registry: Registry, device: RemoteDevice) {
         deviceAdded(device)
     }
@@ -95,7 +93,7 @@ class BrowseRegistryListener(
     }
 }
 
-class KodiSetAVTransportURI(private val service: Service<*, *>?, url: String, metaData: String) :
+class KodiSetAVTransportURI(service: Service<*, *>?, url: String, metaData: String) :
     SetAVTransportURI(service, url, metaData) {
     override fun failure(
         invocation: ActionInvocation<*>?,
@@ -118,7 +116,7 @@ class MainActivity : ComponentActivity() {
     private var currentVideo: VideoFile? = null
 
     val listAdapter = DeviceListAdapter(
-        mutableListOf<DeviceDisplay>()
+        mutableListOf()
     ) { item: DeviceDisplay ->
         if (currentVideo == null) {
             return@DeviceListAdapter
@@ -135,19 +133,11 @@ class MainActivity : ComponentActivity() {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             upnpService = service as AndroidUpnpService
             upnpService!!.get().startup()
-
-            // Clear the list
             listAdapter.clear()
-
-            // Get ready for future device advertisements
             upnpService!!.get().registry.addListener(registryListener)
-
-            // Now add all devices to the list we already know about
             for (device in upnpService!!.registry.devices.filter { it.type.type.contains("MediaRenderer") }) {
                 registryListener!!.deviceAdded(device)
             }
-
-            // Search asynchronously for all devices, they will respond soon
             upnpService!!.get().controlPoint.search()
         }
 
@@ -169,7 +159,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         executorService.execute {
-            getSystemService<NotificationManager?>(NotificationManager::class.java)
+            getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(
                     NotificationChannel(
                         "http_channel",
@@ -201,8 +191,8 @@ class MainActivity : ComponentActivity() {
     fun startPlayback(url: String) {
         executorService.execute {
             Log.i("YoutubeDL", "Requesting: $url")
+            val statusTextView = findViewById<TextView>(R.id.status)
             try {
-                val statusTextView = findViewById<TextView>(R.id.status)
                 statusTextView.setText(R.string.preparing)
                 YoutubeDL.getInstance().init(this)
                 FFmpeg.getInstance().init(this)
@@ -234,6 +224,7 @@ class MainActivity : ComponentActivity() {
                 currentVideo = VideoFile(fileName!!)
                 statusTextView.setText(R.string.ready)
             } catch (e: YoutubeDLException) {
+                statusTextView.setText(R.string.ready)
                 e.printStackTrace()
             }
         }
@@ -258,7 +249,6 @@ class MainActivity : ComponentActivity() {
         if (upnpService != null) {
             upnpService!!.registry.removeListener(registryListener)
         }
-        // This will stop the UPnP service if nobody else is bound to it
         applicationContext.unbindService(serviceConnection)
     }
 }
