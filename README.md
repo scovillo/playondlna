@@ -1,29 +1,38 @@
-            # PlayOnDlna
+# PlayOnDlna
 
-            📦 **Version:** 1 (1.0)
-            ⚙️ **Build-Tool:** Gradle 8.11.1
+📦 **Version:** 1 (1.0)
+⚙️ **Build-Tool:** Gradle 8.11.1
 
-            ## 🤖 Android Configuration
+## 🤖 Android Configuration
 
-            - **Application ID:** de.scovillo.playondlna  
-            - **Compile SDK:** android-35  
-            - **Min SDK:** 26  
-            - **Target SDK:** 35
+- **Application ID:** de.scovillo.playondlna  
+- **Compile SDK:** android-35  
+- **Min SDK:** 26  
+- **Target SDK:** 35
 
-            ## 📱 Description
+## 📱 Description
 
-            Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
-            If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
+Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
+If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
 
-            ## 🛠️ Build Instructions
+## 🛠️ Build Instructions
 
-            ```bash
-            ./gradlew build
-            ```
+```bash
+./gradlew build
+```
 
-            ## 📄 License
+## 📄 License
 
-                                GNU GENERAL PUBLIC LICENSE
+PlayOnDlna - An Android application to play media on dlna devices
+Copyright (C) 2025 Lukas Scheerer
+Licensed under the GNU General Public License v3.0
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+                    GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
@@ -698,9 +707,9 @@ the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 
-            ## 📚 Dependencies
+## 📚 Dependencies
 
-              - androidx.core:core-ktx:1.10.1
+  - androidx.core:core-ktx:1.10.1
   - androidx.lifecycle:lifecycle-runtime-ktx:2.6.1
   - androidx.activity:activity-compose:1.8.0
   - androidx.compose:compose-bom:2024.09.00

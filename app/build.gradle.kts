@@ -95,36 +95,36 @@ tasks.register("generateReadme") {
             "  - ${it.group ?: ""}:${it.name}:${it.version ?: "unspecified"}"
         }
         val content = """
-            # $appName
+# $appName
 
-            📦 **Version:** $versionCode ($versionName)
-            ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
+📦 **Version:** $versionCode ($versionName)
+⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
 
-            ## 🤖 Android Configuration
+## 🤖 Android Configuration
 
-            - **Application ID:** $appId  
-            - **Compile SDK:** $compileSdk  
-            - **Min SDK:** $minSdk  
-            - **Target SDK:** $targetSdk
+- **Application ID:** $appId  
+- **Compile SDK:** $compileSdk  
+- **Min SDK:** $minSdk  
+- **Target SDK:** $targetSdk
 
-            ## 📱 Description
+## 📱 Description
 
-            Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
-            If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
+Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
+If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
 
-            ## 🛠️ Build Instructions
+## 🛠️ Build Instructions
 
-            ```bash
-            ./gradlew build
-            ```
+```bash
+./gradlew build
+```
 
-            ## 📄 License
+## 📄 License
 
-            ${licenseText.trimIndent()}
+${licenseText.trimIndent()}
 
-            ## 📚 Dependencies
+## 📚 Dependencies
 
-            $dependencies
+$dependencies
         """.trimIndent()
 
         readmeFile.writeText(content)
