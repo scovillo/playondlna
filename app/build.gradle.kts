@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "de.scovillo.youtube2dlna"
+        applicationId = "de.scovillo.playondlna"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -69,4 +69,64 @@ dependencies {
     implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
     implementation("io.github.junkfood02.youtubedl-android", "library", "0.17.4")
     implementation("io.github.junkfood02.youtubedl-android", "ffmpeg", "0.17.4")
+}
+
+
+tasks.register("generateReadme") {
+    group = "documentation"
+    description =
+        "Automatically generates a README.md with project details and Android configuration."
+
+    doLast {
+        val readmeFile = file("$projectDir/README.md")
+        val licenseFile = file("$projectDir/LICENSE")
+        val appName = project.findProperty("appName") as? String ?: project.name
+        val android =
+            project.extensions.findByName("android") as? com.android.build.gradle.internal.dsl.BaseAppModuleExtension
+        val compileSdk = android?.compileSdkVersion ?: "Unknown"
+        val minSdk = android?.defaultConfig?.minSdk ?: "Unknown"
+        val targetSdk = android?.defaultConfig?.targetSdk ?: "Unknown"
+        val appId = android?.defaultConfig?.applicationId ?: "Unknown"
+        val versionCode = android?.defaultConfig?.versionCode ?: "Unknown"
+        val versionName = android?.defaultConfig?.versionName ?: "Unknown"
+        val licenseText =
+            if (licenseFile.exists()) licenseFile.readText() else "  No license file found."
+        val dependencies = configurations["implementation"].allDependencies.joinToString("\n") {
+            "  - ${it.group ?: ""}:${it.name}:${it.version ?: "unspecified"}"
+        }
+        val content = """
+            # $appName
+
+            📦 **Version:** $versionCode ($versionName)
+            ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
+
+            ## 🤖 Android Configuration
+
+            - **Application ID:** $appId  
+            - **Compile SDK:** $compileSdk  
+            - **Min SDK:** $minSdk  
+            - **Target SDK:** $targetSdk
+
+            ## 📱 Description
+
+            Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
+            If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
+
+            ## 🛠️ Build Instructions
+
+            ```bash
+            ./gradlew build
+            ```
+
+            ## 📄 License
+
+            ${licenseText.trimIndent()}
+
+            ## 📚 Dependencies
+
+            $dependencies
+        """.trimIndent()
+
+        readmeFile.writeText(content)
+    }
 }
