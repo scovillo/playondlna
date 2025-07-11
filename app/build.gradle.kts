@@ -78,8 +78,8 @@ tasks.register("generateReadme") {
         "Automatically generates a README.md with project details and Android configuration."
 
     doLast {
-        val readmeFile = file("$projectDir/README.md")
-        val licenseFile = file("$projectDir/LICENSE")
+        val readmeFile = file("$projectDir/../README.md")
+        val licenseFile = file("$projectDir/../LICENSE")
         val appName = project.findProperty("appName") as? String ?: project.name
         val android =
             project.extensions.findByName("android") as? com.android.build.gradle.internal.dsl.BaseAppModuleExtension
