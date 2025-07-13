@@ -194,17 +194,13 @@ class MainActivity : ComponentActivity() {
 
         recyclerView.setAdapter(listAdapter)
 
-        val sendIntent = intent
-        if (sendIntent.action == Intent.ACTION_SEND) {
-            if (sendIntent.type == "text/plain") {
-                val url = sendIntent.extras?.getString("android.intent.extra.TEXT")
-                if (url != null) {
-                    val srcTextView = findViewById<TextView>(R.id.src)
-                    srcTextView.text = url
-                    this.startPlayback(url)
-                }
-            }
-        }
+        handleShareIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShareIntent(intent)
     }
 
     fun startPlayback(url: String) {
@@ -212,21 +208,14 @@ class MainActivity : ComponentActivity() {
             Log.i("YoutubeDL", "Requesting: $url")
             val statusTextView = findViewById<TextView>(R.id.status)
             try {
-                // 1. Extraktor vorbereiten
                 val service = ServiceList.YouTube
                 val extractor = service.getStreamExtractor(url)
                 extractor.fetchPage()
-
-                // 2. Beste Video- und Audio-Streams wählen
                 val bestVideo = extractor.videoStreams.maxByOrNull { it.height }
                 val bestAudio = extractor.audioStreams.maxByOrNull { it.averageBitrate }
                 if (bestVideo == null || bestAudio == null)
                     throw IllegalStateException("Streams nicht gefunden")
-
-                // 3. Temporäre Datei im Cache anlegen
                 val tempFile = File.createTempFile("muxed_", ".mp4", this.cacheDir)
-
-                // 4. FFmpeg-Kommando bauen
                 val ffmpegCmd = listOf(
                     "-i", bestVideo.content,
                     "-i", bestAudio.content,
@@ -234,7 +223,7 @@ class MainActivity : ComponentActivity() {
                     "-c:a", "aac",
                     "-movflags +frag_keyframe+empty_moov+default_base_moof",
                     "-shortest",
-                    "-y", // overwrite
+                    "-y",
                     tempFile.absolutePath
                 )
 
@@ -282,5 +271,18 @@ class MainActivity : ComponentActivity() {
             upnpService!!.registry.removeListener(registryListener)
         }
         applicationContext.unbindService(serviceConnection)
+    }
+
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            if (intent.type == "text/plain") {
+                val url = intent.extras?.getString("android.intent.extra.TEXT")
+                if (url != null) {
+                    val srcTextView = findViewById<TextView>(R.id.src)
+                    srcTextView.text = url
+                    this.startPlayback(url)
+                }
+            }
+        }
     }
 }
