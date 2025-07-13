@@ -26,17 +26,14 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.yausername.ffmpeg.FFmpeg
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLException
-import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.ReturnCode
 import org.jupnp.android.AndroidUpnpService
 import org.jupnp.android.AndroidUpnpServiceImpl
 import org.jupnp.controlpoint.ActionCallback
@@ -49,8 +46,10 @@ import org.jupnp.model.meta.Service
 import org.jupnp.registry.DefaultRegistryListener
 import org.jupnp.registry.Registry
 import org.jupnp.support.avtransport.callback.SetAVTransportURI
+import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.ServiceList
+import java.io.File
 import java.util.concurrent.Executors
-import kotlin.math.roundToInt
 
 class BrowseRegistryListener(
     private val listAdapter: DeviceListAdapter,
@@ -131,12 +130,13 @@ class MainActivity : ComponentActivity() {
 
     private val executorService = Executors.newFixedThreadPool(4)
 
-    private var currentVideo: VideoFile? = null
+    private var currentVideoFile: VideoFile? = null
 
     val listAdapter = DeviceListAdapter(
         mutableListOf()
     ) { item: DeviceDisplay ->
-        if (currentVideo == null) {
+        if (currentVideoFile == null) {
+            Log.d("Play", "No current video file!")
             return@DeviceListAdapter
         }
         this.play(item.device)
@@ -168,6 +168,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
+        NewPipe.init(OkHttpDownloader())
         registryListener = BrowseRegistryListener(listAdapter, this)
         executorService.execute {
             applicationContext.bindService(
@@ -211,52 +212,65 @@ class MainActivity : ComponentActivity() {
             Log.i("YoutubeDL", "Requesting: $url")
             val statusTextView = findViewById<TextView>(R.id.status)
             try {
-                statusTextView.setText(R.string.preparing)
-                YoutubeDL.getInstance().init(this)
-                FFmpeg.getInstance().init(this)
-                val request = YoutubeDLRequest(url)
-                val rootDir = this.getExternalFilesDir(null)
-                request.addOption(
-                    "-o",
-                    "${rootDir}/%(title)s$videoFileNameSeparator%(id)s$videoFileNameSeparator%(uploader)s"
+                // 1. Extraktor vorbereiten
+                val service = ServiceList.YouTube
+                val extractor = service.getStreamExtractor(url)
+                extractor.fetchPage()
+
+                // 2. Beste Video- und Audio-Streams wählen
+                val bestVideo = extractor.videoStreams.maxByOrNull { it.height }
+                val bestAudio = extractor.audioStreams.maxByOrNull { it.averageBitrate }
+                if (bestVideo == null || bestAudio == null)
+                    throw IllegalStateException("Streams nicht gefunden")
+
+                // 3. Temporäre Datei im Cache anlegen
+                val tempFile = File.createTempFile("muxed_", ".mp4", this.cacheDir)
+
+                // 4. FFmpeg-Kommando bauen
+                val ffmpegCmd = listOf(
+                    "-i", bestVideo.content,
+                    "-i", bestAudio.content,
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-movflags +frag_keyframe+empty_moov+default_base_moof",
+                    "-shortest",
+                    "-y", // overwrite
+                    tempFile.absolutePath
                 )
-                request.addOption(
-                    "-f",
-                    "bestvideo[height>=480][height<=720]+bestaudio/best[height>=480][height<=720]"
-                )
-                request.addOption("--merge-output-format", "mp4")
-                val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-                val extractor = YoutubeDlFileName("${rootDir!!.path}/", ".mp4")
-                var fileName: String? = null
-                YoutubeDL.getInstance()
-                    .execute(request, null, fun(percentage: Float, status: Long, message: String) {
-                        val progress = if (percentage > 0) percentage else 0.0f
-                        progressBar.progress = progress.roundToInt()
-                        if (fileName == null) {
-                            fileName = extractor.extract(message)
+
+                // 5. Muxing starten
+                currentVideoFile = VideoFile(extractor)
+                videoHttpServer.allFiles[currentVideoFile!!.id] = tempFile
+                FFmpegKit.executeAsync(
+                    ffmpegCmd.joinToString(" "),
+                    { session ->
+                        if (ReturnCode.isSuccess(session.returnCode)) {
+                            statusTextView.setText(R.string.ready)
+                            Log.d("Mux", "Muxing completed successfully")
+                        } else {
+                            statusTextView.setText(R.string.error)
+                            Log.e("Mux", "Muxing failed")
                         }
-                        Log.i("YoutubeDL", "$percentage%, Status $status, $message")
-                    })
-                progressBar.progress = 100
-                Log.i("YoutubeDL", "Final filename: $fileName")
-                currentVideo = VideoFile(fileName!!)
-                statusTextView.setText(R.string.ready)
-            } catch (e: YoutubeDLException) {
-                statusTextView.setText(R.string.ready)
+                    },
+                    { log -> Log.d("Mux", log.message) },
+                    { stats -> Log.d("Mux", "Stats: ${stats.size}") }
+                )
+            } catch (e: Exception) {
+                statusTextView.setText(R.string.error)
                 e.printStackTrace()
             }
         }
     }
 
     fun play(device: Device<*, *, *>) {
-        println("Video available under: ${currentVideo!!.url}")
+        println("Video available under: ${currentVideoFile!!.url}")
         val avTransportService = device.services.find {
             it.serviceId.toString().contains("AVTransport")
         }
         val setAVTransportURIAction: ActionCallback = KodiSetAVTransportURI(
             avTransportService,
-            currentVideo!!.url,
-            currentVideo!!.metaData
+            currentVideoFile!!.url,
+            currentVideoFile!!.metaData
         )
         setAVTransportURIAction.setControlPoint(upnpService!!.controlPoint)
         setAVTransportURIAction.run()

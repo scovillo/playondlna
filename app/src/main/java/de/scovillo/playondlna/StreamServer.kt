@@ -76,47 +76,28 @@ fun getLocalIpAddress(): String? {
     return null
 }
 
-class VideoHttpServer(port: Int, val dir: File) : NanoHTTPD(port) {
+class VideoHttpServer(port: Int) : NanoHTTPD(port) {
+
+    val allFiles = mutableMapOf<String, File>()
 
     override fun serve(session: IHTTPSession): Response {
+
         try {
-            Log.i("VideoHttpServer", "Received id: ${session.uri.substring(1)}")
-            val videoFile = dir.listFiles()!!.find { it.name.contains(session.uri.substring(1)) }!!
-            Log.i("VideoHttpServer", "Serving file: ${videoFile.absolutePath}")
-            val fis = FileInputStream(videoFile)
-            val fileLength = videoFile.length()
-            val headers = session.headers
-            val range = headers["range"]
-
-            var startFrom: Long = 0
-            var endAt = fileLength - 1
-
-            if (range != null && range.startsWith("bytes=")) {
-                val ranges: Array<String?> = range.substring("bytes=".length).split("-".toRegex())
-                    .dropLastWhile { it.isEmpty() }.toTypedArray()
-                try {
-                    startFrom = ranges[0]!!.toLong()
-                    if (ranges.size > 1) {
-                        endAt = ranges[1]!!.toLong()
-                    }
-                } catch (e: NumberFormatException) {
-                    e.printStackTrace()
-                }
+            val id = session.uri.substring(1)
+            Log.i("VideoHttpServer", "Received id: $id")
+            if (!allFiles.containsKey(id)) {
+                return newFixedLengthResponse(
+                    Response.Status.NOT_FOUND,
+                    MIME_PLAINTEXT,
+                    "Video with id $id not found!"
+                )
             }
-
-            val contentLength = endAt - startFrom + 1
-            fis.skip(startFrom)
-
-            val res: Response = newFixedLengthResponse(
-                Response.Status.PARTIAL_CONTENT,
-                "video/mp4",
-                fis,
-                contentLength
-            )
-            res.addHeader("Content-Length", "$contentLength")
-            res.addHeader("Content-Range", "bytes $startFrom-$endAt/$fileLength")
-            res.addHeader("Accept-Ranges", "bytes")
-            return res
+            val videoFile = allFiles[id]!!
+            Log.i("VideoHttpServer", "Serving file: ${videoFile.absolutePath}")
+            val fileInputStream = FileInputStream(videoFile)
+            val response = newChunkedResponse(Response.Status.OK, "video/mp4", fileInputStream)
+            response.addHeader("Accept-Ranges", "bytes")
+            return response
         } catch (e: IOException) {
             e.printStackTrace()
             return newFixedLengthResponse(
@@ -128,14 +109,14 @@ class VideoHttpServer(port: Int, val dir: File) : NanoHTTPD(port) {
     }
 }
 
+val videoHttpServer = VideoHttpServer(serverPort)
+
 class WebServerService : Service() {
-    private var server: VideoHttpServer? = null
 
     override fun onCreate() {
         super.onCreate()
-        server = VideoHttpServer(serverPort, this.getExternalFilesDir(null)!!)
         try {
-            server!!.start()
+            videoHttpServer.start()
             Log.i("WebServerService", "Http Server started!")
         } catch (e: IOException) {
             e.printStackTrace()
@@ -152,7 +133,7 @@ class WebServerService : Service() {
     }
 
     override fun onDestroy() {
-        server?.stop()
+        videoHttpServer.stop()
         super.onDestroy()
     }
 

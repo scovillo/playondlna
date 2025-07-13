@@ -69,6 +69,10 @@ dependencies {
     implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
     implementation("io.github.junkfood02.youtubedl-android", "library", "0.17.4")
     implementation("io.github.junkfood02.youtubedl-android", "ffmpeg", "0.17.4")
+    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
+    implementation(files("libs/ffmpeg-kit-full-gpl-6.0-2.LTS.aar"))
+    implementation("com.arthenica", "smart-exception-java", "0.2.1")
+    implementation("com.squareup.okhttp3", "okhttp", "4.11.0")
 }
 
 

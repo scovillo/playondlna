@@ -18,22 +18,33 @@
 
 package de.scovillo.playondlna
 
+import org.schabi.newpipe.extractor.stream.StreamExtractor
+
 const val videoFileNameSeparator = "+|-"
 
-class VideoFile(val fileName: String) {
+class VideoFile(private val extractor: StreamExtractor) {
     val title: String
         get() {
-            return this.fileName.split(videoFileNameSeparator)[0]
+            return this.extractor.name
         }
 
     val id: String
         get() {
-            return this.fileName.split(videoFileNameSeparator)[1]
+            return this.extractor.id
+        }
+
+    val duration: String
+        get() {
+            val hours = this.extractor.length / 3600
+            val minutes = (this.extractor.length % 3600) / 60
+            val secs = this.extractor.length % 60
+            return String.format("%02d:%02d:%02d", hours, minutes, secs)
         }
 
     val uploader: String
         get() {
-            return this.fileName.split(videoFileNameSeparator)[2].replace(".mp4", "")
+            this.extractor.length
+            return this.extractor.uploaderName
         }
 
     val url: String
@@ -51,7 +62,9 @@ class VideoFile(val fileName: String) {
                             <dc:title>${this.title}</dc:title>
                             <dc:creator>${this.uploader}</dc:creator>
                             <upnp:class>object.item.videoItem</upnp:class>
-                            <res protocolInfo="http-get:*:video/mp4:*">$url</res>
+                            <res protocolInfo="http-get:*:video/mp4:*" duration="${this.duration}">
+                                $url
+                            </res>
                           </item>
                         </DIDL-Lite>
                     """.trimIndent()
