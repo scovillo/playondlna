@@ -1,9 +1,11 @@
 <resources>
     <string name="app_name">PlayOnDlna</string>
     <string name="search_lan">Im lokalen Netzwerk suchen</string>
-    <string name="src_link">Source link</string>
+    <string name="src_link">Use "Share" Feature to provide a YouTube link</string>
     <string name="idle">Idle</string>
     <string name="preparing">Preparing</string>
     <string name="ready">Ready</string>
     <string name="error">Error</string>
+    <string name="clear_cache">Clear Cache</string>
+    <string name="available_players">Available Players</string>
 </resources>

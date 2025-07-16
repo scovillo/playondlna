@@ -26,6 +26,7 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -66,14 +67,14 @@ class BrowseRegistryListener(
         registry: Registry, device: RemoteDevice,
         ex: Exception?
     ) {
-        this.activity.runOnUiThread(Runnable {
+        this.activity.runOnUiThread {
             Toast.makeText(
                 this.activity,
                 ("Discovery failed of '" + device.displayString + "': "
                         + (ex?.toString() ?: "Couldn't retrieve device/service descriptors")),
                 Toast.LENGTH_LONG
             ).show()
-        })
+        }
         deviceRemoved(device)
     }
 
@@ -203,6 +204,28 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleShareIntent(intent)
+    }
+
+    fun onClearCache(view: View) {
+        this.clearCache()
+    }
+
+    fun clearCache() {
+        if (!cacheDir.exists())
+            return
+        val runningSessions = FFmpegKit.listSessions()
+        runningSessions.forEach {
+            if (currentSession == null || it.sessionId != currentSession!!.sessionId) {
+                Log.i("clearCache", "Cancel FFmpegKit with id ${it.sessionId}")
+                FFmpegKit.cancel(it.sessionId)
+            }
+        }
+        cacheDir.listFiles()?.forEach { file ->
+            if (file.exists() && (currentVideoFile == null || !file.name.contains(currentVideoFile!!.id))) {
+                file.delete()
+            }
+        }
+        Toast.makeText(this, "Cache cleared!", Toast.LENGTH_SHORT).show()
     }
 
     fun prepareVideo(url: String) {
