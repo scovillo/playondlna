@@ -81,7 +81,6 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
     val allFiles = mutableMapOf<String, File>()
 
     override fun serve(session: IHTTPSession): Response {
-
         try {
             val id = session.uri.substring(1)
             Log.i("VideoHttpServer", "Received id: $id")

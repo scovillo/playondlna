@@ -26,6 +26,7 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -34,6 +35,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
+import com.arthenica.ffmpegkit.Session
 import org.jupnp.android.AndroidUpnpService
 import org.jupnp.android.AndroidUpnpServiceImpl
 import org.jupnp.controlpoint.ActionCallback
@@ -50,6 +52,7 @@ import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 class BrowseRegistryListener(
     private val listAdapter: DeviceListAdapter,
@@ -128,9 +131,10 @@ class MainActivity : ComponentActivity() {
 
     private var upnpService: AndroidUpnpService? = null
 
-    private val executorService = Executors.newFixedThreadPool(4)
+    private val executorService = Executors.newCachedThreadPool()
 
     private var currentVideoFile: VideoFile? = null
+    private var currentSession: Session? = null
 
     val listAdapter = DeviceListAdapter(
         mutableListOf()
@@ -176,8 +180,6 @@ class MainActivity : ComponentActivity() {
                 serviceConnection,
                 BIND_AUTO_CREATE
             )
-        }
-        executorService.execute {
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(
                     NotificationChannel(
@@ -203,19 +205,29 @@ class MainActivity : ComponentActivity() {
         handleShareIntent(intent)
     }
 
-    fun startPlayback(url: String) {
+    fun prepareVideo(url: String) {
         executorService.execute {
             Log.i("YoutubeDL", "Requesting: $url")
             val statusTextView = findViewById<TextView>(R.id.status)
             try {
+                currentVideoFile = null
+                currentSession = null
+                statusTextView.setText(R.string.preparing)
+                val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+                progressBar.progress = 0
+                val srcTextView = findViewById<TextView>(R.id.src)
+                srcTextView.text = url
                 val service = ServiceList.YouTube
                 val extractor = service.getStreamExtractor(url)
                 extractor.fetchPage()
+                srcTextView.text = extractor.name
                 val bestVideo = extractor.videoStreams.maxByOrNull { it.height }
                 val bestAudio = extractor.audioStreams.maxByOrNull { it.averageBitrate }
-                if (bestVideo == null || bestAudio == null)
+                if (bestVideo == null || bestAudio == null) {
+                    statusTextView.setText(R.string.error)
                     throw IllegalStateException("Streams nicht gefunden")
-                val tempFile = File.createTempFile("muxed_", ".mp4", this.cacheDir)
+                }
+                val tempFile = File.createTempFile("${extractor.id}_muxed", ".mp4", this.cacheDir)
                 val ffmpegCmd = listOf(
                     "-i", bestVideo.content,
                     "-i", bestAudio.content,
@@ -226,14 +238,12 @@ class MainActivity : ComponentActivity() {
                     "-y",
                     tempFile.absolutePath
                 )
-
-                // 5. Muxing starten
-                currentVideoFile = VideoFile(extractor)
-                videoHttpServer.allFiles[currentVideoFile!!.id] = tempFile
-                FFmpegKit.executeAsync(
+                videoHttpServer.allFiles[extractor.id] = tempFile
+                currentSession = FFmpegKit.executeAsync(
                     ffmpegCmd.joinToString(" "),
                     { session ->
                         if (ReturnCode.isSuccess(session.returnCode)) {
+                            progressBar.progress = 100
                             statusTextView.setText(R.string.ready)
                             Log.d("Mux", "Muxing completed successfully")
                         } else {
@@ -242,7 +252,22 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     { log -> Log.d("Mux", log.message) },
-                    { stats -> Log.d("Mux", "Stats: ${stats.size}") }
+                    { statistics ->
+                        if (statistics.sessionId != currentSession?.sessionId) {
+                            return@executeAsync
+                        }
+                        val videoDurationInMs = extractor.length * 1000
+                        val progress = if (videoDurationInMs > 0) {
+                            (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
+                        } else 0.0
+                        progressBar.progress =
+                            (progress * (100f / 3f)).roundToInt().coerceAtMost(100)
+                        if (progressBar.progress == 100) {
+                            currentVideoFile = VideoFile(extractor)
+                            statusTextView.setText(R.string.ready)
+                        }
+                        Log.d("FFmpegProgress", "Fortschritt: $progress%")
+                    }
                 )
             } catch (e: Exception) {
                 statusTextView.setText(R.string.error)
@@ -278,9 +303,7 @@ class MainActivity : ComponentActivity() {
             if (intent.type == "text/plain") {
                 val url = intent.extras?.getString("android.intent.extra.TEXT")
                 if (url != null) {
-                    val srcTextView = findViewById<TextView>(R.id.src)
-                    srcTextView.text = url
-                    this.startPlayback(url)
+                    this.prepareVideo(url)
                 }
             }
         }
