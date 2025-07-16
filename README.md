@@ -1,7 +1,7 @@
 # PlayOnDlna
 
 📦 **Version:** 1 (1.0)
-⚙️ **Build-Tool:** Gradle 8.11.1
+⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
 
@@ -20,6 +20,31 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
 ```bash
 ./gradlew build
 ```
+
+## 📚 Dependencies
+
+  - androidx.core:core-ktx:1.10.1
+  - androidx.lifecycle:lifecycle-runtime-ktx:2.6.1
+  - androidx.activity:activity-compose:1.8.0
+  - androidx.compose:compose-bom:2024.09.00
+  - androidx.compose.ui:ui:unspecified
+  - androidx.compose.ui:ui-graphics:unspecified
+  - androidx.compose.ui:ui-tooling-preview:unspecified
+  - androidx.compose.material3:material3:unspecified
+  - androidx.recyclerview:recyclerview:1.4.0
+  - androidx.appcompat:appcompat:1.7.1
+  - org.jupnp:org.jupnp:3.0.3
+  - org.jupnp:org.jupnp.android:3.0.3
+  - org.jupnp:org.jupnp.support:3.0.3
+  - org.nanohttpd:nanohttpd:2.3.1
+  - org.eclipse.jetty:jetty-server:9.4.57.v20241219
+  - org.eclipse.jetty:jetty-servlet:9.4.57.v20241219
+  - org.eclipse.jetty:jetty-client:9.4.57.v20241219
+  - org.slf4j:slf4j-jdk14:2.0.17
+  - com.github.teamnewpipe:NewPipeExtractor:0.24.6
+  - com.arthenica:smart-exception-java:0.2.1
+  - com.squareup.okhttp3:okhttp:4.11.0
+  - com.arthenica:ffmpeg-kit-full:6.0-2.LTS
 
 ## 📄 License
 
@@ -706,25 +731,3 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
-
-## 📚 Dependencies
-
-  - androidx.core:core-ktx:1.10.1
-  - androidx.lifecycle:lifecycle-runtime-ktx:2.6.1
-  - androidx.activity:activity-compose:1.8.0
-  - androidx.compose:compose-bom:2024.09.00
-  - androidx.compose.ui:ui:unspecified
-  - androidx.compose.ui:ui-graphics:unspecified
-  - androidx.compose.ui:ui-tooling-preview:unspecified
-  - androidx.compose.material3:material3:unspecified
-  - androidx.recyclerview:recyclerview:1.4.0
-  - org.jupnp:org.jupnp:3.0.3
-  - org.jupnp:org.jupnp.android:3.0.3
-  - org.jupnp:org.jupnp.support:3.0.3
-  - org.nanohttpd:nanohttpd:2.3.1
-  - org.eclipse.jetty:jetty-server:9.4.57.v20241219
-  - org.eclipse.jetty:jetty-servlet:9.4.57.v20241219
-  - org.eclipse.jetty:jetty-client:9.4.57.v20241219
-  - org.slf4j:slf4j-jdk14:2.0.17
-  - io.github.junkfood02.youtubedl-android:library:0.17.4
-  - io.github.junkfood02.youtubedl-android:ffmpeg:0.17.4

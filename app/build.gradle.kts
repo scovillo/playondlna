@@ -58,6 +58,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation("androidx.appcompat", "appcompat", "1.7.1")
 
     implementation(libs.org.jupnp)
     implementation("org.jupnp", "org.jupnp.android", "3.0.3")
@@ -67,8 +68,6 @@ dependencies {
     implementation("org.eclipse.jetty", "jetty-servlet", "9.4.57.v20241219")
     implementation("org.eclipse.jetty", "jetty-client", "9.4.57.v20241219")
     implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
-    implementation("io.github.junkfood02.youtubedl-android", "library", "0.17.4")
-    implementation("io.github.junkfood02.youtubedl-android", "ffmpeg", "0.17.4")
     implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
     implementation(files("libs/ffmpeg-kit-full-gpl-6.0-2.LTS.aar"))
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
@@ -95,9 +94,11 @@ tasks.register("generateReadme") {
         val versionName = android?.defaultConfig?.versionName ?: "Unknown"
         val licenseText =
             if (licenseFile.exists()) licenseFile.readText() else "  No license file found."
-        val dependencies = configurations["implementation"].allDependencies.joinToString("\n") {
-            "  - ${it.group ?: ""}:${it.name}:${it.version ?: "unspecified"}"
-        }
+        val dependencies =
+            configurations["implementation"].allDependencies.filter { it.group != null }
+                .joinToString("\n") {
+                    "  - ${it.group ?: ""}:${it.name}:${it.version ?: "unspecified"}"
+                }
         val content = """
 # $appName
 
@@ -122,13 +123,14 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
 ./gradlew build
 ```
 
-## 📄 License
-
-${licenseText.trimIndent()}
-
 ## 📚 Dependencies
 
 $dependencies
+  - com.arthenica:ffmpeg-kit-full:6.0-2.LTS
+
+## 📄 License
+
+${licenseText.trimIndent()}
         """.trimIndent()
 
         readmeFile.writeText(content)
