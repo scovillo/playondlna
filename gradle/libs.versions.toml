@@ -9,12 +9,14 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 composeBom = "2024.09.00"
+lifecycleRuntimeKtxVersion = "2.6.2"
 nanohttpd = "2.3.1"
 orgJupnp = "3.0.3"
 recyclerview = "1.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx-v262 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -31,6 +33,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
 org-jupnp = { module = "org.jupnp:org.jupnp", version.ref = "orgJupnp" }
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+ui = { module = "androidx.compose.ui:ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
