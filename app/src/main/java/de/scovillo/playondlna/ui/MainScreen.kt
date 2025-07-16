@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,16 +24,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import de.scovillo.playondlna.R
 
 @Composable
 fun MainScreen(
-    srcText: String,
-    statusText: String,
-    progress: Int,
+    videoJobModel: VideoJobModel = viewModel(),
     onClearCache: () -> Unit,
     contentDlnaComposeView: @Composable () -> Unit
 ) {
+    val progress by videoJobModel.progress
+    val title by videoJobModel.title
+    val status by videoJobModel.status
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -42,41 +46,46 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = srcText,
+            text = if (title == "idle") stringResource(R.string.src_link) else title,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(14.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = colorResource(id = R.color.white),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-
         Text(
-            text = statusText,
+            text = when (status) {
+                VideoJobStatus.IDLE -> stringResource(R.string.idle)
+                VideoJobStatus.PREPARING -> stringResource(R.string.preparing)
+                VideoJobStatus.READY -> stringResource(R.string.ready)
+                VideoJobStatus.ERROR -> stringResource(R.string.error)
+            },
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
+                .fillMaxWidth(),
             color = colorResource(id = R.color.white),
-            fontSize = 34.sp,
+            fontSize = 24.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-
-        // ProgressBar als LinearProgressIndicator
         LinearProgressIndicator(
             progress = { progress / 100f },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
-                .padding(10.dp),
-            // Für eigene ProgressBar drawable: in Compose müsstest du das anders machen,
-            // hier nutzen wir Standard-Color (kannst anpassen)
+                .height(50.dp)
+                .padding(14.dp),
             color = colorResource(id = R.color.icon_color),
             trackColor = ProgressIndicatorDefaults.linearTrackColor,
             strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
         )
-
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            contentDlnaComposeView()
+        }
         Button(
             onClick = onClearCache,
             modifier = Modifier.padding(vertical = 8.dp),
@@ -88,15 +97,8 @@ fun MainScreen(
         ) {
             Text(
                 text = stringResource(id = R.string.clear_cache),
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(8.dp)
             )
-        }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
-            contentDlnaComposeView()
         }
     }
 }

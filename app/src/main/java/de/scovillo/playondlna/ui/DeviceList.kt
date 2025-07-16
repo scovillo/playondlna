@@ -1,8 +1,10 @@
 package de.scovillo.playondlna.ui
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,16 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import de.scovillo.playondlna.upnp.DlnaDeviceDescription
+import de.scovillo.playondlna.VideoFile
+import de.scovillo.playondlna.upnp.DlnaDevice
 import de.scovillo.playondlna.upnp.discoverDlnaDevices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,9 +40,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class DlnaViewModel : ViewModel() {
-    private val _devices = MutableStateFlow<List<DlnaDeviceDescription>>(emptyList())
-    val devices: StateFlow<List<DlnaDeviceDescription>> = _devices.asStateFlow()
+class DlnaListScreenModel : ViewModel() {
+    private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
+    val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -52,19 +52,28 @@ class DlnaViewModel : ViewModel() {
             _isLoading.value = true
             _devices.value = emptyList()
             val found = discoverDlnaDevices()
-            _devices.value = found
+            _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
             _isLoading.value = false
         }
     }
+
+    fun playVideoOnDevice(device: DlnaDevice, videoFile: VideoFile) {
+        if (device.avTransportUrl != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                playUriOnDevice(device.avTransportUrl, videoFile)
+            }
+        } else {
+            Log.e("Play", "Keine AVTransport URL gefunden.")
+        }
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DlnaListScreen(viewModel: DlnaViewModel = viewModel()) {
+fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel = viewModel()) {
     val devices by viewModel.devices.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-
-    var selectedDevice by remember { mutableStateOf<DlnaDeviceDescription?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.discoverDevices()
@@ -78,7 +87,8 @@ fun DlnaListScreen(viewModel: DlnaViewModel = viewModel()) {
                     IconButton(onClick = { viewModel.discoverDevices() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         }
     ) { padding ->
@@ -94,12 +104,6 @@ fun DlnaListScreen(viewModel: DlnaViewModel = viewModel()) {
                     }
                 }
 
-                selectedDevice != null -> {
-                    DlnaDeviceDetail(device = selectedDevice!!) {
-                        selectedDevice = null
-                    }
-                }
-
                 else -> {
                     LazyColumn {
                         items(devices) { device ->
@@ -107,7 +111,12 @@ fun DlnaListScreen(viewModel: DlnaViewModel = viewModel()) {
                                 Modifier
                                     .padding(8.dp)
                                     .fillMaxWidth()
-                                    .clickable { selectedDevice = device }
+                                    .clickable {
+                                        val videoFile = videoJobModel.currentVideoFile.value
+                                        if (videoFile != null) {
+                                            viewModel.playVideoOnDevice(device, videoFile)
+                                        }
+                                    }
                             ) {
                                 Column(Modifier.padding(16.dp)) {
                                     Text(

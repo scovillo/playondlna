@@ -13,17 +13,19 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import javax.xml.parsers.DocumentBuilderFactory
 
-data class DlnaDeviceDescription(
+data class DlnaDevice(
     val usn: String,
     val st: String,
     val location: String,
     val friendlyName: String,
     val manufacturer: String,
     val modelName: String,
-    val deviceType: String
+    val deviceType: String,
+    val avTransportUrl: String?,
+    val renderingControlUrl: String?
 )
 
-suspend fun discoverDlnaDevices(timeoutMs: Long = 5000): List<DlnaDeviceDescription> =
+suspend fun discoverDlnaDevices(timeoutMs: Long = 5000): List<DlnaDevice> =
     coroutineScope {
         val multicastAddress = InetAddress.getByName("239.255.255.250")
         val port = 1900
@@ -38,7 +40,7 @@ suspend fun discoverDlnaDevices(timeoutMs: Long = 5000): List<DlnaDeviceDescript
 
         val seenLocations = mutableSetOf<String>()  // Verhindert doppelte Description-Fetches
         val seenUsns = mutableSetOf<String>()       // Optional: Zum Debuggen oder Logging
-        val fetchJobs = mutableListOf<Deferred<DlnaDeviceDescription?>>()
+        val fetchJobs = mutableListOf<Deferred<DlnaDevice?>>()
 
         fun createSsdpRequest(st: String): ByteArray {
             val request = """
@@ -106,14 +108,33 @@ fun parseSSDPHeaders(response: String): Map<String, String> {
         .toMap()
 }
 
-fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDeviceDescription? {
+fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevice? {
     return try {
         val stream = URL(location).openStream()
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream)
         doc.documentElement.normalize()
         val device = doc.getElementsByTagName("device").item(0) as? Element ?: return null
+        val serviceList = device.getElementsByTagName("serviceList").item(0) as? Element
 
-        DlnaDeviceDescription(
+        var avTransportControlUrl: String? = null
+        var renderingControlUrl: String? = null
+
+        if (serviceList != null) {
+            val services = serviceList.getElementsByTagName("service")
+            for (i in 0 until services.length) {
+                val service = services.item(i) as? Element ?: continue
+                val serviceType = service.getElementsByTagName("serviceType").item(0)?.textContent
+                val controlUrl = service.getElementsByTagName("controlURL").item(0)?.textContent
+
+                if (serviceType == "urn:schemas-upnp-org:service:AVTransport:1") {
+                    avTransportControlUrl = resolveUrl(location, controlUrl)
+                }
+                if (serviceType == "urn:schemas-upnp-org:service:RenderingControl:1") {
+                    renderingControlUrl = resolveUrl(location, controlUrl)
+                }
+            }
+        }
+        DlnaDevice(
             usn = usn,
             st = st,
             location = location,
@@ -122,10 +143,27 @@ fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevic
             manufacturer = device.getElementsByTagName("manufacturer").item(0)?.textContent
                 ?: "unknown",
             modelName = device.getElementsByTagName("modelName").item(0)?.textContent ?: "unknown",
-            deviceType = device.getElementsByTagName("deviceType").item(0)?.textContent ?: "unknown"
+            deviceType = device.getElementsByTagName("deviceType").item(0)?.textContent
+                ?: "unknown",
+            avTransportUrl = avTransportControlUrl,
+            renderingControlUrl = renderingControlUrl
         )
     } catch (e: Exception) {
         println("Error at $location: ${e.message}")
+        null
+    }
+}
+
+fun resolveUrl(base: String, path: String?): String? {
+    if (path == null) return null
+    return try {
+        val baseUrl = URL(base)
+        URL(
+            baseUrl.protocol,
+            baseUrl.host,
+            baseUrl.port.takeIf { it > 0 } ?: baseUrl.defaultPort,
+            path).toString()
+    } catch (e: Exception) {
         null
     }
 }
