@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.theme
+package com.github.scovillo.playondlna.theme
 
 import androidx.compose.ui.graphics.Color
 

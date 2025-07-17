@@ -1,4 +1,4 @@
-package de.scovillo.playondlna
+package com.github.scovillo.playondlna.stream
 
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

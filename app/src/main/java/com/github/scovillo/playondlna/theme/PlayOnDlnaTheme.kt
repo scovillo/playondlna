@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.ui
+package com.github.scovillo.playondlna.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

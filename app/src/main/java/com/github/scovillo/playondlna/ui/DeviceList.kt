@@ -1,6 +1,5 @@
-package de.scovillo.playondlna.ui
+package com.github.scovillo.playondlna.ui
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,46 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import de.scovillo.playondlna.VideoFile
-import de.scovillo.playondlna.upnp.DlnaDevice
-import de.scovillo.playondlna.upnp.discoverDlnaDevices
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-
-class DlnaListScreenModel : ViewModel() {
-    private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
-    val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    fun discoverDevices() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            _devices.value = emptyList()
-            val found = discoverDlnaDevices()
-            _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
-            _isLoading.value = false
-        }
-    }
-
-    fun playVideoOnDevice(device: DlnaDevice, videoFile: VideoFile) {
-        if (device.avTransportUrl != null) {
-            viewModelScope.launch(Dispatchers.IO) {
-                playUriOnDevice(device.avTransportUrl, videoFile)
-            }
-        } else {
-            Log.e("Play", "Keine AVTransport URL gefunden.")
-        }
-    }
-
-}
+import com.github.scovillo.playondlna.model.DlnaListScreenModel
+import com.github.scovillo.playondlna.model.VideoJobModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +74,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel 
                                     .padding(8.dp)
                                     .fillMaxWidth()
                                     .clickable {
-                                        val videoFile = videoJobModel.currentVideoFile.value
+                                        val videoFile = videoJobModel.currentVideoFileInfo.value
                                         if (videoFile != null) {
                                             viewModel.playVideoOnDevice(device, videoFile)
                                         }

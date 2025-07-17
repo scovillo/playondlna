@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
@@ -25,7 +24,7 @@
         tools:targetApi="31"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".MainActivity"
+            android:name="com.github.scovillo.playondlna.MainActivity"
             android:launchMode="singleTask"
             android:exported="true"
             android:theme="@style/Theme.PlayOnDlna">
@@ -40,7 +39,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".WebServerService"
+            android:name="com.github.scovillo.playondlna.stream.WebServerService"
             android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

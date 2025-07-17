@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.ui
+package com.github.scovillo.playondlna.model
 
 import android.util.Log
 import androidx.compose.runtime.State
@@ -9,8 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
-import de.scovillo.playondlna.VideoFile
-import de.scovillo.playondlna.videoHttpServer
+import com.github.scovillo.playondlna.stream.VideoFileInfo
+import com.github.scovillo.playondlna.stream.videoHttpServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.ServiceList
@@ -19,13 +19,13 @@ import java.io.File
 enum class VideoJobStatus { IDLE, PREPARING, READY, ERROR }
 
 class VideoJobModel() : ViewModel() {
-    private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
+    private var _currentVideoFileInfo = mutableStateOf<VideoFileInfo?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _progress = mutableFloatStateOf(0f)
     private val _status = mutableStateOf(VideoJobStatus.IDLE)
     private val _title = mutableStateOf("idle")
 
-    val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
+    val currentVideoFileInfo: State<VideoFileInfo?> get() = _currentVideoFileInfo
     val currentSession: State<Session?> get() = _currentSession
     val progress: State<Float> get() = _progress
     val title: State<String> get() = _title
@@ -35,7 +35,7 @@ class VideoJobModel() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             Log.i("YoutubeDL", "Requesting: $url")
             try {
-                _currentVideoFile.value = null
+                _currentVideoFileInfo.value = null
                 _currentSession.value = null
                 _status.value = VideoJobStatus.PREPARING
                 _progress.floatValue = 0f
@@ -81,9 +81,9 @@ class VideoJobModel() : ViewModel() {
                             (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
                         } else 0.0
                         _progress.floatValue =
-                            (rawProgress * (100f / 3f)).coerceAtMost(100.0).toFloat()
+                            (rawProgress * (100f / 5f)).coerceAtMost(100.0).toFloat()
                         if (progress.value == 100.0f) {
-                            _currentVideoFile.value = VideoFile(extractor)
+                            _currentVideoFileInfo.value = VideoFileInfo(extractor)
                             _status.value = VideoJobStatus.READY
                         }
                         Log.d("FFmpegProgress", "Fortschritt: $rawProgress%")

@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.ui
+package com.github.scovillo.playondlna.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,10 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.scovillo.playondlna.model.VideoJobModel
+import com.github.scovillo.playondlna.model.VideoJobStatus
 import de.scovillo.playondlna.R
 
 @Composable
@@ -54,7 +57,7 @@ fun MainScreen(
             overflow = TextOverflow.Ellipsis,
             color = colorResource(id = R.color.white),
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         Text(
             text = when (status) {
@@ -67,7 +70,7 @@ fun MainScreen(
                 .fillMaxWidth(),
             color = colorResource(id = R.color.white),
             fontSize = 24.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         LinearProgressIndicator(
             progress = { progress / 100f },

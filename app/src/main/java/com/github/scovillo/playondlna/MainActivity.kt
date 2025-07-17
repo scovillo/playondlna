@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package de.scovillo.playondlna
+package com.github.scovillo.playondlna
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -29,11 +29,13 @@ import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.arthenica.ffmpegkit.FFmpegKit
-import de.scovillo.playondlna.ui.DlnaListScreen
-import de.scovillo.playondlna.ui.DlnaListScreenModel
-import de.scovillo.playondlna.ui.MainScreen
-import de.scovillo.playondlna.ui.PlayOnDlnaTheme
-import de.scovillo.playondlna.ui.VideoJobModel
+import com.github.scovillo.playondlna.model.DlnaListScreenModel
+import com.github.scovillo.playondlna.model.VideoJobModel
+import com.github.scovillo.playondlna.stream.OkHttpDownloader
+import com.github.scovillo.playondlna.stream.WebServerService
+import com.github.scovillo.playondlna.theme.PlayOnDlnaTheme
+import com.github.scovillo.playondlna.ui.DlnaListScreen
+import com.github.scovillo.playondlna.ui.MainScreen
 import org.schabi.newpipe.extractor.NewPipe
 import java.util.concurrent.Executors
 
@@ -89,16 +91,13 @@ class MainActivity : ComponentActivity() {
                 FFmpegKit.cancel(it.sessionId)
             }
         }
-        val currentVideoFile = this.videoJobModel.currentVideoFile.value
+        val currentVideoFile = this.videoJobModel.currentVideoFileInfo.value
         cacheDir.listFiles()?.forEach { file ->
             if (file.exists() && (currentVideoFile == null || !file.name.contains(currentVideoFile.id))) {
                 file.delete()
             }
         }
         Toast.makeText(this, "Cache cleared!", Toast.LENGTH_SHORT).show()
-    }
-
-    fun play(device: Any) {
     }
 
     override fun onDestroy() {

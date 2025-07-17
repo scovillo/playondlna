@@ -16,13 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package de.scovillo.playondlna
+package com.github.scovillo.playondlna.stream
 
 import org.schabi.newpipe.extractor.stream.StreamExtractor
+import java.util.Locale
 
-const val videoFileNameSeparator = "+|-"
-
-class VideoFile(private val extractor: StreamExtractor) {
+class VideoFileInfo(private val extractor: StreamExtractor) {
     val title: String
         get() {
             return this.extractor.name
@@ -38,7 +37,7 @@ class VideoFile(private val extractor: StreamExtractor) {
             val hours = this.extractor.length / 3600
             val minutes = (this.extractor.length % 3600) / 60
             val secs = this.extractor.length % 60
-            return String.format("%02d:%02d:%02d", hours, minutes, secs)
+            return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, secs)
         }
 
     val uploader: String

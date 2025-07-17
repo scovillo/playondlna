@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package de.scovillo.playondlna
+package com.github.scovillo.playondlna.stream
 
 import android.app.Notification
 import android.app.Service
@@ -54,17 +54,12 @@ fun getLocalIpAddress(): String? {
         val interfaces: Enumeration<NetworkInterface?> = NetworkInterface.getNetworkInterfaces()
         while (interfaces.hasMoreElements()) {
             val networkInterface: NetworkInterface? = interfaces.nextElement()
-
-            // Nur aktive Interfaces, keine Loopbacks etc.
             if (!networkInterface!!.isUp() || networkInterface.isLoopback) {
                 continue
             }
-
             val addresses: Enumeration<InetAddress?> = networkInterface.getInetAddresses()
             while (addresses.hasMoreElements()) {
                 val inetAddress: InetAddress? = addresses.nextElement()
-
-                // Nur IPv4 & keine Loopback-Adresse
                 if (!inetAddress!!.isLoopbackAddress && inetAddress is Inet4Address) {
                     return inetAddress.hostAddress
                 }

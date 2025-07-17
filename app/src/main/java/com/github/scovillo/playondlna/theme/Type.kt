@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.theme
+package com.github.scovillo.playondlna.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

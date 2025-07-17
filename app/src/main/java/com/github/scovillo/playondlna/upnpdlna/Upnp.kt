@@ -1,4 +1,4 @@
-package de.scovillo.playondlna.upnp
+package com.github.scovillo.playondlna.upnpdlna
 
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
