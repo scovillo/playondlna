@@ -86,19 +86,21 @@ fun MainScreen(
         ) {
             contentDlnaComposeView()
         }
-        Button(
-            onClick = onClearCache,
-            modifier = Modifier.padding(vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorResource(id = R.color.icon_color),
-                contentColor = colorResource(id = R.color.white)
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-        ) {
-            Text(
-                text = stringResource(id = R.string.clear_cache),
-                modifier = Modifier.padding(8.dp)
-            )
+        Box(Modifier.padding(16.dp)) {
+            Button(
+                onClick = onClearCache,
+                modifier = Modifier.padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(id = R.color.icon_color),
+                    contentColor = colorResource(id = R.color.white)
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            ) {
+                Text(
+                    text = stringResource(id = R.string.clear_cache),
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
         }
     }
 }
