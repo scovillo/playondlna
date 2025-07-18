@@ -39,8 +39,8 @@ suspend fun discoverDlnaDevices(timeoutMs: Long = 5000): List<DlnaDevice> =
             soTimeout = 1000
         }
 
-        val seenLocations = mutableSetOf<String>()  // Verhindert doppelte Description-Fetches
-        val seenUsns = mutableSetOf<String>()       // Optional: Zum Debuggen oder Logging
+        val seenLocations = mutableSetOf<String>()
+        val seenUsns = mutableSetOf<String>()
         val fetchJobs = mutableListOf<Deferred<DlnaDevice?>>()
 
         fun createSsdpRequest(st: String): ByteArray {

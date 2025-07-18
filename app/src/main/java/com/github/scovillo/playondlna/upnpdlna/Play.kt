@@ -31,7 +31,7 @@ fun playUriOnDevice(avTransportUrl: String, videoFileInfo: VideoFileInfo) {
         .build()
     val setUriResponse = client.newCall(setUriRequest).execute()
     if (!setUriResponse.isSuccessful) {
-        throw Exception("SetAVTransportURI failed: ${setUriResponse.code}")
+        throw Exception("SetAVTransportURI failed: ${setUriResponse.code} - ${setUriResponse.message}")
     }
     setUriResponse.close()
     val playSoap = """
@@ -53,7 +53,7 @@ fun playUriOnDevice(avTransportUrl: String, videoFileInfo: VideoFileInfo) {
         .build()
     val playResponse = client.newCall(playRequest).execute()
     if (!playResponse.isSuccessful) {
-        throw Exception("Play command failed: ${playResponse.code}")
+        throw Exception("Play command failed: ${playResponse.code} - ${playResponse.message}")
     }
     playResponse.close()
 }

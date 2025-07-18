@@ -30,6 +30,7 @@ Happy streaming!
 ## 📚 Dependencies
 
   - androidx.core:core-ktx:1.10.1
+  - androidx.core:core-splashscreen:1.0.1
   - androidx.lifecycle:lifecycle-runtime-ktx:2.6.1
   - androidx.activity:activity-compose:1.8.0
   - androidx.compose:compose-bom:2024.09.00

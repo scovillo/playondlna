@@ -27,6 +27,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.github.scovillo.playondlna.model.DlnaListScreenModel
@@ -47,8 +48,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        NewPipe.init(OkHttpDownloader())
+        installSplashScreen()
         executorService.execute {
+            NewPipe.init(OkHttpDownloader())
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(
                     NotificationChannel(

@@ -48,7 +48,7 @@ class VideoJobModel() : ViewModel() {
                 val bestAudio = extractor.audioStreams.maxByOrNull { it.averageBitrate }
                 if (bestVideo == null || bestAudio == null) {
                     _status.value = VideoJobStatus.ERROR
-                    throw IllegalStateException("Streams nicht gefunden")
+                    throw IllegalStateException("Streams not found")
                 }
                 val tempFile = File.createTempFile("${extractor.id}_muxed", ".mp4", cacheDir)
                 val ffmpegCmd = listOf(
@@ -86,7 +86,7 @@ class VideoJobModel() : ViewModel() {
                             _currentVideoFileInfo.value = VideoFileInfo(extractor)
                             _status.value = VideoJobStatus.READY
                         }
-                        Log.d("FFmpegProgress", "Fortschritt: $rawProgress%")
+                        Log.d("FFmpegProgress", "Progress: $rawProgress%")
                     }
                 )
             } catch (e: Exception) {

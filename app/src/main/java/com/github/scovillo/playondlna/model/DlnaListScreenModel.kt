@@ -33,10 +33,14 @@ class DlnaListScreenModel : ViewModel() {
     fun playVideoOnDevice(device: DlnaDevice, videoFileInfo: VideoFileInfo) {
         if (device.avTransportUrl != null) {
             viewModelScope.launch(Dispatchers.IO) {
-                playUriOnDevice(device.avTransportUrl, videoFileInfo)
+                try {
+                    playUriOnDevice(device.avTransportUrl, videoFileInfo)
+                } catch (exception: Exception) {
+                    exception.printStackTrace()
+                }
             }
         } else {
-            Log.e("Play", "Keine AVTransport URL gefunden.")
+            Log.e("DLNA", "No AVTransport URL found.")
         }
     }
 

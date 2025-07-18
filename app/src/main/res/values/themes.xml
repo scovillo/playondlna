@@ -2,4 +2,9 @@
 <resources>
 
     <style name="Theme.PlayOnDlna" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.PlayOnDlna.Splash" parent="Theme.SplashScreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:icon">@mipmap/ic_launcher</item>
+    </style>
 </resources>
