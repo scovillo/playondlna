@@ -1,5 +1,6 @@
 package com.github.scovillo.playondlna.upnpdlna
 
+import android.util.Log
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -91,9 +92,15 @@ suspend fun discoverDlnaDevices(timeoutMs: Long = 5000): List<DlnaDevice> =
                 // no packet, waiting
             }
         }
-
         socket.close()
-        return@coroutineScope fetchJobs.awaitAll().filterNotNull()
+        val result = fetchJobs.awaitAll().filterNotNull()
+        result.forEach {
+            Log.d(
+                "UPNP",
+                "⏵ ${it.friendlyName} (${it.modelName}, ${it.deviceType}) @ ${it.location}"
+            )
+        }
+        return@coroutineScope result
     }
 
 fun parseSSDPHeaders(response: String): Map<String, String> {
