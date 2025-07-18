@@ -26,9 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.scovillo.playondlna.R
 import com.github.scovillo.playondlna.model.VideoJobModel
 import com.github.scovillo.playondlna.model.VideoJobStatus
-import de.scovillo.playondlna.R
 
 @Composable
 fun MainScreen(

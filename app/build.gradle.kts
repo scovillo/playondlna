@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "de.scovillo.playondlna"
+    namespace = "com.github.scovillo.playondlna"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "de.scovillo.playondlna"
+        applicationId = "com.github.scovillo.playondlna"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -65,12 +65,11 @@ dependencies {
     implementation("androidx.compose.ui", "ui-tooling-preview", "1.8.3")
     implementation("androidx.activity", "activity-compose", "1.10.1")
     implementation("androidx.lifecycle", "lifecycle-runtime-ktx", "2.9.1")
-    
-    implementation(libs.nanohttpd)
-    implementation("org.slf4j", "slf4j-jdk14", "2.0.17")
-    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
-    implementation(files("libs/ffmpeg-kit-full-gpl-6.0-2.LTS.aar"))
+
+    implementation(files("libs/ffmpeg-kit-custom-androidzlib-gmp-gnutls-libiconv-libvpx-libaom.main.arm-v7a-neon_arm64-v8a.aar"))
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
+    implementation(libs.nanohttpd)
+    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
     implementation("com.squareup.okhttp3", "okhttp", "4.11.0")
 }
 
@@ -126,7 +125,7 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
 ## 📚 Dependencies
 
 $dependencies
-  - com.arthenica:ffmpeg-kit-full:6.0-2.LTS
+  - com.arthenica:ffmpeg-kit-custom:main
 
 ## 📄 License
 

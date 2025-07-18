@@ -5,7 +5,7 @@
 
 ## 🤖 Android Configuration
 
-- **Application ID:** de.scovillo.playondlna  
+- **Application ID:** com.github.scovillo.playondlna  
 - **Compile SDK:** android-35  
 - **Min SDK:** 26  
 - **Target SDK:** 35
@@ -39,12 +39,11 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
   - androidx.compose.ui:ui-tooling-preview:1.8.3
   - androidx.activity:activity-compose:1.10.1
   - androidx.lifecycle:lifecycle-runtime-ktx:2.9.1
-  - org.nanohttpd:nanohttpd:2.3.1
-  - org.slf4j:slf4j-jdk14:2.0.17
-  - com.github.teamnewpipe:NewPipeExtractor:0.24.6
   - com.arthenica:smart-exception-java:0.2.1
+  - org.nanohttpd:nanohttpd:2.3.1
+  - com.github.teamnewpipe:NewPipeExtractor:0.24.6
   - com.squareup.okhttp3:okhttp:4.11.0
-  - com.arthenica:ffmpeg-kit-full:6.0-2.LTS
+  - com.arthenica:ffmpeg-kit-custom:main
 
 ## 📄 License
 

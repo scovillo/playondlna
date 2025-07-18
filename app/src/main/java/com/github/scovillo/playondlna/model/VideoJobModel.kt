@@ -33,7 +33,7 @@ class VideoJobModel() : ViewModel() {
 
     fun prepareVideo(url: String, cacheDir: File) {
         viewModelScope.launch(Dispatchers.IO) {
-            Log.i("YoutubeDL", "Requesting: $url")
+            Log.i("VideoJobModel", "Requesting: $url")
             try {
                 _currentVideoFileInfo.value = null
                 _currentSession.value = null
