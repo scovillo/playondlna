@@ -82,7 +82,6 @@ tasks.register("generateReadme") {
 
     doLast {
         val readmeFile = file("$projectDir/../README.md")
-        val licenseFile = file("$projectDir/../LICENSE")
         val appName = project.findProperty("appName") as? String ?: project.name
         val android =
             project.extensions.findByName("android") as? com.android.build.gradle.internal.dsl.BaseAppModuleExtension
@@ -92,8 +91,6 @@ tasks.register("generateReadme") {
         val appId = android?.defaultConfig?.applicationId ?: "Unknown"
         val versionCode = android?.defaultConfig?.versionCode ?: "Unknown"
         val versionName = android?.defaultConfig?.versionName ?: "Unknown"
-        val licenseText =
-            if (licenseFile.exists()) licenseFile.readText() else "  No license file found."
         val dependencies =
             configurations["implementation"].allDependencies.filter { it.group != null }
                 .joinToString("\n") {
@@ -116,10 +113,19 @@ tasks.register("generateReadme") {
 
 Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) in your LAN!
 Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
-If the app serves you well, consider <a href="https://paypal.me/muemmelmaus">a donation</a> to support my efforts.
-Happy streaming!
+If the app serves you well, consider a donation to support my efforts.
+
+The app is built entirely on free software libraries.
+All dependencies are compatible with the GNU GPLv3 license.
+The app itself is licensed under the GNU GPLv3. See the 
+[THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
+file in the sourcerepository for full license information.
+
+❤️ Happy streaming! ❤️
 
 ## 🎁 Donation
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤️-pink?logo=github&style=flat-square)](https://github.com/sponsors/scovillo)
 
 [![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
 
@@ -136,7 +142,13 @@ $dependencies
 
 ## 📄 License
 
-${licenseText.trimIndent()}
+PlayOnDlna - An Android application to play media on dlna devices
+Copyright (C) 2025 Lukas Scheerer
+
+Licensed under the GNU General Public License v3.0
+
+You should have received a copy of the GNU GPL v3 in the [LICENSE](https://github.com/scovillo/playondlna/blob/main/LICENSE)
+file along with this program. If not, see <https://www.gnu.org/licenses/>
         """.trimIndent()
 
         readmeFile.writeText(content)
