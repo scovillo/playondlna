@@ -5,7 +5,7 @@
 
 ## 🤖 Android Configuration
 
-- **Application ID:** com.github.scovillo.playondlna  
+- **Application ID:** io.github.scovillo.playondlna  
 - **Compile SDK:** android-35  
 - **Min SDK:** 26  
 - **Target SDK:** 35

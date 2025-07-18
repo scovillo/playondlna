@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.github.scovillo.playondlna"
+    namespace = "io.github.scovillo.playondlna"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.github.scovillo.playondlna"
+        applicationId = "io.github.scovillo.playondlna"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
