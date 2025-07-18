@@ -113,8 +113,13 @@ tasks.register("generateReadme") {
 
 ## 📱 Description
 
-Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
-If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
+Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) in your LAN!
+Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
+If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a donation</a> to support my efforts.
+
+## 🎁 Donation
+
+[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp258.png)](https://paypal.me/muemmelmaus)
 
 ## 🛠️ Build Instructions
 

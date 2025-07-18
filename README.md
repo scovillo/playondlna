@@ -12,8 +12,13 @@
 
 ## 📱 Description
 
-Play Youtube videos on any DLNA devices (e.g. <a href="https://kodi.tv/">Kodi</a>)!
-If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a small donation</a> to support my efforts.
+Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) in your LAN!
+Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
+If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a donation</a> to support my efforts.
+
+## 📱 Donation
+
+[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp258.png)](https://paypal.me/muemmelmaus)
 
 ## 🛠️ Build Instructions
 
@@ -33,16 +38,16 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
   - androidx.compose.material3:material3:unspecified
   - androidx.recyclerview:recyclerview:1.4.0
   - androidx.appcompat:appcompat:1.7.1
-  - androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1
+  - androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2
   - androidx.compose.ui:ui:1.8.3
   - androidx.compose.material3:material3:1.3.2
   - androidx.compose.ui:ui-tooling-preview:1.8.3
   - androidx.activity:activity-compose:1.10.1
-  - androidx.lifecycle:lifecycle-runtime-ktx:2.9.1
+  - androidx.lifecycle:lifecycle-runtime-ktx:2.9.2
   - com.arthenica:smart-exception-java:0.2.1
   - org.nanohttpd:nanohttpd:2.3.1
   - com.github.teamnewpipe:NewPipeExtractor:0.24.6
-  - com.squareup.okhttp3:okhttp:4.11.0
+  - com.squareup.okhttp3:okhttp:4.12.0
   - com.arthenica:ffmpeg-kit-custom:main
 
 ## 📄 License
