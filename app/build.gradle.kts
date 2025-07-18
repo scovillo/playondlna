@@ -119,7 +119,7 @@ If the app serves you well, I would appreciate <a href="https://paypal.me/muemme
 
 ## 🎁 Donation
 
-[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp258.png)](https://paypal.me/muemmelmaus)
+[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
 
 ## 🛠️ Build Instructions
 

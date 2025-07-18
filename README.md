@@ -16,9 +16,9 @@ Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) i
 Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
 If the app serves you well, I would appreciate <a href="https://paypal.me/muemmelmaus">a donation</a> to support my efforts.
 
-## 📱 Donation
+## 🎁 Donation
 
-[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp258.png)](https://paypal.me/muemmelmaus)
+[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
 
 ## 🛠️ Build Instructions
 
