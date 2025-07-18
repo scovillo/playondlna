@@ -59,18 +59,18 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.appcompat", "appcompat", "1.7.1")
-    implementation("androidx.lifecycle", "lifecycle-viewmodel-compose", "2.9.1")
+    implementation("androidx.lifecycle", "lifecycle-viewmodel-compose", "2.9.2")
     implementation("androidx.compose.ui", "ui", "1.8.3")
     implementation("androidx.compose.material3", "material3", "1.3.2")
     implementation("androidx.compose.ui", "ui-tooling-preview", "1.8.3")
     implementation("androidx.activity", "activity-compose", "1.10.1")
-    implementation("androidx.lifecycle", "lifecycle-runtime-ktx", "2.9.1")
+    implementation("androidx.lifecycle", "lifecycle-runtime-ktx", "2.9.2")
 
     implementation(files("libs/ffmpeg-kit-custom-androidzlib-gmp-gnutls-libiconv-libvpx-libaom.main.arm-v7a-neon_arm64-v8a.aar"))
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
     implementation(libs.nanohttpd)
     implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
-    implementation("com.squareup.okhttp3", "okhttp", "4.11.0")
+    implementation("com.squareup.okhttp3", "okhttp", "4.12.0")
 }
 
 
