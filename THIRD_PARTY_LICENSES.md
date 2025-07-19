@@ -10,6 +10,10 @@ https://developer.android.com/jetpack
 License: GPL-3.0
 https://github.com/arthenica/ffmpeg-kit
 
+Cause of missing maintainability and build complications, building this library during the app build
+was not an option. I decided to build and provide it separately:
+https://github.com/scovillo/ffmpeg-kit/releases/tag/main
+
 ```bash
 android.sh --enable-gnutls --disable-x86 --disable-x86-64 --disable-arm-v7a --api-level=21
 ```
