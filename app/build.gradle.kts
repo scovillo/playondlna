@@ -67,7 +67,7 @@ dependencies {
     implementation("androidx.activity", "activity-compose", "1.10.1")
     implementation("androidx.lifecycle", "lifecycle-runtime-ktx", "2.9.2")
 
-    implementation(files("libs/ffmpeg-kit-custom-androidzlib-gmp-gnutls-libiconv.main.arm-v7a-neon_arm64-v8a.aar"))
+    implementation("io.github.scovillo", "ffmpeg-kit-playondlna", "main")
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
     implementation(libs.nanohttpd)
     implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")

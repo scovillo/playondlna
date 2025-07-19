@@ -17,6 +17,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://vcs.lukas-scheerer.de/api/packages/scovillo/maven") }
     }
 }
 
