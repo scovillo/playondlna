@@ -67,7 +67,7 @@ dependencies {
     implementation("androidx.activity", "activity-compose", "1.10.1")
     implementation("androidx.lifecycle", "lifecycle-runtime-ktx", "2.9.2")
 
-    implementation("io.github.scovillo", "ffmpeg-kit-playondlna", "main")
+    implementation("io.github.scovillo", "ffmpeg-kit", "1.15")
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
     implementation(libs.nanohttpd)
     implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
