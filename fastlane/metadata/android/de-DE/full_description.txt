@@ -1,0 +1,5 @@
+Spiele YouTube-Videos auf DLNA-Playern (z. B. Kodi) in deinem LAN ab!
+Durchsuche YouTube in deinem Lieblings-Client und teile den Link zur PlayOnDlna-App,
+um das Video auf einem DLNA-Player in deinem LAN abzuspielen.
+Wenn dir die App hilft, würde ich mich über eine Spende freuen, um meine Bemühungen zu unterstützen.
+❤️ Happy streaming! ❤️

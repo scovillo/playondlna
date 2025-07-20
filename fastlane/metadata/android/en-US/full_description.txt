@@ -1,0 +1,4 @@
+Play Youtube videos on DLNA players (e.g. Kodi) in your LAN!
+Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
+If the app serves you well, consider a donation to support my efforts.
+❤️ Happy streaming! ❤️
