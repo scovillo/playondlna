@@ -1,0 +1,3 @@
+Die erste Version der App ist veröffentlicht!
+Getestet wurde mit diversen YouTube-Videos und Kodi als DLNA Player.
+Die Version 1.0 unterstützt nur DLNA Player mit HLS (Http Livestreaming).
