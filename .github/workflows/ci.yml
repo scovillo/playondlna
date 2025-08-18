@@ -1,0 +1,62 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Extract versionName
+        id: version
+        run: |
+          VERSION_NAME=$(grep 'versionName =' app/build.gradle.kts | head -1 | sed -E 's/.*"(.+)".*/\1/')
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+      - name: Generate Release Notes
+        id: notes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$LAST_TAG" ]; then
+              # Alle Commits seit letztem Tag
+              RELEASE_NOTES=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s")
+          else
+              # Kein Tag vorhanden → alle Commits verwenden
+              RELEASE_NOTES=$(git log --pretty=format:"- %s")
+          fi
+          if [ -z "$RELEASE_NOTES" ]; then
+              RELEASE_NOTES="Initial release"
+          fi
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.VERSION_NAME }}
+          name: Release ${{ env.VERSION_NAME }}
+          body: ${{ env.RELEASE_NOTES }}
+          artifacts: app/build/outputs/apk/release/app-release.apk
+          draft: true
+          prerelease: false
