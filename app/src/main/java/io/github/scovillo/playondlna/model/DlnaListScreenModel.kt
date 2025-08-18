@@ -48,7 +48,7 @@ class DlnaListScreenModel : ViewModel() {
             _isLoading.value = true
             _devices.value = emptyList()
             try {
-                val found = discoverDlnaDevices()
+                val found = discoverDlnaDevices(2500)
                 _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
                 _errorMessage.postValue("")
             } catch (exception: Exception) {

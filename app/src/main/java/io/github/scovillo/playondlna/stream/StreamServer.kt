@@ -90,31 +90,26 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
 
         val fileLength = file.length()
         val rangeHeader = session.headers["range"]
-
         try {
             val (start, end) = if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
                 val range = rangeHeader.removePrefix("bytes=").split("-")
-                val s = range[0].toLongOrNull() ?: 0
-                val e = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
-                s.coerceAtMost(fileLength - 1) to e.coerceAtMost(fileLength - 1)
+                val start = range[0].toLongOrNull() ?: 0
+                val end = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
+                start.coerceAtMost(fileLength - 1) to end.coerceAtMost(fileLength - 1)
             } else {
                 0L to fileLength - 1
             }
-
             val inputStream = FileInputStream(file)
             inputStream.skip(start)
-
             val response = newFixedLengthResponse(
                 if (rangeHeader != null) Response.Status.PARTIAL_CONTENT else Response.Status.OK,
                 "video/mp4",
                 inputStream,
                 end - start + 1
             )
-
             response.addHeader("Content-Length", "${end - start + 1}")
             response.addHeader("Content-Range", "bytes $start-$end/$fileLength")
             response.addHeader("Accept-Ranges", "bytes")
-
             return response
         } catch (e: IOException) {
             e.printStackTrace()

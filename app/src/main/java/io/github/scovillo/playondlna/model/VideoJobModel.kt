@@ -91,7 +91,19 @@ class VideoJobModel() : ViewModel() {
                 val extractor = service.getStreamExtractor(url)
                 extractor.fetchPage()
                 _title.value = extractor.name
-                startMuxing(extractor, cacheDir)
+                val cachedFile = cacheDir.listFiles()
+                    ?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("final") }
+                if (cachedFile != null) {
+                    Log.i(
+                        "VideoJobModel",
+                        "Loading ${extractor.id} from cache"
+                    )
+                    videoHttpServer.allFiles[extractor.id] = cachedFile
+                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    _status.value = VideoJobStatus.READY
+                } else {
+                    startMuxing(extractor, cacheDir)
+                }
             } catch (e: Exception) {
                 _status.value = VideoJobStatus.ERROR
                 e.printStackTrace()
@@ -108,7 +120,7 @@ class VideoJobModel() : ViewModel() {
             _status.value = VideoJobStatus.ERROR
             throw IllegalStateException("Streams not found")
         }
-        val tempFile =
+        val fragmentedFile =
             File.createTempFile("${extractor.id}_muxed_fragmented", ".mp4", cacheDir)
         val ffmpegCmd = mutableListOf(
             "-i", bestVideo.content,
@@ -137,11 +149,11 @@ class VideoJobModel() : ViewModel() {
                 "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
                 "-shortest",
                 "-y",
-                tempFile.absolutePath
+                fragmentedFile.absolutePath
             )
         )
         Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.joinToString(" ")}")
-        videoHttpServer.allFiles[extractor.id] = tempFile
+        videoHttpServer.allFiles[extractor.id] = fragmentedFile
         Log.d("Mux", "Start fragmented muxing ${extractor.id}")
         _currentSession.value = FFmpegKit.executeAsync(
             ffmpegCmd.joinToString(" "),
@@ -149,11 +161,12 @@ class VideoJobModel() : ViewModel() {
                 if (ReturnCode.isSuccess(session.returnCode)) {
                     Log.d("Mux", "Fragmented muxing completed successfully")
                     if (currentSession.value?.sessionId == session.sessionId) {
-                        finalizeMuxing(extractor, tempFile, cacheDir)
+                        finalizeMuxing(extractor, fragmentedFile, cacheDir)
                     }
                 } else {
                     Log.e("Mux", "Fragmented muxing failed")
                     _status.value = VideoJobStatus.ERROR
+                    fragmentedFile.delete()
                 }
             },
             { log -> Log.d("Mux", log.message) },
@@ -183,7 +196,7 @@ class VideoJobModel() : ViewModel() {
 
     private fun finalizeMuxing(extractor: StreamExtractor, sourceFile: File, cacheDir: File) {
         _status.value = VideoJobStatus.FINALIZING
-        val tempFile = File.createTempFile("${extractor.id}_muxed", ".mp4", cacheDir)
+        val tempFile = File.createTempFile("${extractor.id}_muxed_temp", ".mp4", cacheDir)
         val ffmpegCmd = mutableListOf(
             "-i", sourceFile.absolutePath,
             "-c:v", "copy",
@@ -198,12 +211,16 @@ class VideoJobModel() : ViewModel() {
             { session ->
                 if (ReturnCode.isSuccess(session.returnCode)) {
                     Log.d("Mux", "Final muxing completed successfully")
-                    videoHttpServer.allFiles[extractor.id] = tempFile
+                    val finalFile =
+                        File(tempFile.parentFile, tempFile.name.replace("_temp", "_final"))
+                    tempFile.renameTo(finalFile)
+                    videoHttpServer.allFiles[extractor.id] = finalFile
                     _currentVideoFileInfo.value = VideoFileInfo(extractor)
                     _status.value = VideoJobStatus.READY
                 } else {
                     Log.e("Mux", "Final muxing failed")
                     _status.value = VideoJobStatus.ERROR
+                    tempFile.delete()
                 }
             },
             { log -> Log.d("Mux", log.message) },

@@ -174,7 +174,7 @@ fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevic
             renderingControlUrl = renderingControlUrl
         )
     } catch (e: Exception) {
-        println("Error at $location: ${e.message}")
+        Log.e("UPNP", "Error at $location: ${e.message}")
         null
     }
 }
