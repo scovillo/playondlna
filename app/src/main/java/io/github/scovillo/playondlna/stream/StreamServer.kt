@@ -76,19 +76,60 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
     val allFiles = mutableMapOf<String, File>()
 
     override fun serve(session: IHTTPSession): Response {
+        val id = session.uri.substring(1)
+        val file = allFiles[id]
+            ?: return newFixedLengthResponse(
+                Response.Status.NOT_FOUND,
+                MIME_PLAINTEXT,
+                "Video with id $id not found!"
+            )
+
+        if (file.name.contains("fragmented")) {
+            return this.serveFragmented(file)
+        }
+
+        val fileLength = file.length()
+        val rangeHeader = session.headers["range"]
+
         try {
-            val id = session.uri.substring(1)
-            Log.i("VideoHttpServer", "Received id: $id")
-            if (!allFiles.containsKey(id)) {
-                return newFixedLengthResponse(
-                    Response.Status.NOT_FOUND,
-                    MIME_PLAINTEXT,
-                    "Video with id $id not found!"
-                )
+            val (start, end) = if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                val range = rangeHeader.removePrefix("bytes=").split("-")
+                val s = range[0].toLongOrNull() ?: 0
+                val e = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
+                s.coerceAtMost(fileLength - 1) to e.coerceAtMost(fileLength - 1)
+            } else {
+                0L to fileLength - 1
             }
-            val videoFile = allFiles[id]!!
-            Log.i("VideoHttpServer", "Serving file: ${videoFile.absolutePath}")
-            val fileInputStream = FileInputStream(videoFile)
+
+            val inputStream = FileInputStream(file)
+            inputStream.skip(start)
+
+            val response = newFixedLengthResponse(
+                if (rangeHeader != null) Response.Status.PARTIAL_CONTENT else Response.Status.OK,
+                "video/mp4",
+                inputStream,
+                end - start + 1
+            )
+
+            response.addHeader("Content-Length", "${end - start + 1}")
+            response.addHeader("Content-Range", "bytes $start-$end/$fileLength")
+            response.addHeader("Accept-Ranges", "bytes")
+
+            return response
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return newFixedLengthResponse(
+                Response.Status.INTERNAL_ERROR,
+                MIME_PLAINTEXT,
+                "IO Error"
+            )
+        }
+    }
+
+    private fun serveFragmented(file: File): Response {
+        try {
+            Log.i("VideoHttpServer", "Serving fragmented file: ${file.absolutePath}")
+            val fileInputStream = FileInputStream(file)
             val response = newChunkedResponse(Response.Status.OK, "video/mp4", fileInputStream)
             response.addHeader("Accept-Ranges", "bytes")
             return response

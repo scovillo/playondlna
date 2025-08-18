@@ -81,6 +81,8 @@ fun MainScreen(
             text = when (status) {
                 VideoJobStatus.IDLE -> stringResource(R.string.idle)
                 VideoJobStatus.PREPARING -> stringResource(R.string.preparing)
+                VideoJobStatus.PLAYABLE -> stringResource(R.string.playable)
+                VideoJobStatus.FINALIZING -> stringResource(R.string.finalizing)
                 VideoJobStatus.READY -> stringResource(R.string.ready)
                 VideoJobStatus.ERROR -> stringResource(R.string.error)
             },

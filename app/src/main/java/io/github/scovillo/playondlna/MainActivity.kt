@@ -38,29 +38,25 @@ import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.MainScreen
 import org.schabi.newpipe.extractor.NewPipe
-import java.util.concurrent.Executors
 
 
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: DlnaListScreenModel
-    private val executorService = Executors.newCachedThreadPool()
     private val videoJobModel = VideoJobModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()
-        executorService.execute {
-            NewPipe.init(OkHttpDownloader())
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(
-                    NotificationChannel(
-                        "http_channel",
-                        "HTTP Server",
-                        NotificationManager.IMPORTANCE_LOW
-                    )
+        NewPipe.init(OkHttpDownloader())
+        getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(
+                NotificationChannel(
+                    "http_channel",
+                    "HTTP Server",
+                    NotificationManager.IMPORTANCE_LOW
                 )
-            ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
-        }
+            )
+        ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         viewModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
         viewModel.errorMessage.observe(this) { msg ->
             if (msg.isNotEmpty()) {

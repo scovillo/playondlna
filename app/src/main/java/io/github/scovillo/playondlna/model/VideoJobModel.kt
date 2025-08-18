@@ -32,9 +32,40 @@ import io.github.scovillo.playondlna.stream.videoHttpServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.StreamExtractor
+import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
 
-enum class VideoJobStatus { IDLE, PREPARING, READY, ERROR }
+enum class VideoJobStatus { IDLE, PREPARING, PLAYABLE, FINALIZING, READY, ERROR }
+
+val VideoStream.hasBestCompatibility: Boolean
+    get() {
+        return format?.mimeType?.startsWith("video/mp4") == true && codec?.startsWith(
+            "avc"
+        ) == true
+    }
+
+val AudioStream.hasBestCompatibility: Boolean
+    get() {
+        return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true
+    }
+
+fun StreamExtractor.bestVideoStream(): VideoStream? {
+    val compatibleStreams = videoStreams.filter { it.hasBestCompatibility }
+    if (compatibleStreams.isNotEmpty()) {
+        return compatibleStreams.maxByOrNull { it.height }
+    }
+    return videoStreams.maxByOrNull { it.height }
+}
+
+fun StreamExtractor.bestAudioStream(): AudioStream? {
+    val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
+    if (compatibleStreams.isNotEmpty()) {
+        return compatibleStreams.maxByOrNull { it.averageBitrate }
+    }
+    return audioStreams.maxByOrNull { it.averageBitrate }
+}
 
 class VideoJobModel() : ViewModel() {
     private var _currentVideoFileInfo = mutableStateOf<VideoFileInfo?>(null)
@@ -52,65 +83,141 @@ class VideoJobModel() : ViewModel() {
     fun prepareVideo(url: String, cacheDir: File) {
         viewModelScope.launch(Dispatchers.IO) {
             Log.i("VideoJobModel", "Requesting: $url")
+            _currentVideoFileInfo.value = null
+            _currentSession.value = null
+            _title.value = url
             try {
-                _currentVideoFileInfo.value = null
-                _currentSession.value = null
-                _status.value = VideoJobStatus.PREPARING
-                _progress.floatValue = 0f
-                _title.value = url
                 val service = ServiceList.YouTube
                 val extractor = service.getStreamExtractor(url)
                 extractor.fetchPage()
                 _title.value = extractor.name
-                val bestVideo = extractor.videoStreams.maxByOrNull { it.height }
-                val bestAudio = extractor.audioStreams.maxByOrNull { it.averageBitrate }
-                if (bestVideo == null || bestAudio == null) {
-                    _status.value = VideoJobStatus.ERROR
-                    throw IllegalStateException("Streams not found")
-                }
-                val tempFile = File.createTempFile("${extractor.id}_muxed", ".mp4", cacheDir)
-                val ffmpegCmd = listOf(
-                    "-i", bestVideo.content,
-                    "-i", bestAudio.content,
-                    "-c:v", "copy",
-                    "-c:a", "aac",
-                    "-movflags +frag_keyframe+empty_moov+default_base_moof",
-                    "-shortest",
-                    "-y",
-                    tempFile.absolutePath
-                )
-                videoHttpServer.allFiles[extractor.id] = tempFile
-                _currentSession.value = FFmpegKit.executeAsync(
-                    ffmpegCmd.joinToString(" "),
-                    { session ->
-                        if (ReturnCode.isSuccess(session.returnCode)) {
-                            Log.d("Mux", "Muxing completed successfully")
-                        } else {
-                            Log.e("Mux", "Muxing failed")
-                        }
-                    },
-                    { log -> Log.d("Mux", log.message) },
-                    { statistics ->
-                        if (statistics.sessionId != _currentSession.value?.sessionId) {
-                            return@executeAsync
-                        }
-                        val videoDurationInMs = extractor.length * 1000
-                        val rawProgress = if (videoDurationInMs > 0) {
-                            (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
-                        } else 0.0
-                        _progress.floatValue =
-                            (rawProgress * (100f / 5f)).coerceAtMost(100.0).toFloat()
-                        if (progress.value == 100.0f) {
-                            _currentVideoFileInfo.value = VideoFileInfo(extractor)
-                            _status.value = VideoJobStatus.READY
-                        }
-                        Log.d("FFmpegProgress", "Progress: $rawProgress%")
-                    }
-                )
+                startMuxing(extractor, cacheDir)
             } catch (e: Exception) {
                 _status.value = VideoJobStatus.ERROR
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun startMuxing(extractor: StreamExtractor, cacheDir: File) {
+        _status.value = VideoJobStatus.PREPARING
+        _progress.floatValue = 0f
+        val bestVideo = extractor.bestVideoStream()
+        val bestAudio = extractor.bestAudioStream()
+        if (bestVideo == null || bestAudio == null) {
+            _status.value = VideoJobStatus.ERROR
+            throw IllegalStateException("Streams not found")
+        }
+        val tempFile =
+            File.createTempFile("${extractor.id}_muxed_fragmented", ".mp4", cacheDir)
+        val ffmpegCmd = mutableListOf(
+            "-i", bestVideo.content,
+            "-i", bestAudio.content,
+        )
+        Log.i(
+            "VideoJobModel",
+            "Compatible video stream found (format=${bestVideo.format?.mimeType}; codec=${bestVideo.codec})"
+        )
+        ffmpegCmd.add("-c:v copy")
+        if (bestAudio.hasBestCompatibility) {
+            Log.i(
+                "VideoJobModel",
+                "Compatible audio stream found (format=${bestAudio.format?.mimeType}; codec=${bestAudio.codec})"
+            )
+            ffmpegCmd.add("-c:a copy")
+        } else {
+            Log.i(
+                "VideoJobModel",
+                "Converting audio stream (format=${bestAudio.format?.mimeType}; codec=${bestAudio.codec})"
+            )
+            ffmpegCmd.add("-c:a aac")
+        }
+        ffmpegCmd.addAll(
+            listOf(
+                "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+                "-shortest",
+                "-y",
+                tempFile.absolutePath
+            )
+        )
+        Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.joinToString(" ")}")
+        videoHttpServer.allFiles[extractor.id] = tempFile
+        Log.d("Mux", "Start fragmented muxing ${extractor.id}")
+        _currentSession.value = FFmpegKit.executeAsync(
+            ffmpegCmd.joinToString(" "),
+            { session ->
+                if (ReturnCode.isSuccess(session.returnCode)) {
+                    Log.d("Mux", "Fragmented muxing completed successfully")
+                    if (currentSession.value?.sessionId == session.sessionId) {
+                        finalizeMuxing(extractor, tempFile, cacheDir)
+                    }
+                } else {
+                    Log.e("Mux", "Fragmented muxing failed")
+                    _status.value = VideoJobStatus.ERROR
+                }
+            },
+            { log -> Log.d("Mux", log.message) },
+            { statistics ->
+                if (statistics.sessionId != _currentSession.value?.sessionId) {
+                    return@executeAsync
+                }
+                val videoDurationInMs = extractor.length * 1000
+                val rawProgress = if (videoDurationInMs > 0) {
+                    (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
+                } else 0.0
+                val playableProgress =
+                    (rawProgress * (100f / 10f)).coerceAtMost(100.0).toFloat()
+                if (status.value == VideoJobStatus.PREPARING) {
+                    _progress.floatValue = playableProgress.coerceAtMost(100.0f)
+                } else {
+                    _progress.floatValue = rawProgress.coerceAtMost(100.0).toFloat()
+                }
+                if (status.value != VideoJobStatus.PLAYABLE && playableProgress == 100.0f) {
+                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    _status.value = VideoJobStatus.PLAYABLE
+                }
+                Log.d("FFmpegProgress", "Progress: $rawProgress%")
+            }
+        )
+    }
+
+    private fun finalizeMuxing(extractor: StreamExtractor, sourceFile: File, cacheDir: File) {
+        _status.value = VideoJobStatus.FINALIZING
+        val tempFile = File.createTempFile("${extractor.id}_muxed", ".mp4", cacheDir)
+        val ffmpegCmd = mutableListOf(
+            "-i", sourceFile.absolutePath,
+            "-c:v", "copy",
+            "-c:a", "copy",
+            "-movflags", "faststart",
+            "-y",
+            tempFile.absolutePath
+        )
+        Log.d("Mux", "Start final muxing ${extractor.id}")
+        _currentSession.value = FFmpegKit.executeAsync(
+            ffmpegCmd.joinToString(" "),
+            { session ->
+                if (ReturnCode.isSuccess(session.returnCode)) {
+                    Log.d("Mux", "Final muxing completed successfully")
+                    videoHttpServer.allFiles[extractor.id] = tempFile
+                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    _status.value = VideoJobStatus.READY
+                } else {
+                    Log.e("Mux", "Final muxing failed")
+                    _status.value = VideoJobStatus.ERROR
+                }
+            },
+            { log -> Log.d("Mux", log.message) },
+            { statistics ->
+                if (statistics.sessionId != _currentSession.value?.sessionId) {
+                    return@executeAsync
+                }
+                val videoDurationInMs = extractor.length * 1000
+                val rawProgress = if (videoDurationInMs > 0) {
+                    (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
+                } else 0.0
+                _progress.floatValue = rawProgress.coerceAtMost(100.0).toFloat()
+                Log.d("FFmpegProgress", "Progress: $rawProgress%")
+            }
+        )
     }
 }
