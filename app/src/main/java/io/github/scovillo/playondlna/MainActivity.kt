@@ -62,6 +62,11 @@ class MainActivity : ComponentActivity() {
             ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         }
         viewModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
+        viewModel.errorMessage.observe(this) { msg ->
+            if (msg.isNotEmpty()) {
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
         setContent {
             PlayOnDlnaTheme {
                 MainScreen(
@@ -70,7 +75,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     DlnaListScreen(videoJobModel)
                 }
-
             }
         }
         handleShareIntent(intent)

@@ -19,6 +19,8 @@
 package io.github.scovillo.playondlna.model
 
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.stream.VideoFileInfo
@@ -38,13 +40,23 @@ class DlnaListScreenModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _errorMessage = MutableLiveData("")
+    val errorMessage: LiveData<String> = _errorMessage
+
     fun discoverDevices() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _devices.value = emptyList()
-            val found = discoverDlnaDevices()
-            _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
-            _isLoading.value = false
+            try {
+                val found = discoverDlnaDevices()
+                _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
+                _errorMessage.postValue("")
+            } catch (exception: Exception) {
+                exception.printStackTrace()
+                _errorMessage.postValue("Local network scan failed! Is your wifi connected?")
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
@@ -55,10 +67,12 @@ class DlnaListScreenModel : ViewModel() {
                     playUriOnDevice(device.avTransportUrl, videoFileInfo)
                 } catch (exception: Exception) {
                     exception.printStackTrace()
+                    _errorMessage.postValue("Playback failed!")
                 }
             }
         } else {
             Log.e("DLNA", "No AVTransport URL found.")
+            _errorMessage.postValue("Media Player currently incompatible!")
         }
     }
 
