@@ -1,1 +1,1 @@
-Play Youtube videos on DLNA players (e.g. Kodi) in your LAN!
+Play Youtube videos ad-free on DLNA players (e.g. Kodi) in your local network!

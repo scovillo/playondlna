@@ -1,5 +1,19 @@
-Spiele YouTube-Videos auf DLNA-Playern (z. B. Kodi) in deinem LAN ab!
+Spiele YouTube-Videos werbefrei auf DLNA-Playern (z.B. Kodi) in deinem lokalen Netzwerk ab!
 Durchsuche YouTube in deinem Lieblings-Client und teile den Link zur PlayOnDlna-App,
-um das Video auf einem DLNA-Player in deinem LAN abzuspielen.
-Wenn dir die App hilft, würde ich mich über eine Spende freuen, um meine Bemühungen zu unterstützen.
+um das Video werbefrei auf einem DLNA-Player in deinem lokalen Netzwerk abzuspielen.
+
+🎨 <b>Schlankes Design</b>
+Eine grafische Oberfläche reduziert auf das Wesentliche im dunklen Design, das auch in der Nacht angenehm für die Augen ist.
+
+💝 <b>Werbefrei</b>
+Genieße Videos werbefrei in deinem lokalen Netzwerk.
+
+🤩 <b>Einfach</b>
+Werbefreies Abspielen per Knopfdruck ohne komplexe Einrichtungen!
+Eine automatisierte Suche findet kompatible Player in deinem lokalen Netzwerk.
+
+👐 <b>Transparenz</b>
+Der öffentlich zugängliche Quellcode ermöglicht jedem, sich persönlich von Qualität, Datenschutz und Sicherheit zu überzeugen.
+
+Wenn dir die App gute Dienste leistet, würde ich mich über eine Spende freuen, um meine Bemühungen zu unterstützen.
 ❤️ Happy streaming! ❤️

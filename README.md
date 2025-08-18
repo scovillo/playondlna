@@ -10,19 +10,35 @@
 - **Min SDK:** 26  
 - **Target SDK:** 35
 
+The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
+
 ## 📱 Description
 
-Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) in your LAN!
-Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
+Play YouTube videos ad-free on DLNA players (e.g. Kodi) in your local network!
+Browse YouTube in your favorite client and share the link to the PlayOnDlna app
+to play the video ad-free on a DLNA player in your local network.
+
+🎨 <b>Sleek Design</b>
+A graphical interface reduced to the essentials in a dark design that's easy on the eyes even at night.
+
+💝 <b>Ad-Free</b>
+Enjoy videos ad-free on your local network.
+
+🤩 <b>Simple</b>
+Ad-free playback at the touch of a button without complex setup!
+An automated search finds compatible players on your local network.
+
+👐 <b>Transparency</b>
+The publicly accessible source code allows anyone to personally verify the quality, privacy, and security.
+
 If the app serves you well, consider a donation to support my efforts.
+❤️ Happy streaming! ❤️
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.
 The app itself is licensed under the GNU GPLv3. See the 
 [THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
 file in the sourcerepository for full license information.
-
-❤️ Happy streaming! ❤️
 
 ## 🎁 Donation
 
@@ -55,6 +71,7 @@ file in the sourcerepository for full license information.
   - androidx.compose.ui:ui-tooling-preview:1.8.3
   - androidx.activity:activity-compose:1.10.1
   - androidx.lifecycle:lifecycle-runtime-ktx:2.9.2
+  - io.github.scovillo:ffmpeg-kit:1.15
   - com.arthenica:smart-exception-java:0.2.1
   - org.nanohttpd:nanohttpd:2.3.1
   - com.github.teamnewpipe:NewPipeExtractor:0.24.6

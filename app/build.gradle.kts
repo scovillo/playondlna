@@ -82,6 +82,8 @@ tasks.register("generateReadme") {
 
     doLast {
         val readmeFile = file("$projectDir/../README.md")
+        val descText =
+            file("$projectDir/../fastlane/metadata/android/en-US/full_description.txt").readText()
         val appName = project.findProperty("appName") as? String ?: project.name
         val android =
             project.extensions.findByName("android") as? com.android.build.gradle.internal.dsl.BaseAppModuleExtension
@@ -109,19 +111,17 @@ tasks.register("generateReadme") {
 - **Min SDK:** $minSdk  
 - **Target SDK:** $targetSdk
 
+The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
+
 ## 📱 Description
 
-Play Youtube videos on DLNA players (e.g. <a href="https://kodi.tv/">Kodi</a>) in your LAN!
-Browse youtube in your favorite client and share the link to the PlayOnDlna app to play the video on a dlna player found in your LAN.
-If the app serves you well, consider a donation to support my efforts.
+${descText.trimIndent()}
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.
 The app itself is licensed under the GNU GPLv3. See the 
 [THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
 file in the sourcerepository for full license information.
-
-❤️ Happy streaming! ❤️
 
 ## 🎁 Donation
 
