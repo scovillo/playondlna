@@ -24,9 +24,6 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build Release APK
-        run: ./gradlew :app:assembleRelease
-
       - name: Extract versionName
         id: version
         run: |
@@ -38,10 +35,8 @@ jobs:
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
           if [ -n "$LAST_TAG" ]; then
-              # Alle Commits seit letztem Tag
               RELEASE_NOTES=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s")
           else
-              # Kein Tag vorhanden → alle Commits verwenden
               RELEASE_NOTES=$(git log --pretty=format:"- %s")
           fi
           if [ -z "$RELEASE_NOTES" ]; then
@@ -50,13 +45,31 @@ jobs:
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+          echo $RELEASE_NOTES
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        shell: bash
+
+      - name: Build Signed Release APK
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+
+      - name: List APKs
+        run: ls -R app/build/outputs/apk/release/
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
+          commit: main
           tag: ${{ env.VERSION_NAME }}
           name: Release ${{ env.VERSION_NAME }}
           body: ${{ env.RELEASE_NOTES }}
-          artifacts: app/build/outputs/apk/release/app-release.apk
-          draft: true
+          artifacts: app/build/outputs/apk/release/play-on-dlna-${{ env.VERSION_NAME }}.apk
+          draft: false
           prerelease: false

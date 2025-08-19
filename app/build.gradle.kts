@@ -18,13 +18,39 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(
+                project.findProperty("KEYSTORE_FILE") ?: System.getenv("KEYSTORE_FILE")
+                ?: "../release.keystore"
+            )
+            storePassword = (project.findProperty("KEYSTORE_PASSWORD")
+                ?: System.getenv("KEYSTORE_PASSWORD")) as String?
+            keyAlias = (project.findProperty("KEY_ALIAS")
+                ?: System.getenv("KEY_ALIAS")) as String?
+            keyPassword = (project.findProperty("KEY_PASSWORD")
+                ?: System.getenv("KEY_PASSWORD")
+                ?: storePassword) as String?
+        }
+    }
+
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+    applicationVariants.all {
+        if (buildType.name == "release") {
+            outputs.all {
+                val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                val version = android.defaultConfig.versionName
+                output.outputFileName = "play-on-dlna-$version.apk"
+            }
         }
     }
     compileOptions {
