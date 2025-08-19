@@ -1,6 +1,6 @@
 # PlayOnDlna
 
-📦 **Version:** 1 (1.0)
+📦 **Version:** 2 (1.1)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
