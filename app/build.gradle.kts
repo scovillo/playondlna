@@ -8,6 +8,10 @@ android {
     namespace = "io.github.scovillo.playondlna"
     compileSdk = 35
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
     defaultConfig {
         applicationId = "io.github.scovillo.playondlna"
         minSdk = 26
@@ -17,7 +21,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
     signingConfigs {
         create("release") {
             storeFile = file(
@@ -33,7 +36,6 @@ android {
                 ?: storePassword) as String?
         }
     }
-
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false

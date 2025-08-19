@@ -10,6 +10,9 @@ https://developer.android.com/jetpack
 License: GPL-3.0
 https://github.com/arthenica/ffmpeg-kit
 
+My fork:
+https://github.com/scovillo/ffmpeg-kit
+
 ```bash
 android.sh --enable-gnutls --disable-x86 --disable-x86-64 --disable-arm-v7a --api-level=21
 ```
