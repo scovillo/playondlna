@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Favorite
@@ -46,8 +48,14 @@ fun SettingsScreen(onClearCache: () -> Unit) {
         Column(horizontalAlignment = Alignment.Start) {
             Text("\uD83C\uDF81 Support PlayOnDlna", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
-            Text("This app is completely free and ad-free. If it serves you well and you'd like to give something back, you're welcome to use one of the following options.")
-            Text("The simplest form of support is a star on Github, this helps PlayOnDlna growing in publicity.")
+            Text(
+                "This app is completely free and ad-free. If it serves you well and you'd like to give something back, " +
+                        "you're welcome to use one of the following options."
+            )
+            Text(
+                "The simplest way to support PlayOnDlna is by giving it a star on GitHub. " +
+                        "Stars increase the project’s visibility within the GitHub community and can help attract more users and contributors."
+            )
             Button(
                 onClick = {
                     val intent = Intent(
@@ -71,6 +79,56 @@ fun SettingsScreen(onClearCache: () -> Unit) {
                 )
                 Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
                 Text("Give a Star on GitHub")
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("You have a cool idea for the app, looking for troubleshooting or found something which is not working correctly?")
+            Button(
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        "https://github.com/scovillo/playondlna/discussions".toUri()
+                    )
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.DarkGray,
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, top = 20.dp, end = 20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = "Discussions",
+                    tint = Color.Green
+                )
+                Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
+                Text("Join discussions on Github")
+            }
+            Button(
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        "https://github.com/scovillo/playondlna/issues".toUri()
+                    )
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.DarkGray,
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.BugReport,
+                    contentDescription = "Issue",
+                    tint = Color.Green
+                )
+                Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
+                Text("Create an issue on Github")
             }
             Spacer(Modifier.height(12.dp))
             Text("You would like to go a step further and support financially?")
@@ -117,17 +175,17 @@ fun SettingsScreen(onClearCache: () -> Unit) {
                 Icon(
                     imageVector = Icons.Default.Coffee,
                     contentDescription = "Donate",
-                    tint = Color.Yellow
+                    tint = Color.White
                 )
                 Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
                 Text("Buy me a coffee via PayPal")
             }
             Spacer(Modifier.height(16.dp))
-            Text("\uD83D\uDCBE Speicher", style = MaterialTheme.typography.titleLarge)
+            Text("\uD83D\uDCBE Cache", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
             Text(
                 "PlayOnDlna is muxing audio and video streams to streamable video files for you, " +
-                        "saving them as temp files to provide them in your local network. " +
+                        "saving as temp files to provide them in your local network. " +
                         "This has the pleasant side effect that the videos are immediately available for streaming the next time. " +
                         "But over time, disk usage will increase and you can use the button below to clean up and free space."
             )
