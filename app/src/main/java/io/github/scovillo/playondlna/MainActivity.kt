@@ -39,7 +39,6 @@ import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.MainScreen
 import org.schabi.newpipe.extractor.NewPipe
 
-
 class MainActivity : ComponentActivity() {
     private lateinit var viewModel: DlnaListScreenModel
     private val videoJobModel = VideoJobModel()
