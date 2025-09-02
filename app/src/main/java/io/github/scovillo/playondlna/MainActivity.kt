@@ -40,7 +40,7 @@ import io.github.scovillo.playondlna.ui.MainScreen
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
-    private lateinit var viewModel: DlnaListScreenModel
+    private lateinit var dlnaDevicesModel: DlnaListScreenModel
     private val videoJobModel = VideoJobModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
                 )
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
-        viewModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
-        viewModel.errorMessage.observe(this) { msg ->
+        dlnaDevicesModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
+        dlnaDevicesModel.errorMessage.observe(this) { msg ->
             if (msg.isNotEmpty()) {
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                     videoJobModel,
                     onClearCache = { this.clearCache() }
                 ) {
-                    DlnaListScreen(videoJobModel)
+                    DlnaListScreen(videoJobModel, dlnaDevicesModel)
                 }
             }
         }

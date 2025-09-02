@@ -45,18 +45,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.scovillo.playondlna.model.DlnaListScreenModel
 import io.github.scovillo.playondlna.model.VideoJobModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel = viewModel()) {
+fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel) {
     val devices by viewModel.devices.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.discoverDevices()
+        if (viewModel.devices.value.isEmpty()) {
+            viewModel.discoverDevices()
+        }
     }
 
     Scaffold(
