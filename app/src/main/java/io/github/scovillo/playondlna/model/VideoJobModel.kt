@@ -20,7 +20,6 @@ package io.github.scovillo.playondlna.model
 
 import android.util.Log
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -70,15 +69,14 @@ fun StreamExtractor.bestAudioStream(): AudioStream? {
 class VideoJobModel() : ViewModel() {
     private var _currentVideoFileInfo = mutableStateOf<VideoFileInfo?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
-    private val _progress = mutableFloatStateOf(0f)
-    private val _status = mutableStateOf(VideoJobStatus.IDLE)
     private val _title = mutableStateOf("idle")
+    private val state = VideoJobState()
 
     val currentVideoFileInfo: State<VideoFileInfo?> get() = _currentVideoFileInfo
     val currentSession: State<Session?> get() = _currentSession
-    val progress: State<Float> get() = _progress
     val title: State<String> get() = _title
-    val status: State<VideoJobStatus> get() = _status
+    val progress: State<Float> get() = state.progress
+    val status: State<VideoJobStatus> get() = state.status
 
     fun prepareVideo(url: String, cacheDir: File) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -100,24 +98,23 @@ class VideoJobModel() : ViewModel() {
                     )
                     videoHttpServer.allFiles[extractor.id] = cachedFile
                     _currentVideoFileInfo.value = VideoFileInfo(extractor)
-                    _status.value = VideoJobStatus.READY
+                    state.ready()
                 } else {
                     startMuxing(extractor, cacheDir)
                 }
             } catch (e: Exception) {
-                _status.value = VideoJobStatus.ERROR
+                state.error()
                 e.printStackTrace()
             }
         }
     }
 
     private fun startMuxing(extractor: StreamExtractor, cacheDir: File) {
-        _status.value = VideoJobStatus.PREPARING
-        _progress.floatValue = 0f
+        state.preparing()
         val bestVideo = extractor.bestVideoStream()
         val bestAudio = extractor.bestAudioStream()
         if (bestVideo == null || bestAudio == null) {
-            _status.value = VideoJobStatus.ERROR
+            state.error()
             throw IllegalStateException("Streams not found")
         }
         val fragmentedFile =
@@ -165,7 +162,7 @@ class VideoJobModel() : ViewModel() {
                     }
                 } else {
                     Log.e("Mux", "Fragmented muxing failed")
-                    _status.value = VideoJobStatus.ERROR
+                    state.error()
                     fragmentedFile.delete()
                 }
             },
@@ -176,18 +173,17 @@ class VideoJobModel() : ViewModel() {
                 }
                 val videoDurationInMs = extractor.length * 1000
                 val rawProgress = if (videoDurationInMs > 0) {
-                    (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
-                } else 0.0
-                val playableProgress =
-                    (rawProgress * (100f / 10f)).coerceAtMost(100.0).toFloat()
+                    (statistics.time * 100 / videoDurationInMs).toFloat()
+                } else 0.0f
+                val playableProgress = rawProgress * (100f / 10f)
                 if (status.value == VideoJobStatus.PREPARING) {
-                    _progress.floatValue = playableProgress.coerceAtMost(100.0f)
+                    state.updateProgress(playableProgress)
                 } else {
-                    _progress.floatValue = rawProgress.coerceAtMost(100.0).toFloat()
+                    state.updateProgress(rawProgress)
                 }
-                if (status.value != VideoJobStatus.PLAYABLE && playableProgress == 100.0f) {
+                if (status.value != VideoJobStatus.PLAYABLE && state.progress.value == 100.0f) {
                     _currentVideoFileInfo.value = VideoFileInfo(extractor)
-                    _status.value = VideoJobStatus.PLAYABLE
+                    state.playable()
                 }
                 Log.d("FFmpegProgress", "Progress: $rawProgress%")
             }
@@ -195,7 +191,7 @@ class VideoJobModel() : ViewModel() {
     }
 
     private fun finalizeMuxing(extractor: StreamExtractor, sourceFile: File, cacheDir: File) {
-        _status.value = VideoJobStatus.FINALIZING
+        state.finalizing()
         val tempFile = File.createTempFile("${extractor.id}_muxed_temp", ".mp4", cacheDir)
         val ffmpegCmd = mutableListOf(
             "-i", sourceFile.absolutePath,
@@ -216,10 +212,10 @@ class VideoJobModel() : ViewModel() {
                     tempFile.renameTo(finalFile)
                     videoHttpServer.allFiles[extractor.id] = finalFile
                     _currentVideoFileInfo.value = VideoFileInfo(extractor)
-                    _status.value = VideoJobStatus.READY
+                    state.ready()
                 } else {
                     Log.e("Mux", "Final muxing failed")
-                    _status.value = VideoJobStatus.ERROR
+                    state.error()
                     tempFile.delete()
                 }
             },
@@ -230,9 +226,9 @@ class VideoJobModel() : ViewModel() {
                 }
                 val videoDurationInMs = extractor.length * 1000
                 val rawProgress = if (videoDurationInMs > 0) {
-                    (statistics.time * 100 / videoDurationInMs).coerceIn(0.0, 100.0)
-                } else 0.0
-                _progress.floatValue = rawProgress.coerceAtMost(100.0).toFloat()
+                    statistics.time * 100 / videoDurationInMs
+                } else 0.0f
+                state.updateProgress(rawProgress.toFloat())
                 Log.d("FFmpegProgress", "Progress: $rawProgress%")
             }
         )
