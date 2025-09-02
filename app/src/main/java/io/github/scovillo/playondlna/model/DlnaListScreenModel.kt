@@ -18,10 +18,11 @@
 
 package io.github.scovillo.playondlna.model
 
+import android.app.Application
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.stream.VideoFileInfo
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
@@ -33,7 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class DlnaListScreenModel : ViewModel() {
+class DlnaListScreenModel(application: Application) : AndroidViewModel(application) {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
 
@@ -48,7 +49,8 @@ class DlnaListScreenModel : ViewModel() {
             _isLoading.value = true
             _devices.value = emptyList()
             try {
-                val found = discoverDlnaDevices(2500)
+                val context = getApplication<Application>().applicationContext
+                val found = discoverDlnaDevices(context)
                 _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
                 _errorMessage.postValue("")
             } catch (exception: Exception) {
