@@ -14,24 +14,32 @@ The global configuration `android:usesCleartextTraffic="true"` is needed to comm
 
 ## 📱 Description
 
-Play YouTube videos ad-free on DLNA players (e.g. Kodi) in your local network!
+Play YouTube videos ad-free on DLNA players (e.g. Kodi, SmartTV) in your local network!
 Browse YouTube in your favorite client and share the link to the PlayOnDlna app
 to play the video ad-free on a DLNA player in your local network.
 
 🎨 <b>Sleek Design</b><br>
-A graphical interface reduced to the essentials in a dark design that's easy on the eyes even at night.
+A graphical interface reduced to the essentials in a dark design that's easy on the eyes even at night.<br>
 
 💝 <b>Ad-Free</b><br>
-Enjoy videos ad-free on your local network.
+Enjoy videos ad-free on your local network.<br>
 
 🤩 <b>Simple</b><br>
 Ad-free playback at the touch of a button without complex setup!
-An automated search finds compatible players on your local network.
+An automated search finds compatible players on your local network.<br>
 
 👐 <b>Transparency</b><br>
-The publicly accessible source code allows anyone to personally verify the quality, privacy, and security.
+The publicly accessible source code allows anyone to personally verify the quality, privacy, and security.<br>
 
-If the app serves you well, consider a donation to support my efforts.<br>
+If the app serves you well, consider a 🎁 donation to support my efforts.<br>
+
+<b>Kodi Setup</b><br>
+To stream videos to Kodi, you have to ensure that Kodi is found as dlna player in your local network.
+To achieve this, follow the instructions below.<br>
+1. Go to <b>⚙ Settings > Services > UPnP DLNA</b><br>
+2. Enable <b>Enable UPnP support</b><br>
+3. Enable <b>Allow remote control via UPnP</b><br>
+
 ❤️ Happy streaming! ❤️
 
 The app is built entirely on free software libraries.

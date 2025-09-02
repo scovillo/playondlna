@@ -1,19 +1,27 @@
-Spiele YouTube-Videos werbefrei auf DLNA-Playern (z.B. Kodi) in deinem lokalen Netzwerk ab!
+Spiele YouTube-Videos werbefrei auf DLNA-Playern (z.B. Kodi, SmartTV) in deinem lokalen Netzwerk ab!
 Durchsuche YouTube in deinem Lieblings-Client und teile den Link zur PlayOnDlna-App,
 um das Video werbefrei auf einem DLNA-Player in deinem lokalen Netzwerk abzuspielen.
 
 🎨 <b>Schlankes Design</b><br>
-Eine grafische Oberfläche reduziert auf das Wesentliche im dunklen Design, das auch in der Nacht angenehm für die Augen ist.
+Eine grafische Oberfläche reduziert auf das Wesentliche im dunklen Design, das auch in der Nacht angenehm für die Augen ist.<br>
 
 💝 <b>Werbefrei</b><br>
-Genieße Videos werbefrei in deinem lokalen Netzwerk.
+Genieße Videos werbefrei in deinem lokalen Netzwerk.<br>
 
 🤩 <b>Einfach</b><br>
 Werbefreies Abspielen per Knopfdruck ohne komplexe Einrichtungen!
-Eine automatisierte Suche findet kompatible Player in deinem lokalen Netzwerk.
+Eine automatisierte Suche findet kompatible Player in deinem lokalen Netzwerk.<br>
 
 👐 <b>Transparenz</b><br>
-Der öffentlich zugängliche Quellcode ermöglicht jedem, sich persönlich von Qualität, Datenschutz und Sicherheit zu überzeugen.
+Der öffentlich zugängliche Quellcode ermöglicht jedem, sich persönlich von Qualität, Datenschutz und Sicherheit zu überzeugen.<br>
 
-Wenn dir die App gute Dienste leistet, würde ich mich über eine Spende freuen, um meine Bemühungen zu unterstützen.<br>
+Wenn dir die App gute Dienste leistet, würde ich mich über eine 🎁 Spende freuen, um meine Bemühungen zu unterstützen.<br>
+
+<b>Kodi-Setup</b><br>
+Um Videos auf Kodi zu streamen, musst du sicherstellen, dass Kodi als DLNA-Player in deinem lokalen Netzwerk gefunden wird.
+Befolge dazu die folgenden Anweisungen.<br>
+1. Gehe zu <b>⚙ Einstellungen > Dienste > UPnP DLNA</b><br>
+2. Aktiviere <b>UPnP-Unterstützung aktivieren</b><br>
+3. Aktiviere <b>Fernsteuerung über UPnP erlauben</b><br>
+
 ❤️ Happy streaming! ❤️
