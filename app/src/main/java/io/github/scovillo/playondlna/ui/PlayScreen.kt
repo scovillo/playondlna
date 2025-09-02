@@ -48,7 +48,6 @@ import io.github.scovillo.playondlna.model.VideoJobStatus
 @Composable
 fun PlayScreen(
     videoJobModel: VideoJobModel,
-    onClearCache: () -> Unit,
     contentDlnaComposeView: @Composable () -> Unit
 ) {
     val progress by videoJobModel.progress

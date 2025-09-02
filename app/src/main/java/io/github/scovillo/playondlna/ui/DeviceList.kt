@@ -50,13 +50,13 @@ import io.github.scovillo.playondlna.model.VideoJobModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel) {
-    val devices by viewModel.devices.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaListScreenModel) {
+    val devices by dlnaModel.devices.collectAsState()
+    val isLoading by dlnaModel.isLoading.collectAsState()
 
     LaunchedEffect(Unit) {
-        if (viewModel.devices.value.isEmpty()) {
-            viewModel.discoverDevices()
+        if (dlnaModel.devices.value.isEmpty()) {
+            dlnaModel.discoverDevices()
         }
     }
 
@@ -65,7 +65,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel)
             TopAppBar(
                 title = { Text("Available Players") },
                 actions = {
-                    IconButton(onClick = { viewModel.discoverDevices() }) {
+                    IconButton(onClick = { dlnaModel.discoverDevices() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
@@ -95,7 +95,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, viewModel: DlnaListScreenModel)
                                     .clickable {
                                         val videoFile = videoJobModel.currentVideoFileInfo.value
                                         if (videoFile != null) {
-                                            viewModel.playVideoOnDevice(device, videoFile)
+                                            dlnaModel.playVideoOnDevice(device, videoFile)
                                         }
                                     }
                             ) {
