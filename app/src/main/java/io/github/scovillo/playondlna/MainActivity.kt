@@ -37,10 +37,12 @@ import io.github.scovillo.playondlna.stream.WebServerService
 import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.MainScreen
+import io.github.scovillo.playondlna.ui.PlayScreen
+import io.github.scovillo.playondlna.ui.SettingsScreen
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
-    private lateinit var dlnaDevicesModel: DlnaListScreenModel
+    private lateinit var dlnaModel: DlnaListScreenModel
     private val videoJobModel = VideoJobModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,8 +58,8 @@ class MainActivity : ComponentActivity() {
                 )
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
-        dlnaDevicesModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
-        dlnaDevicesModel.errorMessage.observe(this) { msg ->
+        dlnaModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
+        dlnaModel.errorMessage.observe(this) { msg ->
             if (msg.isNotEmpty()) {
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
@@ -65,11 +67,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             PlayOnDlnaTheme {
                 MainScreen(
-                    videoJobModel,
-                    onClearCache = { this.clearCache() }
-                ) {
-                    DlnaListScreen(videoJobModel, dlnaDevicesModel)
-                }
+                    playScreen = {
+                        PlayScreen(videoJobModel) {
+                            DlnaListScreen(
+                                videoJobModel,
+                                dlnaModel
+                            )
+                        }
+                    },
+                    settingsScreen = { SettingsScreen(onClearCache = { this.clearCache() }) }
+                )
             }
         }
         handleShareIntent(intent)
