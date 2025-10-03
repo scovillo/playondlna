@@ -26,9 +26,13 @@ import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
+import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.stream.VideoFileInfo
 import io.github.scovillo.playondlna.stream.videoHttpServer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
@@ -50,27 +54,70 @@ val AudioStream.hasBestCompatibility: Boolean
         return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true
     }
 
-fun StreamExtractor.bestVideoStream(): VideoStream? {
-    val compatibleStreams = videoStreams.filter { it.hasBestCompatibility }
-    if (compatibleStreams.isNotEmpty()) {
-        return compatibleStreams.maxByOrNull { it.height }
+fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
+    videoOnlyStreams.forEach {
+        Log.d(
+            "VideoStream",
+            "Available: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
+        )
     }
-    return videoStreams.maxByOrNull { it.height }
+    val compatibleStreams = videoOnlyStreams.filter { it.hasBestCompatibility }
+    val compatibleStreamsWithPreferredQuality = compatibleStreams.sortedByDescending { it.height }
+        .filter { it.height <= quality.height }
+    if (compatibleStreamsWithPreferredQuality.isNotEmpty()) {
+        val chosen = compatibleStreamsWithPreferredQuality.maxBy { it.height }
+        Log.d(
+            "VideoStream",
+            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
+        )
+        return chosen
+    }
+    if (compatibleStreams.isNotEmpty()) {
+        val chosen = compatibleStreams.maxBy { it.height }
+        Log.d(
+            "VideoStream",
+            "Chosen without quality setting: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
+        )
+        return chosen
+    }
+    val fallback = videoOnlyStreams.maxByOrNull { it.height }
+    Log.d(
+        "VideoStream",
+        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.width}x${fallback?.height}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.fps}fps"
+    )
+    return fallback
 }
 
 fun StreamExtractor.bestAudioStream(): AudioStream? {
+    audioStreams.forEach { Log.i("AudioStream", "Available: ${it.format?.mimeType}, ${it.codec}") }
     val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
     if (compatibleStreams.isNotEmpty()) {
-        return compatibleStreams.maxByOrNull { it.averageBitrate }
+        val chosen = compatibleStreams.maxBy { it.averageBitrate }
+        Log.d(
+            "AudioStream",
+            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}"
+        )
+        return chosen
     }
-    return audioStreams.maxByOrNull { it.averageBitrate }
+    val fallback = audioStreams.maxByOrNull { it.averageBitrate }
+    Log.d(
+        "AudioStream",
+        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}"
+    )
+    return fallback
 }
 
-class VideoJobModel() : ViewModel() {
+class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
     private var _currentVideoFileInfo = mutableStateOf<VideoFileInfo?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
     private val state = VideoJobState()
+    private val videoQuality: StateFlow<VideoQuality> = settingsRepository.videoQualityFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = VideoQuality.P720
+        )
 
     val currentVideoFileInfo: State<VideoFileInfo?> get() = _currentVideoFileInfo
     val currentSession: State<Session?> get() = _currentSession
@@ -111,11 +158,16 @@ class VideoJobModel() : ViewModel() {
 
     private fun startMuxing(extractor: StreamExtractor, cacheDir: File) {
         state.preparing()
-        val bestVideo = extractor.bestVideoStream()
-        val bestAudio = extractor.bestAudioStream()
-        if (bestVideo == null || bestAudio == null) {
+        Log.d("Setting VideoQuality", "Current: ${videoQuality.value.title}")
+        val bestVideo = extractor.bestVideoStream(videoQuality.value)
+        if (bestVideo == null) {
             state.error()
-            throw IllegalStateException("Streams not found")
+            throw IllegalStateException("Video stream not found")
+        }
+        val bestAudio = extractor.bestAudioStream()
+        if (bestAudio == null) {
+            state.error()
+            throw IllegalStateException("Audio stream not found")
         }
         val fragmentedFile =
             File.createTempFile("${extractor.id}_muxed_fragmented", ".mp4", cacheDir)

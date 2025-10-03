@@ -31,7 +31,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import com.arthenica.ffmpegkit.FFmpegKit
 import io.github.scovillo.playondlna.model.DlnaListScreenModel
+import io.github.scovillo.playondlna.model.SettingsState
 import io.github.scovillo.playondlna.model.VideoJobModel
+import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.stream.OkHttpDownloader
 import io.github.scovillo.playondlna.stream.WebServerService
 import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
@@ -43,7 +45,8 @@ import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
     private lateinit var dlnaModel: DlnaListScreenModel
-    private val videoJobModel = VideoJobModel()
+    private lateinit var settingsState: SettingsState
+    private lateinit var videoJobModel: VideoJobModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +67,10 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
         }
+        val settingsRepository = SettingsRepository(this)
+        this.videoJobModel = VideoJobModel(settingsRepository)
+        this.settingsState =
+            SettingsState(settingsRepository, onClearCache = { this.clearCache() })
         setContent {
             PlayOnDlnaTheme {
                 MainScreen(
@@ -75,7 +82,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
-                    settingsScreen = { SettingsScreen(onClearCache = { this.clearCache() }) }
+                    settingsScreen = { SettingsScreen(settingsState) }
                 )
             }
         }
