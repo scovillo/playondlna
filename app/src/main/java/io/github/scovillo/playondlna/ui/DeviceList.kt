@@ -93,7 +93,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaListScreenModel)
                                     .padding(8.dp)
                                     .fillMaxWidth()
                                     .clickable {
-                                        val videoFile = videoJobModel.currentVideoFileInfo.value
+                                        val videoFile = videoJobModel.currentVideoFile.value
                                         if (videoFile != null) {
                                             dlnaModel.playVideoOnDevice(device, videoFile)
                                         }

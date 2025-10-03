@@ -27,9 +27,10 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.stream.VideoFileInfo
+import io.github.scovillo.playondlna.stream.VideoFile
 import io.github.scovillo.playondlna.stream.videoHttpServer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -62,8 +63,20 @@ fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
         )
     }
     val compatibleStreams = videoOnlyStreams.filter { it.hasBestCompatibility }
+    compatibleStreams.forEach {
+        Log.d(
+            "VideoStream",
+            "compatibleStreams: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
+        )
+    }
     val compatibleStreamsWithPreferredQuality = compatibleStreams.sortedByDescending { it.height }
         .filter { it.height <= quality.height }
+    compatibleStreamsWithPreferredQuality.forEach {
+        Log.d(
+            "VideoStream",
+            "compatibleStreamsWithPreferredQuality: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
+        )
+    }
     if (compatibleStreamsWithPreferredQuality.isNotEmpty()) {
         val chosen = compatibleStreamsWithPreferredQuality.maxBy { it.height }
         Log.d(
@@ -89,7 +102,12 @@ fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
 }
 
 fun StreamExtractor.bestAudioStream(): AudioStream? {
-    audioStreams.forEach { Log.i("AudioStream", "Available: ${it.format?.mimeType}, ${it.codec}") }
+    audioStreams.forEach {
+        Log.i(
+            "AudioStream",
+            "Available: ${it.format?.mimeType}, ${it.codec}, ${it.audioLocale}"
+        )
+    }
     val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
     if (compatibleStreams.isNotEmpty()) {
         val chosen = compatibleStreams.maxBy { it.averageBitrate }
@@ -108,7 +126,7 @@ fun StreamExtractor.bestAudioStream(): AudioStream? {
 }
 
 class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
-    private var _currentVideoFileInfo = mutableStateOf<VideoFileInfo?>(null)
+    private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
     private val state = VideoJobState()
@@ -119,7 +137,7 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
             initialValue = VideoQuality.P720
         )
 
-    val currentVideoFileInfo: State<VideoFileInfo?> get() = _currentVideoFileInfo
+    val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
     val currentSession: State<Session?> get() = _currentSession
     val title: State<String> get() = _title
     val progress: State<Float> get() = state.progress
@@ -128,7 +146,7 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
     fun prepareVideo(url: String, cacheDir: File) {
         viewModelScope.launch(Dispatchers.IO) {
             Log.i("VideoJobModel", "Requesting: $url")
-            _currentVideoFileInfo.value = null
+            _currentVideoFile.value = null
             _currentSession.value = null
             _title.value = url
             try {
@@ -143,9 +161,11 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
                         "VideoJobModel",
                         "Loading ${extractor.id} from cache"
                     )
-                    videoHttpServer.allFiles[extractor.id] = cachedFile
-                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    videoHttpServer.allFiles[extractor.id] =
+                        VideoFile(extractor, cachedFile, videoQuality.value)
+                    _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                     state.ready()
+                    Log.d("VideoFile", "Available under ${_currentVideoFile.value!!.url}")
                 } else {
                     startMuxing(extractor, cacheDir)
                 }
@@ -172,6 +192,9 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
         val fragmentedFile =
             File.createTempFile("${extractor.id}_muxed_fragmented", ".mp4", cacheDir)
         val ffmpegCmd = mutableListOf(
+            "-protocol_whitelist file,http,https,tcp,tls",
+            "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            "-user_agent \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36\"",
             "-i", bestVideo.content,
             "-i", bestAudio.content,
         )
@@ -195,14 +218,15 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
         }
         ffmpegCmd.addAll(
             listOf(
-                "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+                "-movflags", "+frag_keyframe+empty_moov+faststart",
                 "-shortest",
                 "-y",
                 fragmentedFile.absolutePath
             )
         )
         Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.joinToString(" ")}")
-        videoHttpServer.allFiles[extractor.id] = fragmentedFile
+        videoHttpServer.allFiles[extractor.id] =
+            VideoFile(extractor, fragmentedFile, videoQuality.value)
         Log.d("Mux", "Start fragmented muxing ${extractor.id}")
         _currentSession.value = FFmpegKit.executeAsync(
             ffmpegCmd.joinToString(" "),
@@ -234,7 +258,7 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
                     state.updateProgress(rawProgress)
                 }
                 if (status.value != VideoJobStatus.PLAYABLE && state.progress.value == 100.0f) {
-                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                     state.playable()
                 }
                 Log.d("FFmpegProgress", "Progress: $rawProgress%")
@@ -262,9 +286,28 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
                     val finalFile =
                         File(tempFile.parentFile, tempFile.name.replace("_temp", "_final"))
                     tempFile.renameTo(finalFile)
-                    videoHttpServer.allFiles[extractor.id] = finalFile
-                    _currentVideoFileInfo.value = VideoFileInfo(extractor)
+                    videoHttpServer.allFiles[extractor.id] =
+                        VideoFile(extractor, finalFile, videoQuality.value)
+                    _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                     state.ready()
+                    Log.d("VideoFile", "Available under ${_currentVideoFile.value!!.url}")
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val durationInMs = videoHttpServer.allFiles[extractor.id]!!.durationInMs
+                        Log.d(
+                            "VideoFile",
+                            "Scheduled for deletion (in ${durationInMs / 1000}s): ${sourceFile.name}"
+                        )
+                        delay(durationInMs)
+                        if (sourceFile.exists()) {
+                            val deleted = sourceFile.delete()
+                            Log.d(
+                                "VideoFile",
+                                if (deleted) "🧹 Deleted ${sourceFile.name}"
+                                else "⚠️ Could not delete ${sourceFile.name} (still in use?)"
+                            )
+                        }
+                    }
+
                 } else {
                     Log.e("Mux", "Final muxing failed")
                     state.error()

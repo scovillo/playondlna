@@ -73,50 +73,66 @@ fun getLocalIpAddress(): String? {
 
 class VideoHttpServer(port: Int) : NanoHTTPD(port) {
 
-    val allFiles = mutableMapOf<String, File>()
+    val allFiles = mutableMapOf<String, VideoFile>()
 
     override fun serve(session: IHTTPSession): Response {
+        session.headers.forEach { Log.d("RequestHeaders", "${it.key}: ${it.value}") }
         val id = session.uri.substring(1)
-        val file = allFiles[id]
+        val file = allFiles[id]?.value
             ?: return newFixedLengthResponse(
                 Response.Status.NOT_FOUND,
                 MIME_PLAINTEXT,
                 "Video with id $id not found!"
             )
-
         if (file.name.contains("fragmented")) {
             return this.serveFragmented(file)
         }
-
         val fileLength = file.length()
         val rangeHeader = session.headers["range"]
         try {
             val (start, end) = if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
                 val range = rangeHeader.removePrefix("bytes=").split("-")
-                val start = range[0].toLongOrNull() ?: 0
+                val start = range[0].toLongOrNull() ?: 0L
                 val end = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
                 start.coerceAtMost(fileLength - 1) to end.coerceAtMost(fileLength - 1)
             } else {
-                0L to fileLength - 1
+                0L to (fileLength - 1)
             }
-            val inputStream = FileInputStream(file)
-            inputStream.skip(start)
-            val response = newFixedLengthResponse(
-                if (rangeHeader != null) Response.Status.PARTIAL_CONTENT else Response.Status.OK,
-                "video/mp4",
-                inputStream,
-                end - start + 1
-            )
-            response.addHeader("Content-Length", "${end - start + 1}")
-            response.addHeader("Content-Range", "bytes $start-$end/$fileLength")
+            val contentLength = end - start + 1
+            val fis = FileInputStream(file)
+            var skipped = 0L
+            while (skipped < start) {
+                val skipNow = fis.skip(start - skipped)
+                if (skipNow <= 0) break
+                skipped += skipNow
+            }
+            val response = if (rangeHeader != null) {
+                newFixedLengthResponse(
+                    Response.Status.PARTIAL_CONTENT,
+                    "video/mp4",
+                    fis,
+                    contentLength
+                ).apply {
+                    addHeader("Content-Range", "bytes $start-$end/$fileLength")
+                }
+            } else {
+                newFixedLengthResponse(Response.Status.OK, "video/mp4", fis, contentLength).apply {
+                    addHeader(
+                        "contentFeatures.dlna.org",
+                        "DLNA.ORG_PN=${allFiles[id]!!.videoQuality.dlnaProfile}.;DLNA.ORG_OP=11;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+                    )
+                    addHeader("transferMode.dlna.org", "Streaming")
+                }
+            }
             response.addHeader("Accept-Ranges", "bytes")
+            response.addHeader("Connection", "keep-alive")
             return response
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
-                "IO Error"
+                "IO Error: ${e.message}"
             )
         }
     }

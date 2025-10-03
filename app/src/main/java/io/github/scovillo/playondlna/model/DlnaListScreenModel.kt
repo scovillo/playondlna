@@ -24,7 +24,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import io.github.scovillo.playondlna.stream.VideoFileInfo
+import io.github.scovillo.playondlna.stream.VideoFile
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
 import io.github.scovillo.playondlna.upnpdlna.discoverDlnaDevices
 import io.github.scovillo.playondlna.upnpdlna.playUriOnDevice
@@ -62,11 +62,11 @@ class DlnaListScreenModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun playVideoOnDevice(device: DlnaDevice, videoFileInfo: VideoFileInfo) {
+    fun playVideoOnDevice(device: DlnaDevice, videoFile: VideoFile) {
         if (device.avTransportUrl != null) {
             viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    playUriOnDevice(device.avTransportUrl, videoFileInfo)
+                    playUriOnDevice(device.avTransportUrl, videoFile)
                 } catch (exception: Exception) {
                     exception.printStackTrace()
                     _errorMessage.postValue("Playback failed!")

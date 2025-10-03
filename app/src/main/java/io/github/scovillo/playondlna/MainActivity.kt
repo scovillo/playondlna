@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
                 FFmpegKit.cancel(it.sessionId)
             }
         }
-        val currentVideoFile = this.videoJobModel.currentVideoFileInfo.value
+        val currentVideoFile = this.videoJobModel.currentVideoFile.value
         cacheDir.listFiles()?.forEach { file ->
             if (file.exists() && (currentVideoFile == null || !file.name.contains(currentVideoFile.id))) {
                 file.delete()

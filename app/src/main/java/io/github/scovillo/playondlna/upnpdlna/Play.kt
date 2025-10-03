@@ -18,7 +18,7 @@
 
 package io.github.scovillo.playondlna.upnpdlna
 
-import io.github.scovillo.playondlna.stream.VideoFileInfo
+import io.github.scovillo.playondlna.stream.VideoFile
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,7 +26,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 val client = OkHttpClient()
 
-fun playUriOnDevice(avTransportUrl: String, videoFileInfo: VideoFileInfo) {
+fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
     val setUriSoap = """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
@@ -34,9 +34,9 @@ fun playUriOnDevice(avTransportUrl: String, videoFileInfo: VideoFileInfo) {
           <s:Body>
             <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
               <InstanceID>0</InstanceID>
-              <CurrentURI>${videoFileInfo.url}</CurrentURI>
+              <CurrentURI>${videoFile.url}</CurrentURI>
               <CurrentURIMetaData>
-              ${videoFileInfo.metaData}
+              ${videoFile.metaData}
               </CurrentURIMetaData>
             </u:SetAVTransportURI>
           </s:Body>
