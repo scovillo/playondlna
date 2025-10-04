@@ -1,0 +1,2 @@
+An option to set video quality settings has been added.
+Furthermore, a suitable audio stream is now selected for the system language.

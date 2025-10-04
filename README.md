@@ -1,6 +1,6 @@
 # PlayOnDlna
 
-📦 **Version:** 3 (1.2)
+📦 **Version:** 4 (1.3)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
@@ -73,6 +73,7 @@ file in the sourcerepository for full license information.
   - androidx.compose.material3:material3:unspecified
   - androidx.recyclerview:recyclerview:1.4.0
   - androidx.navigation:navigation-compose:2.9.3
+  - androidx.datastore:datastore-preferences:1.1.7
   - androidx.appcompat:appcompat:1.7.1
   - androidx.lifecycle:lifecycle-viewmodel-compose:2.9.3
   - androidx.compose.material:material-icons-extended-android:1.7.8

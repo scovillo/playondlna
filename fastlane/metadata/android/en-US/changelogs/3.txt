@@ -1,0 +1,2 @@
+The Settings tab has been added with information on how to support PlayOnDlna.
+In addition, the “Clear Cache” button has been moved there.
