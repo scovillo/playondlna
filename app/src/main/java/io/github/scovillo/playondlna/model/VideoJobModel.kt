@@ -40,6 +40,7 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
+import java.util.Locale
 
 enum class VideoJobStatus { IDLE, PREPARING, PLAYABLE, FINALIZING, READY, ERROR }
 
@@ -56,37 +57,32 @@ val AudioStream.hasBestCompatibility: Boolean
     }
 
 fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
-    videoOnlyStreams.forEach {
-        Log.d(
-            "VideoStream",
-            "Available: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
-        )
-    }
-    val compatibleStreams = videoOnlyStreams.filter { it.hasBestCompatibility }
-    compatibleStreams.forEach {
-        Log.d(
-            "VideoStream",
-            "compatibleStreams: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
-        )
-    }
-    val compatibleStreamsWithPreferredQuality = compatibleStreams.sortedByDescending { it.height }
-        .filter { it.height <= quality.height }
-    compatibleStreamsWithPreferredQuality.forEach {
-        Log.d(
-            "VideoStream",
-            "compatibleStreamsWithPreferredQuality: ${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}"
-        )
-    }
-    if (compatibleStreamsWithPreferredQuality.isNotEmpty()) {
-        val chosen = compatibleStreamsWithPreferredQuality.maxBy { it.height }
+    Log.d(
+        "VideoStreams",
+        videoOnlyStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
+    )
+    val compatibleVideoStreams = videoOnlyStreams.filter { it.hasBestCompatibility }
+    Log.d(
+        "compatibleVideoStreams",
+        compatibleVideoStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
+    )
+    val compatibleVideoStreamsWithPreferredQuality =
+        compatibleVideoStreams.sortedByDescending { it.height }
+            .filter { it.height <= quality.height }
+    Log.d(
+        "compatibleVideoStreamsWithPreferredQuality",
+        compatibleVideoStreamsWithPreferredQuality.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
+    )
+    if (compatibleVideoStreamsWithPreferredQuality.isNotEmpty()) {
+        val chosen = compatibleVideoStreamsWithPreferredQuality.maxBy { it.height }
         Log.d(
             "VideoStream",
             "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
         )
         return chosen
     }
-    if (compatibleStreams.isNotEmpty()) {
-        val chosen = compatibleStreams.maxBy { it.height }
+    if (compatibleVideoStreams.isNotEmpty()) {
+        val chosen = compatibleVideoStreams.maxBy { it.height }
         Log.d(
             "VideoStream",
             "Chosen without quality setting: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
@@ -102,25 +98,27 @@ fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
 }
 
 fun StreamExtractor.bestAudioStream(): AudioStream? {
-    audioStreams.forEach {
-        Log.i(
-            "AudioStream",
-            "Available: ${it.format?.mimeType}, ${it.codec}, ${it.audioLocale}"
-        )
-    }
+    Log.i(
+        "AudioStreams",
+        audioStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}" }
+    )
+    val locale = Locale.getDefault()
+    Log.d("AudioStream", "System language: ${locale.language}")
     val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
     if (compatibleStreams.isNotEmpty()) {
-        val chosen = compatibleStreams.maxBy { it.averageBitrate }
+        val chosen = compatibleStreams.filter { it.audioLocale?.language === locale.language }
+            .maxByOrNull { it.averageBitrate } ?: compatibleStreams.maxBy { it.averageBitrate }
         Log.d(
             "AudioStream",
-            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}"
+            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}, ${chosen?.audioLocale}"
         )
         return chosen
     }
-    val fallback = audioStreams.maxByOrNull { it.averageBitrate }
+    val fallback = audioStreams.filter { it.audioLocale?.language === locale.language }
+        .maxByOrNull { it.averageBitrate } ?: audioStreams.maxByOrNull { it.averageBitrate }
     Log.d(
         "AudioStream",
-        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}"
+        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.audioLocale}"
     )
     return fallback
 }

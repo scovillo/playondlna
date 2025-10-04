@@ -76,7 +76,10 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
     val allFiles = mutableMapOf<String, VideoFile>()
 
     override fun serve(session: IHTTPSession): Response {
-        session.headers.forEach { Log.d("RequestHeaders", "${it.key}: ${it.value}") }
+        Log.d(
+            "RequestHeaders",
+            session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator())
+        )
         val id = session.uri.substring(1)
         val file = allFiles[id]?.value
             ?: return newFixedLengthResponse(
