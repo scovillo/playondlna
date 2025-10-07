@@ -18,6 +18,7 @@
 
 package io.github.scovillo.playondlna.upnpdlna
 
+import android.util.Log
 import io.github.scovillo.playondlna.stream.VideoFile
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -49,6 +50,7 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
         .build()
     val setUriResponse = client.newCall(setUriRequest).execute()
     if (!setUriResponse.isSuccessful) {
+        Log.e("playUriOnDevice", setUriSoap)
         throw Exception("SetAVTransportURI failed: ${setUriResponse.code} - ${setUriResponse.message}")
     }
     setUriResponse.close()

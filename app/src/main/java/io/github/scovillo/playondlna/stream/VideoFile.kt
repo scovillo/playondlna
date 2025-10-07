@@ -23,6 +23,14 @@ import org.schabi.newpipe.extractor.stream.StreamExtractor
 import java.io.File
 import java.util.Locale
 
+fun String.escapeXml(): String {
+    return this.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+}
+
 class VideoFile(
     private val extractor: StreamExtractor,
     val value: File,
@@ -68,9 +76,9 @@ class VideoFile(
             <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
                 xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
                 xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-                <item id="${this.id}" parentID="0" restricted="1">
-                    <dc:title>${this.title}</dc:title>
-                    <dc:creator>${this.uploader}</dc:creator>
+                <item id="${this.id.escapeXml()}" parentID="0" restricted="1">
+                    <dc:title>${this.title.escapeXml()}</dc:title>
+                    <dc:creator>${this.uploader.escapeXml()}</dc:creator>
                     <upnp:class>object.item.videoItem</upnp:class>
                     <res protocolInfo="http-get:*:video/mp4:DLNA.ORG_PN=${videoQuality.dlnaProfile};DLNA.ORG_OP=11;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000" duration="${this.duration}">$url</res>
                 </item>
