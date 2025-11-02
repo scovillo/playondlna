@@ -16,16 +16,6 @@ class VideoJobStateTest {
         Assert.assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
-    @Test
-    fun playable() {
-        val classUnderTest = VideoJobState()
-        classUnderTest.updateProgress(25f)
-
-        classUnderTest.playable()
-
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.PLAYABLE)
-        Assert.assertEquals(classUnderTest.progress.value, 25.0f)
-    }
 
     @Test
     fun finalizing() {

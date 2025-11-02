@@ -16,10 +16,6 @@ class VideoJobState {
         updateProgress(0f)
     }
 
-    fun playable() {
-        _status.value = VideoJobStatus.PLAYABLE
-    }
-
     fun finalizing() {
         updateProgress(0f)
         _status.value = VideoJobStatus.FINALIZING

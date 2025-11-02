@@ -44,7 +44,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.DlnaListScreenModel
 import io.github.scovillo.playondlna.model.VideoJobModel
 
@@ -63,7 +65,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaListScreenModel)
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Available Players") },
+                title = { Text(stringResource(R.string.available_players)) },
                 actions = {
                     IconButton(onClick = { dlnaModel.discoverDevices() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

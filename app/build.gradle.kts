@@ -90,13 +90,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.appcompat", "appcompat", "1.7.1")
-    implementation("androidx.lifecycle", "lifecycle-viewmodel-compose", "2.9.3")
+    implementation("androidx.lifecycle", "lifecycle-viewmodel-compose", "2.9.4")
     implementation("androidx.compose.material", "material-icons-extended-android", "1.7.8")
 
     implementation("io.github.scovillo", "ffmpeg-kit", "1.15")
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
     implementation(libs.nanohttpd)
-    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.6")
+    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.8")
     implementation("com.squareup.okhttp3", "okhttp", "4.12.0")
 }
 
