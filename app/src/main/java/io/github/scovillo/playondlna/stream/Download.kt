@@ -1,3 +1,23 @@
+/*
+ * PlayOnDlna - An Android application to play media on dlna devices
+ * Copyright (C) 2025 Lukas Scheerer
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package io.github.scovillo.playondlna.stream
+
 import android.util.Log
 import io.github.scovillo.playondlna.model.VideoJobState
 import kotlinx.coroutines.Deferred
@@ -14,10 +34,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.ceil
 
 private fun formatBytes(bytes: Long): String {
     val mb = bytes.toDouble() / (1024 * 1024)
@@ -26,9 +44,13 @@ private fun formatBytes(bytes: Long): String {
 
 class PlayOnDlnaFileDownload(
     private val url: String,
-    private val outputFile: File
+    private val outputFile: File,
+    private val maxThreads: Int = 42,
+    private val chunkSizeBytes: Long = 11L * 1024 * 1024
 ) {
-    private var _totalSize = -1L
+    private lateinit var chunkProgress: LongArray
+    private var _totalSize = 1L
+
     val totalSize: Long
         get() {
             return _totalSize
@@ -37,12 +59,12 @@ class PlayOnDlnaFileDownload(
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun start(onProgress: (totalDownloaded: Long) -> Unit): File = coroutineScope {
         _totalSize = getContentLength(url)
-        if (_totalSize <= 0L) throw IOException("Invalid content length for $url")
+        val numThreads =
+            ((totalSize + chunkSizeBytes - 1) / chunkSizeBytes).toInt().coerceAtMost(maxThreads)
+        chunkProgress = LongArray(numThreads)
+        val actualChunkSize = totalSize / numThreads
 
-        val fixedChunkSize = 4L * 1024L * 1024L
-        val numThreads = ceil(totalSize.toDouble() / fixedChunkSize).toInt().coerceAtLeast(1)
         val chunks = mutableListOf<File>()
-        val chunkProgress = LongArray(numThreads)
 
         suspend fun downloadChunkSuspend(start: Long, end: Long, file: File, index: Int) =
             suspendCancellableCoroutine { cont ->
@@ -55,20 +77,16 @@ class PlayOnDlnaFileDownload(
             }
         Log.d(
             "Download",
-            "Start download of ${outputFile.name} with $numThreads chunks, totalSize=${
+            "Start download of ${outputFile.name} with $numThreads threads, totalSize=${
                 formatBytes(
                     totalSize
                 )
-            }, chunkSize=${
-                formatBytes(
-                    fixedChunkSize
-                )
-            }"
+            }, chunkSize=${formatBytes(actualChunkSize)}"
         )
         val jobs = mutableListOf<Deferred<Unit>>()
         for (i in 0 until numThreads) {
-            val start = i * fixedChunkSize
-            val end = if (i == numThreads - 1) totalSize - 1 else (start + fixedChunkSize - 1)
+            val start = i * actualChunkSize
+            val end = if (i == numThreads - 1) totalSize - 1 else (start + actualChunkSize - 1)
             val chunkFile =
                 File.createTempFile("${outputFile.name}_chunk_$i", ".tmp", outputFile.parentFile)
             chunks.add(chunkFile)
@@ -78,8 +96,6 @@ class PlayOnDlnaFileDownload(
         jobs.awaitAll()
         mergeChunks(chunks, outputFile)
         chunks.forEach { it.delete() }
-
-        Log.d("Download", "Completed download of ${outputFile.name}")
         return@coroutineScope outputFile
     }
 
@@ -145,8 +161,8 @@ class PlayOnDlnaStreamDownload(
         val videoFile = File.createTempFile("${id}_video_", ".tmp", cacheDir)
         val audioFile = File.createTempFile("${id}_audio_", ".tmp", cacheDir)
 
-        val videoDl = PlayOnDlnaFileDownload(videoUrl, videoFile)
-        val audioDl = PlayOnDlnaFileDownload(audioUrl, audioFile)
+        val videoDl = PlayOnDlnaFileDownload(videoUrl, videoFile, 46)
+        val audioDl = PlayOnDlnaFileDownload(audioUrl, audioFile, 4)
 
         val videoProgress = LongArray(1)
         val audioProgress = LongArray(1)

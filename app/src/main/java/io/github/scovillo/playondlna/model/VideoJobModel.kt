@@ -18,7 +18,6 @@
 
 package io.github.scovillo.playondlna.model
 
-import PlayOnDlnaStreamDownload
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +27,7 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.persistence.SettingsRepository
+import io.github.scovillo.playondlna.stream.PlayOnDlnaStreamDownload
 import io.github.scovillo.playondlna.stream.VideoFile
 import io.github.scovillo.playondlna.stream.videoHttpServer
 import kotlinx.coroutines.Dispatchers
