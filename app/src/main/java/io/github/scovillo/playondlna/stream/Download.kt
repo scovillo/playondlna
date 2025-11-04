@@ -47,28 +47,39 @@ private fun formatBytes(bytes: Long): String {
 class PlayOnDlnaFileDownload(
     private val url: String,
     private val outputFile: File,
-    private val maxThreads: Int = 32,
-    private val chunkSizeBytes: Long = 15L * 1024 * 1024
+    private val maxThreads: Int = 16,
+    private val minChunkSizeBytes: Long = 4L * 1024 * 1024
 ) {
     private lateinit var chunkProgress: LongArray
     private var _totalSize = 1L
-
     val totalSize: Long get() = _totalSize
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun start(onProgress: (totalDownloaded: Long) -> Unit): File = coroutineScope {
         _totalSize = getContentLength(url)
         if (_totalSize <= 0L) throw IOException("Invalid content length for $url")
-
-        val numThreads = ((_totalSize + chunkSizeBytes - 1) / chunkSizeBytes)
-            .toInt()
-            .coerceAtMost(maxThreads)
-            .coerceAtLeast(1)
-
-        chunkProgress = LongArray(numThreads)
-        val actualChunkSize = _totalSize / numThreads
-        val chunks = mutableListOf<File>()
-
+        val maxPossibleChunks = (_totalSize / minChunkSizeBytes).toInt().coerceAtLeast(1)
+        val numChunks = minOf(maxThreads, maxPossibleChunks)
+        val baseChunkSize = _totalSize / numChunks
+        var remainder = _totalSize % numChunks
+        val chunks = mutableListOf<Pair<Long, Long>>()
+        var start = 0L
+        for (i in 0 until numChunks) {
+            var size = baseChunkSize
+            if (remainder > 0) {
+                size++
+                remainder--
+            }
+            val end = start + size - 1
+            chunks.add(start to end)
+            start = end + 1
+        }
+        chunkProgress = LongArray(numChunks)
+        val chunkFiles = mutableListOf<File>()
+        Log.d(
+            "Download",
+            "${outputFile.name} chunks: ${chunks.map { formatBytes(it.second - it.first) }}"
+        )
         suspend fun downloadChunkSuspend(start: Long, end: Long, file: File, index: Int) =
             suspendCancellableCoroutine { cont ->
                 try {
@@ -85,24 +96,27 @@ class PlayOnDlnaFileDownload(
             }
         Log.d(
             "Download",
-            "Start download of ${outputFile.name} with $numThreads threads, totalSize=${
-                formatBytes(_totalSize)
-            }, chunkSize=${formatBytes(actualChunkSize)}"
+            "Start download of ${outputFile.name} with $numChunks threads, totalSize=${
+                formatBytes(
+                    _totalSize
+                )
+            }, chunkSize=${formatBytes(baseChunkSize)}"
         )
         val jobs = mutableListOf<Deferred<Unit>>()
-        for (i in 0 until numThreads) {
-            val start = i * actualChunkSize
-            val end = if (i == numThreads - 1) _totalSize - 1 else (start + actualChunkSize - 1)
-            val chunkFile =
-                File.createTempFile("${outputFile.name}_chunk_$i", ".tmp", outputFile.parentFile)
-            chunks.add(chunkFile)
-            jobs.add(async(Dispatchers.IO) { downloadChunkSuspend(start, end, chunkFile, i) })
+        chunks.forEachIndexed { index, (start, end) ->
+            val chunkFile = File.createTempFile(
+                "${outputFile.name}_chunk_$index",
+                ".tmp",
+                outputFile.parentFile
+            )
+            chunkFiles.add(chunkFile)
+            jobs.add(async(Dispatchers.IO) { downloadChunkSuspend(start, end, chunkFile, index) })
         }
         try {
             jobs.awaitAll()
-            mergeChunks(chunks, outputFile)
+            mergeChunks(chunkFiles, outputFile)
         } finally {
-            chunks.forEach { it.delete() }
+            chunkFiles.forEach { it.delete() }
         }
         Log.d("Download", "Completed download of ${outputFile.name}")
         return@coroutineScope outputFile
@@ -129,7 +143,7 @@ class PlayOnDlnaFileDownload(
                         output.write(buffer, 0, read)
                         totalRead += read
                         onProgress(totalRead)
-                        if (!Thread.currentThread().isInterrupted) continue else break
+                        if (Thread.currentThread().isInterrupted) break
                     }
                 }
             }
@@ -179,8 +193,8 @@ class PlayOnDlnaStreamDownload(
         val videoFile = File.createTempFile("${id}_video_", ".tmp", cacheDir)
         val audioFile = File.createTempFile("${id}_audio_", ".tmp", cacheDir)
 
-        val videoDl = PlayOnDlnaFileDownload(videoUrl, videoFile, 12)
-        val audioDl = PlayOnDlnaFileDownload(audioUrl, audioFile, 4)
+        val videoDl = PlayOnDlnaFileDownload(videoUrl, videoFile, 24, 10 * 1024 * 1024)
+        val audioDl = PlayOnDlnaFileDownload(audioUrl, audioFile, 8, 4 * 1024 * 1024)
 
         val videoProgress = LongArray(1)
         val audioProgress = LongArray(1)
