@@ -80,7 +80,7 @@ class VideoFile(
                     <dc:title>${this.title.escapeXml()}</dc:title>
                     <dc:creator>${this.uploader.escapeXml()}</dc:creator>
                     <upnp:class>object.item.videoItem</upnp:class>
-                    <res protocolInfo="http-get:*:video/mp4:DLNA.ORG_PN=${videoQuality.dlnaProfile.escapeXml()};DLNA.ORG_OP=11;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000" duration="${this.duration.escapeXml()}">${url.escapeXml()}</res>
+                    <res protocolInfo="http-get:*:video/mp4:*" duration="${this.duration.escapeXml()}">${url.escapeXml()}</res>
                 </item>
             </DIDL-Lite>
             """.trimIndent()

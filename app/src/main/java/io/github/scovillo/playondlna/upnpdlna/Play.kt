@@ -28,7 +28,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 val client = OkHttpClient()
 
 fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
-    val setUriSoap = """
+    val setUriSoapPayload = """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
                     s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -45,16 +45,20 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
     """.trimIndent()
     val setUriRequest = Request.Builder()
         .url(avTransportUrl)
-        .post(setUriSoap.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-        .header("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
+        .post(setUriSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+        .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
         .build()
     val setUriResponse = client.newCall(setUriRequest).execute()
     if (!setUriResponse.isSuccessful) {
-        Log.e("playUriOnDevice", setUriSoap)
+        Log.e("playUriOnDevice =>", setUriSoapPayload)
+        Log.e(
+            "playUriOnDevice <=",
+            setUriResponse.body?.string() ?: "setUriResponse body undefined."
+        )
         throw Exception("SetAVTransportURI failed: ${setUriResponse.code} - ${setUriResponse.message}")
     }
     setUriResponse.close()
-    val playSoap = """
+    val playSoapPayload = """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
                     s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -68,11 +72,13 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
     """.trimIndent()
     val playRequest = Request.Builder()
         .url(avTransportUrl)
-        .post(playSoap.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-        .header("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
+        .post(playSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+        .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
         .build()
     val playResponse = client.newCall(playRequest).execute()
     if (!playResponse.isSuccessful) {
+        Log.e("playUriOnDevice =>", playSoapPayload)
+        Log.e("playUriOnDevice <=", playResponse.body?.string() ?: "playResponse body undefined.")
         throw Exception("Play command failed: ${playResponse.code} - ${playResponse.message}")
     }
     playResponse.close()
