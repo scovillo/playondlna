@@ -1,0 +1,3 @@
+Fixed bugs:
+
+- Special characters in video titles no longer cause an error

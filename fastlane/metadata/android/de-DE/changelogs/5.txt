@@ -1,0 +1,3 @@
+Behobene Fehler:
+
+- Sonderzeichen im Videotitel führen nicht mehr zu einem Fehler

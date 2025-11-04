@@ -1,0 +1,8 @@
+Verbesserungen:
+
+- Die Download Geschwindigkeit wurde drastisch erhöht
+- Dein mobiles Datenvolumen wird nun durch einen WLAN Check geschützt, sollte die WLAN Verbindung verloren gehen, werden die Downloads sofort abgebrochen
+
+Behobene Fehler:
+
+- Der richtige Video Titel wird nun in der Wiedergabe angezeigt

@@ -1,0 +1,8 @@
+Improvements:
+
+- Download speed has been dramatically increased
+- Your mobile data volume is now protected by a Wi-Fi check; if the Wi-Fi connection is lost, downloads are immediately canceled
+
+Fixed bugs:
+
+- The correct video title is now displayed during playback
