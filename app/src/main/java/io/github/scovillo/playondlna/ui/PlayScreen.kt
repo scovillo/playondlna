@@ -18,6 +18,7 @@
 
 package io.github.scovillo.playondlna.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,10 +32,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -53,7 +56,22 @@ fun PlayScreen(
     val progress by videoJobModel.progress
     val title by videoJobModel.title
     val status by videoJobModel.status
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        videoJobModel.toastEvents.collect { event ->
+            when (event) {
+                is ToastEvent.Show ->
+                    Toast.makeText(
+                        context,
+                        context.getString(event.messageResId),
+                        Toast.LENGTH_LONG
+                    ).show()
 
+                is ToastEvent.ShowPlain ->
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()

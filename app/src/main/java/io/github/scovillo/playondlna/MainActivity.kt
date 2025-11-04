@@ -21,6 +21,7 @@ package io.github.scovillo.playondlna
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -36,6 +37,7 @@ import io.github.scovillo.playondlna.model.VideoJobModel
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.stream.OkHttpDownloader
 import io.github.scovillo.playondlna.stream.WebServerService
+import io.github.scovillo.playondlna.stream.WifiConnectionState
 import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.MainScreen
@@ -47,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var dlnaModel: DlnaListScreenModel
     private lateinit var settingsState: SettingsState
     private lateinit var videoJobModel: VideoJobModel
+    private lateinit var wifiConnectionState: WifiConnectionState
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,13 +65,14 @@ class MainActivity : ComponentActivity() {
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         dlnaModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
-        dlnaModel.errorMessage.observe(this) { msg ->
-            if (msg.isNotEmpty()) {
-                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-            }
-        }
+
         val settingsRepository = SettingsRepository(this)
-        this.videoJobModel = VideoJobModel(settingsRepository)
+        wifiConnectionState =
+            WifiConnectionState(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
+        this.videoJobModel = VideoJobModel(
+            settingsRepository,
+            wifiConnectionState
+        )
         this.settingsState =
             SettingsState(settingsRepository, onClearCache = { this.clearCache() })
         setContent {

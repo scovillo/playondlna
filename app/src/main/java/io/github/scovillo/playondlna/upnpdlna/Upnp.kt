@@ -18,7 +18,6 @@
 
 package io.github.scovillo.playondlna.upnpdlna
 
-import android.content.Context
 import android.net.wifi.WifiManager
 import android.util.Log
 import kotlinx.coroutines.Deferred
@@ -46,10 +45,12 @@ data class DlnaDevice(
     val renderingControlUrl: String?
 )
 
-suspend fun discoverDlnaDevices(context: Context, timeoutMs: Long = 5000): List<DlnaDevice> =
+suspend fun discoverDlnaDevices(
+    wifiManager: WifiManager,
+    timeoutMs: Long = 5000
+): List<DlnaDevice> =
     coroutineScope {
-        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val lock = wifi.createMulticastLock("PlayOnDlna:ssdp").apply {
+        val lock = wifiManager.createMulticastLock("PlayOnDlna:ssdp").apply {
             setReferenceCounted(true)
             acquire()
         }
@@ -117,7 +118,7 @@ suspend fun discoverDlnaDevices(context: Context, timeoutMs: Long = 5000): List<
                             fetchJobs += job
                         }
                     }
-                } catch (e: SocketTimeoutException) {
+                } catch (_: SocketTimeoutException) {
                     // no packet, waiting
                 }
             }
@@ -204,7 +205,7 @@ fun resolveUrl(base: String, path: String?): String? {
             baseUrl.host,
             baseUrl.port.takeIf { it > 0 } ?: baseUrl.defaultPort,
             path).toString()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }

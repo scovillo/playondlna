@@ -18,6 +18,7 @@
 
 package io.github.scovillo.playondlna.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
@@ -55,13 +57,27 @@ import io.github.scovillo.playondlna.model.VideoJobModel
 fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaListScreenModel) {
     val devices by dlnaModel.devices.collectAsState()
     val isLoading by dlnaModel.isLoading.collectAsState()
-
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
             dlnaModel.discoverDevices()
         }
     }
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        dlnaModel.toastEvents.collect { event ->
+            when (event) {
+                is ToastEvent.Show ->
+                    Toast.makeText(
+                        context,
+                        context.getString(event.messageResId),
+                        Toast.LENGTH_LONG
+                    ).show()
 
+                is ToastEvent.ShowPlain ->
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(

@@ -1,11 +1,15 @@
 <resources>
     <string name="app_name">PlayOnDlna</string>
     <string name="src_link">Use "Share" Feature to provide a YouTube link</string>
-    <string name="idle">Idle</string>
-    <string name="preparing">Preparing</string>
-    <string name="finalizing">Finalizing</string>
-    <string name="ready">Ready</string>
-    <string name="error">Error</string>
+    <string name="idle">💤 Idle</string>
+    <string name="preparing">🔍 Preparing</string>
+    <string name="finalizing">🚀 Finalizing</string>
+    <string name="ready">🍿 Ready</string>
+    <string name="error">❌ Error</string>
     <string name="clear_cache">Clear Cache</string>
     <string name="available_players">Available Players</string>
+    <string name="wlan_disconnected">Wlan disconnected! Downloads cancelled to protect your mobile data volume 🔒</string>
+    <string name="multicast_disabled">Scan failed! Multicast is not possible in your current network</string>
+    <string name="playback_failed">Playback failed!</string>
+    <string name="player_incompatible">Media Player currently incompatible!</string>
 </resources>

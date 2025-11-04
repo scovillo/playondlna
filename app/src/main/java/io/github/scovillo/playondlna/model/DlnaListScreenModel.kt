@@ -19,18 +19,22 @@
 package io.github.scovillo.playondlna.model
 
 import android.app.Application
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.stream.VideoFile
+import io.github.scovillo.playondlna.ui.ToastEvent
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
 import io.github.scovillo.playondlna.upnpdlna.discoverDlnaDevices
 import io.github.scovillo.playondlna.upnpdlna.playUriOnDevice
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -41,21 +45,21 @@ class DlnaListScreenModel(application: Application) : AndroidViewModel(applicati
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _errorMessage = MutableLiveData("")
-    val errorMessage: LiveData<String> = _errorMessage
+    private val _toastEvents = MutableSharedFlow<ToastEvent>()
+    val toastEvents = _toastEvents.asSharedFlow()
 
     fun discoverDevices() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _devices.value = emptyList()
             try {
-                val context = getApplication<Application>().applicationContext
-                val found = discoverDlnaDevices(context)
+                val wifiManager =
+                    getApplication<Application>().applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val found = discoverDlnaDevices(wifiManager)
                 _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
-                _errorMessage.postValue("")
             } catch (exception: Exception) {
                 exception.printStackTrace()
-                _errorMessage.postValue("Local network scan failed! Is your wifi connected?")
+                _toastEvents.emit(ToastEvent.Show(R.string.multicast_disabled))
             } finally {
                 _isLoading.value = false
             }
@@ -63,19 +67,23 @@ class DlnaListScreenModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun playVideoOnDevice(device: DlnaDevice, videoFile: VideoFile) {
-        if (device.avTransportUrl != null) {
-            viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (device.avTransportUrl != null) {
                 try {
+                    Log.d("playVideoOnDevice", "Send playback command to ${device.avTransportUrl}")
                     playUriOnDevice(device.avTransportUrl, videoFile)
                 } catch (exception: Exception) {
                     exception.printStackTrace()
-                    _errorMessage.postValue("Playback failed!")
+                    _toastEvents.emit(ToastEvent.Show(R.string.playback_failed))
                 }
+
+            } else {
+                Log.e(
+                    "playVideoOnDevice",
+                    "No AVTransport URL found for ${device.friendlyName} @ ${device.location}"
+                )
+                _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))
             }
-        } else {
-            Log.e("DLNA", "No AVTransport URL found.")
-            _errorMessage.postValue("Media Player currently incompatible!")
         }
     }
-
 }

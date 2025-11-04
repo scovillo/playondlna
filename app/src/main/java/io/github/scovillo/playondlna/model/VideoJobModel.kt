@@ -26,21 +26,32 @@ import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
+import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.stream.PlayOnDlnaStreamDownload
 import io.github.scovillo.playondlna.stream.VideoFile
+import io.github.scovillo.playondlna.stream.WifiConnectionState
 import io.github.scovillo.playondlna.stream.videoHttpServer
+import io.github.scovillo.playondlna.ui.ToastEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
+import java.util.Collections
 import java.util.Locale
 
 enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
@@ -124,31 +135,43 @@ fun StreamExtractor.bestAudioStream(): AudioStream? {
     return fallback
 }
 
-class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
+class VideoJobModel(
+    settingsRepository: SettingsRepository,
+    private val wifiConnectionState: WifiConnectionState
+) : ViewModel() {
+
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
+    private val _toastEvents = MutableSharedFlow<ToastEvent>()
     private val state = VideoJobState()
+
     private val videoQuality: StateFlow<VideoQuality> = settingsRepository.videoQualityFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = VideoQuality.P720
         )
+    private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
     val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
     val currentSession: State<Session?> get() = _currentSession
     val title: State<String> get() = _title
     val progress: State<Float> get() = state.progress
     val status: State<VideoJobStatus> get() = state.status
+    val toastEvents = _toastEvents.asSharedFlow()
+
+    init {
+        this.monitorWifiConnection()
+    }
 
     fun prepareVideo(url: String, cacheDir: File) {
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.i("VideoJobModel", "Requesting: $url")
-            _currentVideoFile.value = null
-            _currentSession.value = null
-            _title.value = url
+        val job = viewModelScope.launch(Dispatchers.IO) {
             try {
+                Log.i("VideoJobModel", "Requesting: $url")
+                _currentVideoFile.value = null
+                _currentSession.value = null
+                _title.value = url
                 val service = ServiceList.YouTube
                 val extractor = service.getStreamExtractor(url)
                 extractor.fetchPage()
@@ -156,10 +179,7 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
                 val cachedFile = cacheDir.listFiles()
                     ?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("final") }
                 if (cachedFile != null) {
-                    Log.i(
-                        "VideoJobModel",
-                        "Loading ${extractor.id} from cache"
-                    )
+                    Log.i("VideoJobModel", "Loading ${extractor.id} from cache")
                     videoHttpServer.allFiles[extractor.id] =
                         VideoFile(extractor, cachedFile, videoQuality.value)
                     _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
@@ -168,28 +188,52 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
                 } else {
                     mux(extractor, cacheDir)
                 }
-            } catch (e: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ContentNotAvailableException) {
+                _toastEvents.emit(ToastEvent.ShowPlain(e.message ?: "Error loading video"))
                 state.error()
-                e.printStackTrace()
+            } catch (e: Exception) {
+                Log.e("VideoJobModel", "Error in job for $url", e)
+                state.error()
             }
         }
+        job.invokeOnCompletion { cause ->
+            runningJobs.remove(job)
+            when (cause) {
+                null -> Log.d("VideoJobModel", "Job for $url completed successfully")
+                is CancellationException -> Log.w("VideoJobModel", "Job for $url was cancelled")
+                else -> Log.e("VideoJobModel", "Job for $url failed", cause)
+            }
+        }
+        runningJobs.add(job)
     }
 
-    private fun mux(extractor: StreamExtractor, cacheDir: File) {
-        state.preparing()
+    fun cancelJobs() {
+        Log.w("VideoJobModel", "Cancelling ${runningJobs.size} running jobs")
+        runningJobs.forEach { it.cancel() }
+        runningJobs.clear()
+    }
+
+    private suspend fun mux(extractor: StreamExtractor, cacheDir: File) {
+        if (wifiConnectionState.isConnected()) {
+            state.preparing()
+        } else {
+            state.error()
+            return
+        }
         val bestVideo = extractor.bestVideoStream(videoQuality.value)
             ?: throw IllegalStateException("Video stream not found")
         val bestAudio = extractor.bestAudioStream()
             ?: throw IllegalStateException("Audio stream not found")
-        val streamFiles = runBlocking {
-            return@runBlocking PlayOnDlnaStreamDownload(
-                extractor.id,
-                bestVideo.content,
-                bestAudio.content,
-                cacheDir,
-                state
-            ).startDownload()
-        }
+        val streamFiles = PlayOnDlnaStreamDownload(
+            extractor.id,
+            bestVideo.content,
+            bestAudio.content,
+            cacheDir,
+            state
+        ).startDownload()
+
         val ffmpegCmd = mutableListOf(
             "-i", streamFiles.videoFile.absolutePath,
             "-i", streamFiles.audioFile.absolutePath,
@@ -200,18 +244,10 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
         } else {
             ffmpegCmd.addAll(listOf("-c:a", "aac"))
         }
-        val muxFile =
-            File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
-        ffmpegCmd.addAll(
-            listOf(
-                "-movflags", "faststart",
-                "-shortest",
-                "-y",
-                muxFile.absolutePath
-            )
-        )
+        val muxFile = File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
+        ffmpegCmd.addAll(listOf("-movflags", "faststart", "-shortest", "-y", muxFile.absolutePath))
+
         Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.joinToString(" ")}")
-        Log.d("Mux", "Start muxing ${extractor.id}")
         state.finalizing()
         _currentSession.value = FFmpegKit.executeAsync(
             ffmpegCmd.joinToString(" "),
@@ -241,4 +277,23 @@ class VideoJobModel(settingsRepository: SettingsRepository) : ViewModel() {
             }
         )
     }
+
+    private fun monitorWifiConnection() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                delay(1000)
+                if (runningJobs.isEmpty()) {
+                    continue
+                }
+                if (!wifiConnectionState.isConnected()) {
+                    withContext(Dispatchers.Main) {
+                        _toastEvents.emit(ToastEvent.Show(R.string.wlan_disconnected))
+                        state.error()
+                    }
+                    cancelJobs()
+                }
+            }
+        }
+    }
+
 }
