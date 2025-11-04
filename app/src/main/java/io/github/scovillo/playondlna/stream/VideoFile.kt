@@ -71,18 +71,5 @@ class VideoFile(
         }
 
     val metaData: String
-        get() {
-            return """
-            <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/"
-                xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
-                xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-                <item id="${this.id.escapeXml()}" parentID="0" restricted="1">
-                    <dc:title>${this.title.escapeXml()}</dc:title>
-                    <dc:creator>${this.uploader.escapeXml()}</dc:creator>
-                    <upnp:class>object.item.videoItem</upnp:class>
-                    <res protocolInfo="http-get:*:video/mp4:*" duration="${this.duration.escapeXml()}">${url.escapeXml()}</res>
-                </item>
-            </DIDL-Lite>
-            """.trimIndent()
-        }
+        get() = """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${id.escapeXml()}" parentID="0" restricted="1"><dc:title>${title.escapeXml()}</dc:title><dc:creator>${uploader.escapeXml()}</dc:creator><upnp:class>object.item.videoItem.movie</upnp:class><res protocolInfo="http-get:*:video/mp4:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res></item></DIDL-Lite>""".escapeXml()
 }
