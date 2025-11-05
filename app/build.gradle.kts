@@ -132,9 +132,9 @@ tasks.register("generateReadme") {
 
 ## 🤖 Android Configuration
 
-- **Application ID:** $appId  
-- **Compile SDK:** $compileSdk  
-- **Min SDK:** $minSdk  
+- **Application ID:** $appId
+- **Compile SDK:** $compileSdk
+- **Min SDK:** $minSdk
 - **Target SDK:** $targetSdk
 
 The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.

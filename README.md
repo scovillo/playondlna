@@ -1,13 +1,13 @@
 # PlayOnDlna
 
-📦 **Version:** 5 (1.4)
+📦 **Version:** 6 (1.5)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
 
-- **Application ID:** io.github.scovillo.playondlna  
-- **Compile SDK:** android-35  
-- **Min SDK:** 26  
+- **Application ID:** io.github.scovillo.playondlna
+- **Compile SDK:** android-35
+- **Min SDK:** 26
 - **Target SDK:** 35
 
 The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
