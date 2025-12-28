@@ -28,7 +28,7 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Response
 import java.io.IOException
 
-class OkHttpDownloader : Downloader() {
+class OkHttpDownloadClient : Downloader() {
     private val client = OkHttpClient()
 
     override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): Response {
@@ -45,7 +45,7 @@ class OkHttpDownloader : Downloader() {
             val response = client.newCall(reqBuilder.build()).execute()
             val body = response.body?.string()
             Log.i(
-                "OkHttpDownloader",
+                "OkHttpDownloadClient",
                 "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | $body"
             )
             return Response(

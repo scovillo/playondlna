@@ -35,7 +35,7 @@ import io.github.scovillo.playondlna.model.DlnaListScreenModel
 import io.github.scovillo.playondlna.model.SettingsState
 import io.github.scovillo.playondlna.model.VideoJobModel
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.stream.OkHttpDownloader
+import io.github.scovillo.playondlna.stream.OkHttpDownloadClient
 import io.github.scovillo.playondlna.stream.WebServerService
 import io.github.scovillo.playondlna.stream.WifiConnectionState
 import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()
-        NewPipe.init(OkHttpDownloader())
+        NewPipe.init(OkHttpDownloadClient())
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(
                 NotificationChannel(
