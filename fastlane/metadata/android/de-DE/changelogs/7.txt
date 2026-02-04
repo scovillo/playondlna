@@ -1,0 +1,8 @@
+Verbesserungen:
+
+- Die Downloads wurden optimiert
+- russische Beschreibung wurde hinzugefügt
+
+Behobene Fehler:
+
+- Der "Page needs to be reloaded" Fehler wurde behoben
