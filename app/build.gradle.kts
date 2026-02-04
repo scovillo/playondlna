@@ -96,7 +96,7 @@ dependencies {
     implementation("io.github.scovillo", "ffmpeg-kit", "1.15")
     implementation("com.arthenica", "smart-exception-java", "0.2.1")
     implementation(libs.nanohttpd)
-    implementation("com.github.teamnewpipe", "NewPipeExtractor", "0.24.8")
+    implementation("com.github.teamnewpipe", "NewPipeExtractor", "v0.25.1")
     implementation("com.squareup.okhttp3", "okhttp", "4.12.0")
 }
 
