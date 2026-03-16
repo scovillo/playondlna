@@ -48,6 +48,7 @@ import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
 import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.AudioTrackType
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
@@ -65,7 +66,7 @@ val VideoStream.hasBestCompatibility: Boolean
 
 val AudioStream.hasBestCompatibility: Boolean
     get() {
-        return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true
+        return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true && audioTrackType == AudioTrackType.ORIGINAL
     }
 
 fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
@@ -111,26 +112,38 @@ fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
 
 fun StreamExtractor.bestAudioStream(): AudioStream? {
     Log.i(
-        "AudioStreams",
-        audioStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}" }
+        "[ALL]AudioStreams",
+        audioStreams.joinToString(System.lineSeparator()) {
+            "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
+        }
     )
     val locale = Locale.getDefault()
     Log.d("AudioStream", "System language: ${locale.language}")
     val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
-    if (compatibleStreams.isNotEmpty()) {
-        val chosen = compatibleStreams.filter { it.audioLocale?.language === locale.language }
-            .maxByOrNull { it.averageBitrate } ?: compatibleStreams.maxBy { it.averageBitrate }
+    if (compatibleStreams.isEmpty()) {
+        Log.i("[COMPATIBLE]AudioStreams", "Empty!")
+    }
+    Log.i(
+        "[COMPATIBLE]AudioStreams",
+        compatibleStreams.joinToString(System.lineSeparator()) {
+            "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
+        }
+    )
+    val chosen = (compatibleStreams.filter { it.audioLocale?.language == locale.language }
+        .maxByOrNull { it.averageBitrate }
+        ?: compatibleStreams.maxByOrNull { it.averageBitrate }
+        ?: audioStreams.maxByOrNull { it.averageBitrate })
+    if (chosen != null) {
         Log.d(
             "AudioStream",
-            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}, ${chosen?.audioLocale}"
+            "Chosen: ${chosen.audioTrackName}, ${chosen.audioTrackType}, ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.audioLocale}"
         )
         return chosen
     }
-    val fallback = audioStreams.filter { it.audioLocale?.language === locale.language }
-        .maxByOrNull { it.averageBitrate } ?: audioStreams.maxByOrNull { it.averageBitrate }
+    val fallback = audioStreams.firstOrNull()
     Log.d(
         "AudioStream",
-        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.audioLocale}"
+        "Fallback: ${fallback?.audioTrackName}, ${fallback?.audioTrackType}, ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.audioLocale}"
     )
     return fallback
 }
