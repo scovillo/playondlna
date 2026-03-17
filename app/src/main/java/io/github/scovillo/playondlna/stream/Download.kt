@@ -70,7 +70,7 @@ class PlayOnDlnaFileDownload(
         val chunks = chunkCalculation.chunks(totalSize)
         Log.d(
             "PlayOnDlnaFileDownload",
-            "Spawning with user-agent='$userAgent', threads=${chunks.size} and chunks=$chunks"
+            "Spawning for ${outputFile.name} (${totalSize} Bytes) with user-agent='$userAgent', threads=${chunks.size} and chunks=$chunks"
         )
         chunkProgress = LongArray(chunks.size)
         val chunkFiles = mutableListOf<File>()
@@ -146,15 +146,18 @@ class PlayOnDlnaFileDownload(
     private fun getContentLengthViaRange(url: String): Long {
         val request = Request.Builder()
             .url(url)
-            .header(
-                "User-Agent",
-                userAgent
-            )
+            .header("User-Agent", userAgent)
             .header("Range", "bytes=0-0")
             .build()
-        okHttpClient.newCall(request).execute().use { response ->
+        client.newCall(request).execute().use { response ->
             val range = response.header("Content-Range")
-            return range?.substringAfter("/")?.toLongOrNull() ?: -1
+            if (range != null) {
+                val total = range.substringAfter("/").toLongOrNull()
+                if (total != null) return total
+            }
+            val length = response.header("Content-Length")?.toLongOrNull()
+            if (length != null) return length
+            return -1
         }
     }
 
@@ -165,10 +168,11 @@ class PlayOnDlnaFileDownload(
     }
 }
 
-class PlayOnDlnaVideoStream(val videoFile: File, val audioFile: File) {
+class PlayOnDlnaVideoStream(val videoFile: File, val audioFile: File, val subtitleFile: File?) {
     fun delete() {
         videoFile.delete()
         audioFile.delete()
+        subtitleFile?.delete()
     }
 }
 
@@ -176,32 +180,46 @@ class PlayOnDlnaStreamDownload(
     private val id: String,
     private val videoUrl: String,
     private val audioUrl: String,
+    private val subtitleUrl: String?,
     private val cacheDir: File,
     private val state: VideoJobState,
     val logTimeInMillis: Int = 3000
 ) {
     suspend fun startDownload(): PlayOnDlnaVideoStream = coroutineScope {
-        val videoFile = File.createTempFile("${id}_video_", ".tmp", cacheDir)
-        val audioFile = File.createTempFile("${id}_audio_", ".tmp", cacheDir)
-
+        val files = mutableListOf(
+            File.createTempFile("${id}_video_", ".tmp", cacheDir),
+            File.createTempFile("${id}_audio_", ".tmp", cacheDir)
+        )
         val userAgent = YoutubeParsingHelper.getAndroidUserAgent(null)
-        val videoDl = PlayOnDlnaFileDownload(
-            videoUrl,
-            userAgent,
-            videoFile,
-            ChunkCalculation(24, 8 * 1024 * 1024),
-            okHttpClient
+        val downloads = mutableListOf(
+            PlayOnDlnaFileDownload(
+                videoUrl,
+                userAgent,
+                files[0],
+                ChunkCalculation(16, 8 * 1024 * 1024),
+                okHttpClient
+            ),
+            PlayOnDlnaFileDownload(
+                audioUrl,
+                userAgent,
+                files[1],
+                ChunkCalculation(6, 4 * 1024 * 1024),
+                okHttpClient
+            )
         )
-        val audioDl = PlayOnDlnaFileDownload(
-            audioUrl,
-            userAgent,
-            audioFile,
-            ChunkCalculation(8, 4 * 1024 * 1024),
-            okHttpClient
-        )
-
-        val videoProgress = LongArray(1)
-        val audioProgress = LongArray(1)
+        if (subtitleUrl != null) {
+            files.add(File.createTempFile("${id}_subtitle_", ".tmp", cacheDir))
+            downloads.add(
+                PlayOnDlnaFileDownload(
+                    subtitleUrl,
+                    userAgent,
+                    files[2],
+                    ChunkCalculation(2, 4 * 1024 * 1024),
+                    okHttpClient
+                )
+            )
+        }
+        val progress = LongArray(downloads.size)
 
         val startTime = System.currentTimeMillis()
         val progressJob = launch(Dispatchers.Main) {
@@ -211,8 +229,8 @@ class PlayOnDlnaStreamDownload(
             while (isActive) {
                 delay(20L)
 
-                val totalDownloaded = videoProgress[0] + audioProgress[0]
-                val totalSize = videoDl.totalSize + audioDl.totalSize
+                val totalDownloaded = progress.sum()
+                val totalSize = downloads.sumOf { it.totalSize }
                 val progressPercent =
                     (totalDownloaded.toDouble() * 100 / totalSize).toFloat().coerceIn(0.0f, 100.0f)
 
@@ -239,16 +257,25 @@ class PlayOnDlnaStreamDownload(
                 }
             }
         }
-        val jobs = listOf(
-            async(Dispatchers.IO) { videoDl.start { videoProgress[0] = it } },
-            async(Dispatchers.IO) { audioDl.start { audioProgress[0] = it } }
-        )
+        val jobs = downloads.mapIndexed { index, job ->
+            async(Dispatchers.IO) {
+                job.start { progress[index] = it }
+            }
+        }
         val results = jobs.awaitAll()
         progressJob.cancelAndJoin()
         Log.d(
             "Download",
-            "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> $videoFile, Audio -> $audioFile"
+            "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${files[0]}, Audio -> ${files[1]}, Subtitle -> ${
+                files.getOrNull(
+                    2
+                )
+            }"
         )
-        return@coroutineScope PlayOnDlnaVideoStream(videoFile = results[0], audioFile = results[1])
+        return@coroutineScope PlayOnDlnaVideoStream(
+            videoFile = results[0],
+            audioFile = results[1],
+            subtitleFile = results.getOrNull(2)
+        )
     }
 }
