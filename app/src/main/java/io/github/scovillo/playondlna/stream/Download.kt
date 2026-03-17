@@ -33,6 +33,7 @@ import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -168,11 +169,10 @@ class PlayOnDlnaFileDownload(
     }
 }
 
-class PlayOnDlnaVideoStream(val videoFile: File, val audioFile: File, val subtitleFile: File?) {
+class PlayOnDlnaVideoStream(val videoFile: File, val audioFile: File, val subtitle: Subtitle?) {
     fun delete() {
         videoFile.delete()
         audioFile.delete()
-        subtitleFile?.delete()
     }
 }
 
@@ -180,7 +180,7 @@ class PlayOnDlnaStreamDownload(
     private val id: String,
     private val videoUrl: String,
     private val audioUrl: String,
-    private val subtitleUrl: String?,
+    private val subtitleStream: SubtitlesStream?,
     private val cacheDir: File,
     private val state: VideoJobState,
     val logTimeInMillis: Int = 3000
@@ -207,11 +207,17 @@ class PlayOnDlnaStreamDownload(
                 okHttpClient
             )
         )
-        if (subtitleUrl != null) {
-            files.add(File.createTempFile("${id}_subtitle_", ".tmp", cacheDir))
+        if (subtitleStream != null) {
+            files.add(
+                File.createTempFile(
+                    "${id}_subtitle_",
+                    ".${subtitleStream.locale.language}.srt",
+                    cacheDir
+                )
+            )
             downloads.add(
                 PlayOnDlnaFileDownload(
-                    subtitleUrl,
+                    subtitleStream.content,
                     userAgent,
                     files[2],
                     ChunkCalculation(2, 4 * 1024 * 1024),
@@ -275,7 +281,7 @@ class PlayOnDlnaStreamDownload(
         return@coroutineScope PlayOnDlnaVideoStream(
             videoFile = results[0],
             audioFile = results[1],
-            subtitleFile = results.getOrNull(2)
+            subtitle = if (results.size > 2) Subtitle(results[2]) else null
         )
     }
 }

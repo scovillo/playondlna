@@ -26,12 +26,17 @@ enum class VideoQuality(
 class SettingsState(private val repository: SettingsRepository, val onClearCache: () -> Unit) :
     ViewModel() {
     private val _videoQuality = mutableStateOf(VideoQuality.P720)
+    private val _isSubtitleEnabled = mutableStateOf(false)
+    private val _isInternalSubtitleEnabled = mutableStateOf(false)
     val videoQuality: State<VideoQuality> get() = _videoQuality
+    val isSubtitleEnabled: State<Boolean> get() = _isSubtitleEnabled
+    val isInternalSubtitleEnabled: State<Boolean> get() = _isInternalSubtitleEnabled
 
     init {
         viewModelScope.launch {
-            val lastQuality = repository.videoQualityFlow.first()
-            _videoQuality.value = lastQuality
+            _videoQuality.value = repository.videoQualityFlow.first()
+            _isSubtitleEnabled.value = repository.isSubtitleEnabledFlow.first()
+            _isInternalSubtitleEnabled.value = repository.isInternalSubtitleEnabledFlow.first()
         }
     }
 
@@ -39,6 +44,20 @@ class SettingsState(private val repository: SettingsRepository, val onClearCache
         _videoQuality.value = value
         viewModelScope.launch {
             repository.saveVideoQuality(value)
+        }
+    }
+
+    fun onSubtitleEnabledSelect(value: Boolean) {
+        _isSubtitleEnabled.value = value
+        viewModelScope.launch {
+            repository.saveSubtitleEnabled(value)
+        }
+    }
+
+    fun onSubtitleInternalEnabledSelect(value: Boolean) {
+        _isInternalSubtitleEnabled.value = value
+        viewModelScope.launch {
+            repository.saveInternalSubtitleEnabled(value)
         }
     }
 }

@@ -2,17 +2,16 @@ package io.github.scovillo.playondlna.model
 
 import io.github.scovillo.playondlna.stream.PlayOnDlnaVideoStream
 import java.io.File
-import java.util.Locale
 
 class PlayOnDlnaFfmpegCommand(
     private val streamFiles: PlayOnDlnaVideoStream,
     private val audioHasBestCompatibility: Boolean,
     private val output: File,
-    private val subtitleLocale: Locale?
+    private val isInternalSubtitleEnabled: Boolean
 ) {
 
     private val hasSubtitle
-        get() = streamFiles.subtitleFile != null && subtitleLocale != null
+        get() = streamFiles.subtitle != null && isInternalSubtitleEnabled
 
     fun value(): String {
         val ffmpegCmd = mutableListOf(
@@ -23,7 +22,7 @@ class PlayOnDlnaFfmpegCommand(
             ffmpegCmd.addAll(
                 listOf(
                     "-fix_sub_duration",
-                    "-i", streamFiles.subtitleFile!!.absolutePath
+                    "-i", streamFiles.subtitle!!.file.absolutePath
                 )
             )
         }
@@ -50,7 +49,7 @@ class PlayOnDlnaFfmpegCommand(
                 listOf(
                     "-c:s",
                     "mov_text",
-                    "-metadata:s:s:0", "language=${subtitleLocale!!.isO3Language}",
+                    "-metadata:s:s:0", "language=${streamFiles.subtitle!!.locale().isO3Language}",
                     "-disposition:s:0", "default",
                     "-fflags", "+genpts",
                     "-max_interleave_delta", "0",

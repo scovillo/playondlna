@@ -28,7 +28,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 val client = OkHttpClient()
 
 fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
-    val setUriSoapPayload = """
+    val uriSoapPayload = """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
                     s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -43,14 +43,15 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
           </s:Body>
         </s:Envelope>
     """.trimIndent()
+    Log.i("playUriOnDevice", uriSoapPayload)
     val setUriRequest = Request.Builder()
         .url(avTransportUrl)
-        .post(setUriSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+        .post(uriSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
         .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
         .build()
     val setUriResponse = client.newCall(setUriRequest).execute()
     if (!setUriResponse.isSuccessful) {
-        Log.e("playUriOnDevice =>", setUriSoapPayload)
+        Log.e("playUriOnDevice =>", uriSoapPayload)
         Log.e(
             "playUriOnDevice <=",
             setUriResponse.body?.string() ?: "setUriResponse body undefined."

@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +43,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -76,6 +78,8 @@ fun SettingsScreen(state: SettingsState) {
             SupportPlayOnDlna(context)
             Spacer(Modifier.height(16.dp))
             VideoQuality(state)
+            Spacer(Modifier.height(16.dp))
+            Subtitles(state)
             Spacer(Modifier.height(16.dp))
             ClearCache(state.onClearCache)
             Spacer(Modifier.height(16.dp))
@@ -261,15 +265,66 @@ fun VideoQuality(settingsState: SettingsState) {
 }
 
 @Composable
+fun Subtitles(settingsState: SettingsState) {
+    val isSubtitleEnabled by settingsState.isSubtitleEnabled
+    val isInternalSubtitleEnabled by settingsState.isInternalSubtitleEnabled
+    Column {
+        Text("\uD83D\uDCDD Subtitles", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Enable subtitle referring to your device locale")
+                Text(
+                    "By default an external subtitle is provided.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                checked = isSubtitleEnabled,
+                onCheckedChange = {
+                    settingsState.onSubtitleEnabledSelect(it)
+                    if (!it) {
+                        settingsState.onSubtitleInternalEnabledSelect(false)
+                    }
+                }
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Enable internal subtitle")
+                Text(
+                    "If your player has problems with external subtitles, enable additionally an internal subtitle shipped with the video. This will increase the video preparation time!",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                checked = isInternalSubtitleEnabled,
+                onCheckedChange = {
+                    settingsState.onSubtitleInternalEnabledSelect(it)
+                    if (it) {
+                        settingsState.onSubtitleEnabledSelect(true)
+                    }
+                }
+            )
+        }
+        Spacer(Modifier.padding(bottom = 20.dp))
+    }
+}
+
+@Composable
 fun ClearCache(onClearCache: () -> Unit) {
     return Column {
         Text("\uD83D\uDCBE Cache", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
         Text(
-            "PlayOnDlna is muxing audio and video streams to streamable video files for you, " +
-                    "saving as temp files to provide them in your local network. " +
-                    "This has the pleasant side effect that the videos are immediately available for streaming the next time. " +
-                    "But over time, disk usage will increase and you can use the button below to clean up and free space."
+            "Clean up and free space."
         )
         Button(
             onClick = onClearCache,

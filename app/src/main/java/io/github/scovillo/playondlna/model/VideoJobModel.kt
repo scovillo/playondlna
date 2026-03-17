@@ -29,6 +29,7 @@ import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.stream.PlayOnDlnaStreamDownload
+import io.github.scovillo.playondlna.stream.Subtitle
 import io.github.scovillo.playondlna.stream.VideoFile
 import io.github.scovillo.playondlna.stream.WifiConnectionState
 import io.github.scovillo.playondlna.stream.videoHttpServer
@@ -181,6 +182,20 @@ class VideoJobModel(
             started = SharingStarted.Eagerly,
             initialValue = VideoQuality.P720
         )
+    private val isSubtitleEnabled: StateFlow<Boolean> =
+        settingsRepository.isSubtitleEnabledFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = false
+            )
+    private val isInternalSubtitleEnabled: StateFlow<Boolean> =
+        settingsRepository.isInternalSubtitleEnabledFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = false
+            )
     private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
     val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
@@ -209,8 +224,20 @@ class VideoJobModel(
                     ?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("final") }
                 if (cachedFile != null) {
                     Log.i("VideoJobModel", "Loading ${extractor.id} from cache")
+                    val subtitleFile = cacheDir.listFiles()
+                        ?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("subtitle") }
+                    if (subtitleFile != null) {
+                        Log.i("VideoJobModel", "Cached subtitle found: ${subtitleFile.name}")
+                    } else {
+                        Log.i("VideoJobModel", "No cached subtitle found!")
+                    }
                     videoHttpServer.allFiles[extractor.id] =
-                        VideoFile(extractor, cachedFile, videoQuality.value)
+                        VideoFile(
+                            extractor,
+                            cachedFile,
+                            videoQuality.value,
+                            if (subtitleFile != null) Subtitle(subtitleFile) else null
+                        )
                     _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                     state.ready()
                     Log.d("VideoFile", "Available under ${_currentVideoFile.value!!.url}")
@@ -255,12 +282,12 @@ class VideoJobModel(
             ?: throw IllegalStateException("Video stream not found")
         val bestAudio = extractor.bestAudioStream()
             ?: throw IllegalStateException("Audio stream not found")
-        val subtitle = extractor.subtitle()
+        val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
         val streamFiles = PlayOnDlnaStreamDownload(
             extractor.id,
             bestVideo.content,
             bestAudio.content,
-            subtitle?.content,
+            subtitle,
             cacheDir,
             state
         ).startDownload()
@@ -270,7 +297,7 @@ class VideoJobModel(
             streamFiles,
             bestAudio.hasBestCompatibility,
             muxFile,
-            subtitle?.locale
+            isInternalSubtitleEnabled.value
         )
 
         Log.i("VideoJobModel", "Final FFMPEGKit command: $ffmpegCmd")
@@ -282,7 +309,12 @@ class VideoJobModel(
                     Log.d("Mux", "Muxing completed successfully")
                     if (_currentSession.value?.sessionId == session.sessionId) {
                         videoHttpServer.allFiles[extractor.id] =
-                            VideoFile(extractor, muxFile, videoQuality.value)
+                            VideoFile(
+                                extractor,
+                                muxFile,
+                                videoQuality.value,
+                                streamFiles.subtitle
+                            )
                         _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                         state.ready()
                     }

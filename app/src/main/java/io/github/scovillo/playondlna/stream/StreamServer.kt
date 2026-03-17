@@ -25,7 +25,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import fi.iki.elonen.NanoHTTPD
-import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.net.Inet4Address
@@ -76,20 +75,39 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
     val allFiles = mutableMapOf<String, VideoFile>()
 
     override fun serve(session: IHTTPSession): Response {
+        Log.i("VideoHttpServer", "-> ${session.uri}")
         Log.d(
             "RequestHeaders",
             session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator())
         )
-        val id = session.uri.substring(1)
+        val uriParts = session.uri.split("/")
+        val id = uriParts[1]
+
+        val isSubtitle = session.uri.endsWith(".srt", ignoreCase = true)
+        if (isSubtitle) {
+            val subtitle =
+                allFiles[id]?.subtitle
+                    ?: return newFixedLengthResponse(
+                        Response.Status.NOT_FOUND,
+                        MIME_PLAINTEXT,
+                        "Subtitle not found for video id $id!"
+                    )
+            val fis = FileInputStream(subtitle.file)
+            val response = newFixedLengthResponse(
+                Response.Status.OK,
+                "text/srt",
+                fis,
+                subtitle.file.length()
+            )
+            return response
+        }
+
         val file = allFiles[id]?.value
             ?: return newFixedLengthResponse(
                 Response.Status.NOT_FOUND,
                 MIME_PLAINTEXT,
                 "Video with id $id not found!"
             )
-        if (file.name.contains("fragmented")) {
-            return this.serveFragmented(file)
-        }
         val fileLength = file.length()
         val rangeHeader = session.headers["range"]
         try {
@@ -129,6 +147,7 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
             }
             response.addHeader("Accept-Ranges", "bytes")
             response.addHeader("Connection", "keep-alive")
+            Log.i("VideoHttpServer", "<- ${session.uri}")
             return response
         } catch (e: Exception) {
             e.printStackTrace()
@@ -136,23 +155,6 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
                 "IO Error: ${e.message}"
-            )
-        }
-    }
-
-    private fun serveFragmented(file: File): Response {
-        try {
-            Log.i("VideoHttpServer", "Serving fragmented file: ${file.absolutePath}")
-            val fileInputStream = FileInputStream(file)
-            val response = newChunkedResponse(Response.Status.OK, "video/mp4", fileInputStream)
-            response.addHeader("Accept-Ranges", "bytes")
-            return response
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return newFixedLengthResponse(
-                Response.Status.INTERNAL_ERROR,
-                MIME_PLAINTEXT,
-                "IO Error"
             )
         }
     }

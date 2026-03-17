@@ -31,10 +31,20 @@ fun String.escapeXml(): String {
         .replace("'", "&apos;")
 }
 
+class Subtitle(val file: File) {
+
+    fun locale(): Locale {
+        val regex = Regex("""^.+\.(\w{2})\.srt$""")
+        val match = regex.find(file.name)
+        return Locale(match?.groupValues?.get(1) ?: "en")
+    }
+}
+
 class VideoFile(
     private val extractor: StreamExtractor,
     val value: File,
-    val videoQuality: VideoQuality
+    val videoQuality: VideoQuality,
+    val subtitle: Subtitle?,
 ) {
     val title: String
         get() {
@@ -67,9 +77,16 @@ class VideoFile(
 
     val url: String
         get() {
-            return "http://${getLocalIpAddress()}:$serverPort/${this.id}"
+            return "http://${getLocalIpAddress()}:$serverPort/${this.id}/video.mp4"
+        }
+
+    val subtitleUrl: String
+        get() {
+            return "http://${getLocalIpAddress()}:$serverPort/${this.id}/video.${subtitle!!.locale().language}.srt"
         }
 
     val metaData: String
-        get() = """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${id.escapeXml()}" parentID="0" restricted="1"><dc:title>${title.escapeXml()}</dc:title><dc:creator>${uploader.escapeXml()}</dc:creator><upnp:class>object.item.videoItem.movie</upnp:class><res protocolInfo="http-get:*:video/mp4:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res></item></DIDL-Lite>""".escapeXml()
+        get() = """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${id.escapeXml()}" parentID="0" restricted="1"><dc:title>${title.escapeXml()}</dc:title><dc:creator>${uploader.escapeXml()}</dc:creator><upnp:class>object.item.videoItem.movie</upnp:class><res protocolInfo="http-get:*:video/mp4:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
+            if (subtitle != null) "<res protocolInfo=\"http-get:*:text/srt:*\" xml:lang=\"${subtitle.locale().language}\">${subtitleUrl.escapeXml()}</res>" else ""
+        }</item></DIDL-Lite>""".escapeXml()
 }
