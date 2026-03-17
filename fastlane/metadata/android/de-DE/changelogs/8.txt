@@ -1,0 +1,7 @@
+Neue Funktionen:
+
+- Ein softer Untertitel in Gerätesprache (oder englisch) ist nun in den Videos enthalten
+
+Verbesserungen:
+
+- Es werden nur noch originale Audiostreams und keine automatischen Übersetzungen mehr verwendet

@@ -1,0 +1,7 @@
+New Features:
+
+- Soft subtitles in the device language (or English) are now included in the videos.
+
+Improvements:
+
+- Only original audio streams are used; automatic translations are no longer employed.
