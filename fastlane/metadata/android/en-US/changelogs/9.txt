@@ -1,0 +1,3 @@
+New features:
+
+- The Subtitle can now be managed in the settings.

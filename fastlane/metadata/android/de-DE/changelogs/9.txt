@@ -1,0 +1,3 @@
+Neue Funktionen:
+
+- Der Untertitel lässt sich nun in den Einstellungen verwalten
