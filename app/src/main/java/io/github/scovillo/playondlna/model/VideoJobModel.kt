@@ -300,7 +300,7 @@ class VideoJobModel(
             isInternalSubtitleEnabled.value
         )
 
-        Log.i("VideoJobModel", "Final FFMPEGKit command: $ffmpegCmd")
+        Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.value()}")
         state.finalizing()
         _currentSession.value = FFmpegKit.executeAsync(
             ffmpegCmd.value(),
