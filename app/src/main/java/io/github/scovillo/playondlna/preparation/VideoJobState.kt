@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.model
+package io.github.scovillo.playondlna.preparation
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf

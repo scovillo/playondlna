@@ -28,26 +28,25 @@ import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
+import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.CacheControl
-import io.github.scovillo.playondlna.model.DlnaListScreenModel
-import io.github.scovillo.playondlna.model.SettingsState
-import io.github.scovillo.playondlna.model.VideoJobModel
+import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
+import io.github.scovillo.playondlna.model.VideoSettingsState
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.stream.OkHttpDownloadClient
-import io.github.scovillo.playondlna.stream.WebServerService
-import io.github.scovillo.playondlna.stream.WifiConnectionState
-import io.github.scovillo.playondlna.theme.PlayOnDlnaTheme
+import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.WifiConnectionState
+import io.github.scovillo.playondlna.server.WebServerService
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.MainScreen
+import io.github.scovillo.playondlna.ui.PlayOnDlnaTheme
 import io.github.scovillo.playondlna.ui.PlayScreen
 import io.github.scovillo.playondlna.ui.SettingsScreen
+import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
+import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
-    private lateinit var dlnaModel: DlnaListScreenModel
-    private lateinit var settingsState: SettingsState
     private lateinit var videoJobModel: VideoJobModel
-    private lateinit var wifiConnectionState: WifiConnectionState
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,26 +61,24 @@ class MainActivity : ComponentActivity() {
                 )
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
-        dlnaModel = ViewModelProvider(this)[DlnaListScreenModel::class.java]
-
         val settingsRepository = SettingsRepository(this)
-        wifiConnectionState =
-            WifiConnectionState(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
-        this.videoJobModel = VideoJobModel(
+        videoJobModel = VideoJobModel(
             settingsRepository,
-            wifiConnectionState,
+            WifiConnectionState(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager),
             cacheDir
         )
-        val cacheControl =
-            CacheControl(
-                cacheDir, videoJobModel.currentVideoFile, videoJobModel.currentSession,
-                videoJobModel.completedSessions
-            )
-        this.settingsState =
-            SettingsState(
-                settingsRepository,
-                cacheControl
-            )
+        val videoSettingsState = VideoSettingsState(settingsRepository)
+        val cacheControl = CacheControl(
+            cacheDir,
+            videoJobModel.currentVideoFile,
+            videoJobModel.currentSession,
+            videoJobModel.completedSessions
+        )
+        val favoriteDevices = FavoriteDevices(settingsRepository)
+        val dlnaDevicesListScreenModel = DlnaDevicesListScreenModel(
+            ViewModelProvider(this)[SsdpDevices::class.java],
+            favoriteDevices
+        )
         setContent {
             PlayOnDlnaTheme {
                 MainScreen(
@@ -89,11 +86,17 @@ class MainActivity : ComponentActivity() {
                         PlayScreen(videoJobModel) {
                             DlnaListScreen(
                                 videoJobModel,
-                                dlnaModel
+                                dlnaDevicesListScreenModel
                             )
                         }
                     },
-                    settingsScreen = { SettingsScreen(settingsState) }
+                    settingsScreen = {
+                        SettingsScreen(
+                            videoSettingsState,
+                            favoriteDevices,
+                            cacheControl
+                        )
+                    }
                 )
             }
         }

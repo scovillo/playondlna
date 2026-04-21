@@ -17,6 +17,7 @@ class SettingsRepository(private val context: Context) {
         val VIDEO_QUALITY = stringPreferencesKey("video_quality")
         val IS_SUBTITLE_ENABLED = booleanPreferencesKey("is_subtitle_enabled")
         val IS_INTERNAL_SUBTITLE_ENABLED = booleanPreferencesKey("is_internal_subtitle_enabled")
+        val FAVORITE_LOCATIONS = stringPreferencesKey("favorite_locations")
     }
 
     val videoQualityFlow: Flow<VideoQuality> =
@@ -39,6 +40,14 @@ class SettingsRepository(private val context: Context) {
             value ?: false
         }.distinctUntilChanged()
 
+    val favoriteDeviceLocationsFlow: Flow<List<String>> =
+        context.dataStore.data.map { prefs ->
+            prefs[Keys.FAVORITE_LOCATIONS]
+                ?.split("|")
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
+        }
+
     suspend fun saveVideoQuality(value: VideoQuality) {
         context.dataStore.edit { prefs ->
             prefs[Keys.VIDEO_QUALITY] = value.name
@@ -54,6 +63,30 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveInternalSubtitleEnabled(value: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[Keys.IS_INTERNAL_SUBTITLE_ENABLED] = value
+        }
+    }
+
+    suspend fun saveFavoriteDeviceLocation(location: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.FAVORITE_LOCATIONS]
+                ?.split("|")
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
+            val updated = (current + location).distinct()
+            prefs[Keys.FAVORITE_LOCATIONS] = updated.joinToString("|")
+        }
+    }
+
+
+    suspend fun removeFavoriteLocation(location: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.FAVORITE_LOCATIONS]
+                ?.split("|")
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
+            val updated = current.filterNot { it == location }
+            prefs[Keys.FAVORITE_LOCATIONS] =
+                updated.joinToString("|")
         }
     }
 }

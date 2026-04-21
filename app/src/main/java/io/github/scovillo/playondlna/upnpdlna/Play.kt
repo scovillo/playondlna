@@ -19,7 +19,7 @@
 package io.github.scovillo.playondlna.upnpdlna
 
 import android.util.Log
-import io.github.scovillo.playondlna.stream.VideoFile
+import io.github.scovillo.playondlna.server.VideoFile
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request

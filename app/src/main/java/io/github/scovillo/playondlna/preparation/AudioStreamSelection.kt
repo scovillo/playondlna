@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.model
+package io.github.scovillo.playondlna.preparation
 
 import io.github.scovillo.playondlna.AppLog
 import org.schabi.newpipe.extractor.stream.AudioStream

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.stream
+package io.github.scovillo.playondlna.server
 
 import io.github.scovillo.playondlna.model.VideoQuality
 import org.schabi.newpipe.extractor.stream.StreamExtractor

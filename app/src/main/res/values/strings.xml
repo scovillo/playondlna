@@ -13,6 +13,19 @@
     <string name="playback_failed">Playback failed!</string>
     <string name="player_incompatible">Media Player currently incompatible!</string>
     <string name="cache_cleared">Cache cleared!</string>
-    <string name="cache_usage">Currently used space: %1$.1f GB</string>
+    <string name="cache_usage">Currently used space: </string>
     <string name="cache_desc">Clean up and free space ↓</string>
+    <string name="location_not_renderer">Location is not a MediaRenderer!</string>
+    <string name="location_not_reachable">Location is not reachable!</string>
+    <string name="favorite_devices_title">🌟 Favorite Devices</string>
+    <string name="favorite_devices_desc">
+You can manage your favorite network players here.
+You can also add a custom URL to include a device in the automatic scan.
+Please use the URL of the device’s media player service. If you’re unsure, check the device’s user manual.\n
+Examples:\n
+- Kodi\n
+  http://192.168.178.80:1379/\n
+- Samsung Smart TVs (UE series)\n
+  http://192.168.178.80:9197/dmr
+    </string>
 </resources>

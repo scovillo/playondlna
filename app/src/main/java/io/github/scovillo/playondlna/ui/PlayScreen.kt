@@ -45,8 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.model.VideoJobModel
-import io.github.scovillo.playondlna.model.VideoJobStatus
+import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.VideoJobStatus
 
 @Composable
 fun PlayScreen(

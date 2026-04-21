@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.stream
+package io.github.scovillo.playondlna.download
 
 data class Chunk(
     val start: Long,

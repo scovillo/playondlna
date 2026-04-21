@@ -21,6 +21,7 @@ package io.github.scovillo.playondlna.ui
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,23 +30,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,41 +69,77 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.CacheControl
-import io.github.scovillo.playondlna.model.SettingsState
 import io.github.scovillo.playondlna.model.VideoQuality
+import io.github.scovillo.playondlna.model.VideoSettingsState
+import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
+import kotlinx.coroutines.flow.merge
+import java.net.URL
 
 @Composable
-fun SettingsScreen(state: SettingsState) {
+fun SettingsScreen(
+    videoSettingsState: VideoSettingsState,
+    favoriteDevices: FavoriteDevices,
+    cacheControl: CacheControl
+) {
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
+    LaunchedEffect(Unit) {
+        merge(
+            cacheControl.toastEvents,
+            favoriteDevices.toastEvents
+        ).collect { event ->
+            when (event) {
+                is ToastEvent.Show ->
+                    Toast.makeText(
+                        context,
+                        context.getString(event.messageResId),
+                        Toast.LENGTH_LONG
+                    ).show()
 
-    Box(
-        Modifier
+                is ToastEvent.ShowPlain ->
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val deviceLocations by favoriteDevices.locations.collectAsState()
+    LazyColumn(
+        modifier = Modifier
             .fillMaxSize()
             .padding(20.dp)
-            .verticalScroll(scrollState),
-        contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.Start) {
-            SupportPlayOnDlna(context)
-            Spacer(Modifier.height(16.dp))
-            VideoQuality(state)
-            Spacer(Modifier.height(16.dp))
-            Subtitles(state)
-            Spacer(Modifier.height(16.dp))
-            ClearCache(state.cacheControl)
-            Spacer(Modifier.height(16.dp))
-            Info(context)
+        item { SupportPlayOnDlna() }
+        item { Spacer(Modifier.height(20.dp)) }
+        item { VideoQuality(videoSettingsState) }
+        item { Spacer(Modifier.height(20.dp)) }
+        item { Subtitles(videoSettingsState) }
+        item { Spacer(Modifier.height(20.dp)) }
+        item { CustomFavoriteDevices(favoriteDevices) }
+        items(
+            items = deviceLocations.toList(),
+            key = { it }
+        ) { device ->
+            DeviceItem(
+                device = device,
+                onDelete = { favoriteDevices.removeLocation(device) }
+            )
         }
+        item { Spacer(Modifier.height(40.dp)) }
+        item { ClearCache(cacheControl) }
+        item { Spacer(Modifier.height(20.dp)) }
+        item { Info(context) }
     }
 }
 
 @Composable
-fun SupportPlayOnDlna(context: Context) {
+fun SupportPlayOnDlna() {
+    val context = LocalContext.current
     return Column {
         Text("\uD83C\uDF81 Support PlayOnDlna", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
@@ -233,7 +279,7 @@ fun SupportPlayOnDlna(context: Context) {
 }
 
 @Composable
-fun VideoQuality(settingsState: SettingsState) {
+fun VideoQuality(videoSettingsState: VideoSettingsState) {
     var expanded by remember { mutableStateOf(false) }
     return Column {
         Text("\uD83D\uDCF9 Video Quality", style = MaterialTheme.typography.titleLarge)
@@ -249,7 +295,7 @@ fun VideoQuality(settingsState: SettingsState) {
                 contentColor = colorResource(id = R.color.white)
             )
         ) {
-            Text("Prefer ${settingsState.videoQuality.value.title}")
+            Text("Prefer ${videoSettingsState.videoQuality.value.title}")
         }
         DropdownMenu(
             expanded = expanded,
@@ -258,7 +304,7 @@ fun VideoQuality(settingsState: SettingsState) {
             VideoQuality.entries.forEach { quality ->
                 DropdownMenuItem(
                     onClick = {
-                        settingsState.onVideoQualitySelect(quality)
+                        videoSettingsState.onVideoQualitySelect(quality)
                         expanded = false
                     },
                     text = { Text(quality.title) }
@@ -269,9 +315,9 @@ fun VideoQuality(settingsState: SettingsState) {
 }
 
 @Composable
-fun Subtitles(settingsState: SettingsState) {
-    val isSubtitleEnabled by settingsState.isSubtitleEnabled
-    val isInternalSubtitleEnabled by settingsState.isInternalSubtitleEnabled
+fun Subtitles(videoSettingsState: VideoSettingsState) {
+    val isSubtitleEnabled by videoSettingsState.isSubtitleEnabled
+    val isInternalSubtitleEnabled by videoSettingsState.isInternalSubtitleEnabled
     Column {
         Text("\uD83D\uDCDD Subtitles", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
@@ -289,9 +335,9 @@ fun Subtitles(settingsState: SettingsState) {
             Switch(
                 checked = isSubtitleEnabled,
                 onCheckedChange = {
-                    settingsState.onSubtitleEnabledSelect(it)
+                    videoSettingsState.onSubtitleEnabledSelect(it)
                     if (!it) {
-                        settingsState.onSubtitleInternalEnabledSelect(false)
+                        videoSettingsState.onSubtitleInternalEnabledSelect(false)
                     }
                 }
             )
@@ -311,9 +357,9 @@ fun Subtitles(settingsState: SettingsState) {
             Switch(
                 checked = isInternalSubtitleEnabled,
                 onCheckedChange = {
-                    settingsState.onSubtitleInternalEnabledSelect(it)
+                    videoSettingsState.onSubtitleInternalEnabledSelect(it)
                     if (it) {
-                        settingsState.onSubtitleEnabledSelect(true)
+                        videoSettingsState.onSubtitleEnabledSelect(true)
                     }
                 }
             )
@@ -323,28 +369,120 @@ fun Subtitles(settingsState: SettingsState) {
 }
 
 @Composable
-fun ClearCache(cacheControl: CacheControl) {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        cacheControl.toastEvents.collect { event ->
-            when (event) {
-                is ToastEvent.Show ->
-                    Toast.makeText(
-                        context,
-                        context.getString(event.messageResId),
-                        Toast.LENGTH_LONG
-                    ).show()
-
-                is ToastEvent.ShowPlain ->
-                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+fun DeviceItem(
+    device: String,
+    onDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.StartToEnd) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        }
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.padding(start = 24.dp)
+                )
+            }
+        }
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("📺")
+                Spacer(Modifier.width(12.dp))
+                Text(device)
             }
         }
     }
+}
+
+@Composable
+fun CustomFavoriteDevices(favoriteDevices: FavoriteDevices) {
+    val context = LocalContext.current
+    var urlInput by remember { mutableStateOf("") }
+    val isValidUrl = remember(urlInput) {
+        try {
+            val url = URL(urlInput)
+            url.protocol == "http" || url.protocol == "https"
+        } catch (_: Exception) {
+            false
+        }
+    }
+    Column {
+        Text(
+            context.getString(R.string.favorite_devices_title),
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(context.getString(R.string.favorite_devices_desc))
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = urlInput,
+            onValueChange = { urlInput = it },
+            label = { Text("Device URL (e.g. http://192.168.178.80:1379/)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            isError = urlInput.isNotEmpty() && !isValidUrl
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = {
+                favoriteDevices.discoverLocation(URL(urlInput))
+                urlInput = ""
+            },
+            enabled = isValidUrl,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF003087),
+                contentColor = Color.White
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Add device URL")
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun ClearCache(cacheControl: CacheControl) {
+    val context = LocalContext.current
     val sizeInGb by cacheControl.sizeInGb.collectAsState()
     return Column {
         Text("\uD83D\uDCBE Cache", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
-        Text(context.getString(R.string.cache_usage, sizeInGb))
+        Text(buildAnnotatedString {
+            append(context.getString(R.string.cache_usage))
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append("  %1$.1f GB".format(sizeInGb))
+            }
+        })
         Spacer(Modifier.height(16.dp))
         Text(context.getString(R.string.cache_desc))
         Button(

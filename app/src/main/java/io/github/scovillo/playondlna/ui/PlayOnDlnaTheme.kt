@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.theme
+package io.github.scovillo.playondlna.ui
 
 import android.app.Activity
 import android.view.WindowInsets

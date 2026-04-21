@@ -8,7 +8,7 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.stream.VideoFile
+import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

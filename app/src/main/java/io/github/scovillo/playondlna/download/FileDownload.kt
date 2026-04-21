@@ -16,10 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.stream
+package io.github.scovillo.playondlna.download
 
 import android.util.Log
-import io.github.scovillo.playondlna.model.VideoJobState
+import io.github.scovillo.playondlna.preparation.VideoJobState
+import io.github.scovillo.playondlna.server.Subtitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

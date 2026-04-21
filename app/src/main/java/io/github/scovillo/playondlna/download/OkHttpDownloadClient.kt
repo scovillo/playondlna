@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.stream
+package io.github.scovillo.playondlna.download
 
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

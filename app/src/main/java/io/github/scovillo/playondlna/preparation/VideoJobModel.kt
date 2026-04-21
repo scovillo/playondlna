@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.model
+package io.github.scovillo.playondlna.preparation
 
 import android.util.Log
 import androidx.compose.runtime.State
@@ -27,12 +27,12 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
+import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.stream.PlayOnDlnaStreamDownload
-import io.github.scovillo.playondlna.stream.Subtitle
-import io.github.scovillo.playondlna.stream.VideoFile
-import io.github.scovillo.playondlna.stream.WifiConnectionState
-import io.github.scovillo.playondlna.stream.videoHttpServer
+import io.github.scovillo.playondlna.server.Subtitle
+import io.github.scovillo.playondlna.server.VideoFile
+import io.github.scovillo.playondlna.server.videoHttpServer
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

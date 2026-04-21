@@ -1,6 +1,6 @@
-package io.github.scovillo.playondlna.model
+package io.github.scovillo.playondlna.preparation
 
-import io.github.scovillo.playondlna.stream.PlayOnDlnaVideoStream
+import io.github.scovillo.playondlna.download.PlayOnDlnaVideoStream
 import java.io.File
 
 class PlayOnDlnaFfmpegCommand(

@@ -20,11 +20,13 @@ package io.github.scovillo.playondlna.upnpdlna
 
 import android.net.wifi.WifiManager
 import android.util.Log
+import io.github.scovillo.playondlna.AppLog
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
 import org.w3c.dom.Element
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -33,6 +35,7 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import javax.xml.parsers.DocumentBuilderFactory
 
+@Serializable
 data class DlnaDevice(
     val usn: String,
     val st: String,
@@ -110,6 +113,7 @@ suspend fun discoverDlnaDevices(
 
                     synchronized(seenLocations) {
                         if (location !in seenLocations) {
+                            AppLog.i("UPNP", "New device found: $location")
                             seenLocations += location
                             seenUsns += usn
                             val job = async {
@@ -192,6 +196,7 @@ fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevic
         )
     } catch (e: Exception) {
         Log.e("UPNP", "Error at $location: ${e.message}")
+        e.printStackTrace()
         null
     }
 }
@@ -205,7 +210,8 @@ fun resolveUrl(base: String, path: String?): String? {
             baseUrl.host,
             baseUrl.port.takeIf { it > 0 } ?: baseUrl.defaultPort,
             path).toString()
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        e.printStackTrace()
         null
     }
 }

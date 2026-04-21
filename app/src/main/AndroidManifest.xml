@@ -37,7 +37,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name="io.github.scovillo.playondlna.stream.WebServerService"
+            android:name="io.github.scovillo.playondlna.server.WebServerService"
             android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

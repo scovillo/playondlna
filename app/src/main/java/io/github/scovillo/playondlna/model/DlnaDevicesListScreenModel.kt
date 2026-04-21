@@ -18,17 +18,15 @@
 
 package io.github.scovillo.playondlna.model
 
-import android.app.Application
-import android.content.Context
-import android.net.wifi.WifiManager
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.stream.VideoFile
+import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
-import io.github.scovillo.playondlna.upnpdlna.discoverDlnaDevices
+import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
+import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
 import io.github.scovillo.playondlna.upnpdlna.playUriOnDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,9 +34,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
-class DlnaListScreenModel(application: Application) : AndroidViewModel(application) {
+class DlnaDevicesListScreenModel(
+    private val ssdpDevices: SsdpDevices,
+    val favoriteDevices: FavoriteDevices
+) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
 
@@ -46,23 +50,25 @@ class DlnaListScreenModel(application: Application) : AndroidViewModel(applicati
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
-    val toastEvents = _toastEvents.asSharedFlow()
+    val toastEvents = merge(_toastEvents.asSharedFlow(), ssdpDevices.toastEvents)
 
     fun discoverDevices() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _isLoading.value = true
             _devices.value = emptyList()
-            try {
-                val wifiManager =
-                    getApplication<Application>().applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                val found = discoverDlnaDevices(wifiManager)
-                _devices.value = found.filter { it.deviceType.contains("MediaRenderer") }
-            } catch (exception: Exception) {
-                exception.printStackTrace()
-                _toastEvents.emit(ToastEvent.Show(R.string.multicast_disabled))
-            } finally {
-                _isLoading.value = false
-            }
+            val jobs = listOf(
+                launch(Dispatchers.IO) {
+                    val ssdp = ssdpDevices.discover()
+                    _devices.update { it + ssdp }
+                },
+                launch(Dispatchers.IO) {
+                    val manual = favoriteDevices.discover()
+                    _devices.update { it + manual }
+                }
+            )
+            jobs.joinAll()
+            _devices.update { it.distinctBy { device -> device.location } }
+            _isLoading.value = false
         }
     }
 
@@ -76,7 +82,6 @@ class DlnaListScreenModel(application: Application) : AndroidViewModel(applicati
                     exception.printStackTrace()
                     _toastEvents.emit(ToastEvent.Show(R.string.playback_failed))
                 }
-
             } else {
                 Log.e(
                     "playVideoOnDevice",
