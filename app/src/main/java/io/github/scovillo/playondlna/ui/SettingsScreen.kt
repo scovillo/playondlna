@@ -20,6 +20,7 @@ package io.github.scovillo.playondlna.ui
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +47,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +62,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.SettingsState
 import io.github.scovillo.playondlna.model.VideoQuality
 
@@ -81,7 +85,7 @@ fun SettingsScreen(state: SettingsState) {
             Spacer(Modifier.height(16.dp))
             Subtitles(state)
             Spacer(Modifier.height(16.dp))
-            ClearCache(state.onClearCache)
+            ClearCache(state.cacheControl)
             Spacer(Modifier.height(16.dp))
             Info(context)
         }
@@ -319,15 +323,32 @@ fun Subtitles(settingsState: SettingsState) {
 }
 
 @Composable
-fun ClearCache(onClearCache: () -> Unit) {
+fun ClearCache(cacheControl: CacheControl) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        cacheControl.toastEvents.collect { event ->
+            when (event) {
+                is ToastEvent.Show ->
+                    Toast.makeText(
+                        context,
+                        context.getString(event.messageResId),
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                is ToastEvent.ShowPlain ->
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val sizeInGb by cacheControl.sizeInGb.collectAsState()
     return Column {
         Text("\uD83D\uDCBE Cache", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
-        Text(
-            "Clean up and free space."
-        )
+        Text(context.getString(R.string.cache_usage, sizeInGb))
+        Spacer(Modifier.height(16.dp))
+        Text(context.getString(R.string.cache_desc))
         Button(
-            onClick = onClearCache,
+            onClick = { cacheControl.clearCache() },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),

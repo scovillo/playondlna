@@ -121,13 +121,14 @@ fun StreamExtractor.subtitle(): SubtitlesStream? {
 
 class VideoJobModel(
     settingsRepository: SettingsRepository,
-    private val wifiConnectionState: WifiConnectionState
+    private val wifiConnectionState: WifiConnectionState,
+    private val cacheDir: File
 ) : ViewModel() {
-
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
+    private val _completedSessions = MutableSharedFlow<Long>()
     private val state = VideoJobState()
 
     private val videoQuality: StateFlow<VideoQuality> = settingsRepository.videoQualityFlow
@@ -158,12 +159,13 @@ class VideoJobModel(
     val progress: State<Float> get() = state.progress
     val status: State<VideoJobStatus> get() = state.status
     val toastEvents = _toastEvents.asSharedFlow()
+    val completedSessions = _completedSessions.asSharedFlow()
 
     init {
         this.monitorWifiConnection()
     }
 
-    fun prepareVideo(url: String, cacheDir: File) {
+    fun prepareVideo(url: String) {
         val job = viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.i("VideoJobModel", "Requesting: $url")
@@ -196,7 +198,7 @@ class VideoJobModel(
                     state.ready()
                     Log.d("VideoFile", "Available under ${_currentVideoFile.value!!.url}")
                 } else {
-                    mux(extractor, cacheDir)
+                    mux(extractor)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -225,7 +227,7 @@ class VideoJobModel(
         runningJobs.clear()
     }
 
-    private suspend fun mux(extractor: StreamExtractor, cacheDir: File) {
+    private suspend fun mux(extractor: StreamExtractor) {
         if (wifiConnectionState.isConnected()) {
             state.preparing()
         } else {
@@ -277,6 +279,7 @@ class VideoJobModel(
                     muxFile.delete()
                 }
                 streamFiles.delete()
+                viewModelScope.launch { _completedSessions.emit(session.sessionId) }
             },
             { log -> Log.d("Mux", log.message) },
             { statistics ->

@@ -23,7 +23,10 @@ enum class VideoQuality(
     P2160("2160p", 3840, 2160, "hd2160", "AVC_MP4_HP_2160p_AAC")
 }
 
-class SettingsState(private val repository: SettingsRepository, val onClearCache: () -> Unit) :
+class SettingsState(
+    private val repository: SettingsRepository,
+    val cacheControl: CacheControl
+) :
     ViewModel() {
     private val _videoQuality = mutableStateOf(VideoQuality.P720)
     private val _isSubtitleEnabled = mutableStateOf(false)

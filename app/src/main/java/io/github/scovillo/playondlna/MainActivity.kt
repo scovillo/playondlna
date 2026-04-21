@@ -23,14 +23,12 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
-import com.arthenica.ffmpegkit.FFmpegKit
+import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DlnaListScreenModel
 import io.github.scovillo.playondlna.model.SettingsState
 import io.github.scovillo.playondlna.model.VideoJobModel
@@ -71,10 +69,19 @@ class MainActivity : ComponentActivity() {
             WifiConnectionState(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
         this.videoJobModel = VideoJobModel(
             settingsRepository,
-            wifiConnectionState
+            wifiConnectionState,
+            cacheDir
         )
+        val cacheControl =
+            CacheControl(
+                cacheDir, videoJobModel.currentVideoFile, videoJobModel.currentSession,
+                videoJobModel.completedSessions
+            )
         this.settingsState =
-            SettingsState(settingsRepository, onClearCache = { this.clearCache() })
+            SettingsState(
+                settingsRepository,
+                cacheControl
+            )
         setContent {
             PlayOnDlnaTheme {
                 MainScreen(
@@ -99,26 +106,6 @@ class MainActivity : ComponentActivity() {
         handleShareIntent(intent)
     }
 
-    fun clearCache() {
-        if (!cacheDir.exists())
-            return
-        val runningSessions = FFmpegKit.listSessions()
-        val currentSession = this.videoJobModel.currentSession.value
-        runningSessions.forEach {
-            if (currentSession == null || it.sessionId != currentSession.sessionId) {
-                Log.i("clearCache", "Cancel FFmpegKit with id ${it.sessionId}")
-                FFmpegKit.cancel(it.sessionId)
-            }
-        }
-        val currentVideoFile = this.videoJobModel.currentVideoFile.value
-        cacheDir.listFiles()?.forEach { file ->
-            if (file.exists() && (currentVideoFile == null || !file.name.contains(currentVideoFile.id))) {
-                file.delete()
-            }
-        }
-        Toast.makeText(this, "Cache cleared!", Toast.LENGTH_SHORT).show()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
     }
@@ -128,7 +115,7 @@ class MainActivity : ComponentActivity() {
             if (intent.type == "text/plain") {
                 val url = intent.extras?.getString("android.intent.extra.TEXT")
                 if (url != null) {
-                    this.videoJobModel.prepareVideo(url, cacheDir)
+                    this.videoJobModel.prepareVideo(url)
                 }
             }
         }

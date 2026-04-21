@@ -12,4 +12,7 @@
     <string name="multicast_disabled">Scan failed! Multicast is not possible in your current network</string>
     <string name="playback_failed">Playback failed!</string>
     <string name="player_incompatible">Media Player currently incompatible!</string>
+    <string name="cache_cleared">Cache cleared!</string>
+    <string name="cache_usage">Currently used space: %1$.1f GB</string>
+    <string name="cache_desc">Clean up and free space ↓</string>
 </resources>
