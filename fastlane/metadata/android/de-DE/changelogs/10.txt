@@ -1,0 +1,12 @@
+Neue Funktionen:
+
+- Netzwerk Geräte können nun favorisiert werden
+- Manuelle Urls zu Netzwerk Geräten können nun hinzugefügt werden
+
+Verbesserungen:
+
+- Der verbrauchte Speicherplatz wird nun in den Einstellungen angezeigt
+
+Behobene Fehler:
+
+- Audio Streams werden nicht mehr unnötig konvertiert

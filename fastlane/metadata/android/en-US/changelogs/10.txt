@@ -1,0 +1,12 @@
+New Features:
+
+- Network devices can now be marked as favorites
+- Manual URLs for network devices can now be added
+
+Improvements:
+
+- The amount of storage space used is now displayed in the settings
+
+Bug Fixes:
+
+- Audio streams are no longer converted unnecessarily
