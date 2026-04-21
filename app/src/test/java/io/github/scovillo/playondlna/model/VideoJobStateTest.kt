@@ -1,6 +1,24 @@
+/*
+ * PlayOnDlna - An Android application to play media on dlna devices
+ * Copyright (C) 2025 Lukas Scheerer
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package io.github.scovillo.playondlna.model
 
-import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 
@@ -12,8 +30,8 @@ class VideoJobStateTest {
 
         classUnderTest.preparing()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.PREPARING)
-        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
+        assertEquals(classUnderTest.status.value, VideoJobStatus.PREPARING)
+        assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
 
@@ -24,8 +42,8 @@ class VideoJobStateTest {
 
         classUnderTest.finalizing()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.FINALIZING)
-        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
+        assertEquals(classUnderTest.status.value, VideoJobStatus.FINALIZING)
+        assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
     @Test
@@ -35,8 +53,8 @@ class VideoJobStateTest {
 
         classUnderTest.ready()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.READY)
-        Assert.assertEquals(classUnderTest.progress.value, 100.0f)
+        assertEquals(classUnderTest.status.value, VideoJobStatus.READY)
+        assertEquals(classUnderTest.progress.value, 100.0f)
     }
 
     @Test
@@ -46,18 +64,18 @@ class VideoJobStateTest {
 
         classUnderTest.error()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.ERROR)
-        Assert.assertEquals(classUnderTest.progress.value, 25.0f)
+        assertEquals(classUnderTest.status.value, VideoJobStatus.ERROR)
+        assertEquals(classUnderTest.progress.value, 25.0f)
     }
 
     @Test
     fun updateProgress() {
         val classUnderTest = VideoJobState()
-        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
+        assertEquals(classUnderTest.progress.value, 0.0f)
 
         classUnderTest.updateProgress(25f)
 
-        Assert.assertEquals(classUnderTest.progress.value, 25.0f)
+        assertEquals(classUnderTest.progress.value, 25.0f)
     }
 
     @Test
@@ -66,7 +84,7 @@ class VideoJobStateTest {
 
         classUnderTest.updateProgress(-1f)
 
-        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
+        assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
     @Test
@@ -75,6 +93,6 @@ class VideoJobStateTest {
 
         classUnderTest.updateProgress(101f)
 
-        Assert.assertEquals(classUnderTest.progress.value, 100.0f)
+        assertEquals(classUnderTest.progress.value, 100.0f)
     }
 }

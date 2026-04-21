@@ -49,8 +49,6 @@ import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
-import org.schabi.newpipe.extractor.stream.AudioStream
-import org.schabi.newpipe.extractor.stream.AudioTrackType
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import org.schabi.newpipe.extractor.stream.VideoStream
@@ -65,11 +63,6 @@ val VideoStream.hasBestCompatibility: Boolean
         return format?.mimeType?.startsWith("video/mp4") == true && codec?.startsWith(
             "avc"
         ) == true
-    }
-
-val AudioStream.hasBestCompatibility: Boolean
-    get() {
-        return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true && audioTrackType == AudioTrackType.ORIGINAL
     }
 
 fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
@@ -109,45 +102,6 @@ fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
     Log.d(
         "VideoStream",
         "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.width}x${fallback?.height}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.fps}fps"
-    )
-    return fallback
-}
-
-fun StreamExtractor.bestAudioStream(): AudioStream? {
-    Log.i(
-        "[ALL]AudioStreams",
-        audioStreams.joinToString(System.lineSeparator()) {
-            "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
-        }
-    )
-    val locale = Locale.getDefault()
-    Log.d("AudioStream", "System language: ${locale.language}")
-    val compatibleStreams = audioStreams.filter { it.hasBestCompatibility }
-    if (compatibleStreams.isEmpty()) {
-        Log.i("[COMPATIBLE]AudioStreams", "Empty!")
-    }
-    Log.i(
-        "[COMPATIBLE]AudioStreams",
-        compatibleStreams.joinToString(System.lineSeparator()) {
-            "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
-        }
-    )
-    val chosen =
-        (compatibleStreams.filter { it.audioLocale?.language?.startsWith(locale.language) == true }
-            .maxByOrNull { it.averageBitrate }
-            ?: compatibleStreams.maxByOrNull { it.averageBitrate }
-            ?: audioStreams.maxByOrNull { it.averageBitrate })
-    if (chosen != null) {
-        Log.d(
-            "AudioStream",
-            "Chosen: ${chosen.audioTrackName}, ${chosen.audioTrackType}, ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.audioLocale}"
-        )
-        return chosen
-    }
-    val fallback = audioStreams.firstOrNull()
-    Log.d(
-        "AudioStream",
-        "Fallback: ${fallback?.audioTrackName}, ${fallback?.audioTrackType}, ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.audioLocale}"
     )
     return fallback
 }
@@ -280,8 +234,7 @@ class VideoJobModel(
         }
         val bestVideo = extractor.bestVideoStream(videoQuality.value)
             ?: throw IllegalStateException("Video stream not found")
-        val bestAudio = extractor.bestAudioStream()
-            ?: throw IllegalStateException("Audio stream not found")
+        val bestAudio = AudioStreamSelection(extractor.audioStreams).best()
         val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
         val streamFiles = PlayOnDlnaStreamDownload(
             extractor.id,
