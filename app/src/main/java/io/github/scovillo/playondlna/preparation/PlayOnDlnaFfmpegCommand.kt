@@ -1,10 +1,10 @@
 package io.github.scovillo.playondlna.preparation
 
-import io.github.scovillo.playondlna.download.PlayOnDlnaVideoStream
+import io.github.scovillo.playondlna.download.PlayOnDlnaVideoInput
 import java.io.File
 
 class PlayOnDlnaFfmpegCommand(
-    private val streamFiles: PlayOnDlnaVideoStream,
+    private val streamFiles: PlayOnDlnaVideoInput,
     private val audioHasBestCompatibility: Boolean,
     private val output: File,
     private val isInternalSubtitleEnabled: Boolean
@@ -16,8 +16,10 @@ class PlayOnDlnaFfmpegCommand(
     fun value(): String {
         val ffmpegCmd = mutableListOf(
             "-i", streamFiles.videoFile.absolutePath,
-            "-i", streamFiles.audioFile.absolutePath,
         )
+        if (streamFiles.audioFile != null) {
+            ffmpegCmd.addAll(listOf("-i", streamFiles.audioFile.absolutePath))
+        }
         if (hasSubtitle) {
             ffmpegCmd.addAll(
                 listOf(
@@ -26,23 +28,13 @@ class PlayOnDlnaFfmpegCommand(
                 )
             )
         }
-        ffmpegCmd.addAll(
-            listOf(
-                "-map", "0:v:0", "-map", "1:a:0",
-            )
-        )
-        if (hasSubtitle) {
-            ffmpegCmd.addAll(
-                listOf(
-                    "-map", "2:s:0"
-                )
-            )
-        }
         ffmpegCmd.addAll(listOf("-c:v", "copy"))
-        if (audioHasBestCompatibility) {
-            ffmpegCmd.addAll(listOf("-c:a", "copy"))
-        } else {
-            ffmpegCmd.addAll(listOf("-c:a", "aac"))
+        if (streamFiles.audioFile != null) {
+            if (audioHasBestCompatibility) {
+                ffmpegCmd.addAll(listOf("-c:a", "copy"))
+            } else {
+                ffmpegCmd.addAll(listOf("-c:a", "aac"))
+            }
         }
         if (hasSubtitle) {
             ffmpegCmd.addAll(

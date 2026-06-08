@@ -65,47 +65,6 @@ val VideoStream.hasBestCompatibility: Boolean
         ) == true
     }
 
-fun StreamExtractor.bestVideoStream(quality: VideoQuality): VideoStream? {
-    Log.d(
-        "VideoStreams",
-        videoOnlyStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
-    )
-    val compatibleVideoStreams = videoOnlyStreams.filter { it.hasBestCompatibility }
-    Log.d(
-        "compatibleVideoStreams",
-        compatibleVideoStreams.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
-    )
-    val compatibleVideoStreamsWithPreferredQuality =
-        compatibleVideoStreams.sortedByDescending { it.height }
-            .filter { it.height <= quality.height }
-    Log.d(
-        "compatibleVideoStreamsWithPreferredQuality",
-        compatibleVideoStreamsWithPreferredQuality.joinToString(System.lineSeparator()) { "${it.format?.mimeType}, ${it.codec}, ${it.width}x${it.height}, ${it.quality}, ${it.bitrate}, ${it.fps}" }
-    )
-    if (compatibleVideoStreamsWithPreferredQuality.isNotEmpty()) {
-        val chosen = compatibleVideoStreamsWithPreferredQuality.maxBy { it.height }
-        Log.d(
-            "VideoStream",
-            "Chosen: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
-        )
-        return chosen
-    }
-    if (compatibleVideoStreams.isNotEmpty()) {
-        val chosen = compatibleVideoStreams.maxBy { it.height }
-        Log.d(
-            "VideoStream",
-            "Chosen without quality setting: ${chosen.format?.mimeType}, ${chosen.codec}, ${chosen.width}x${chosen.height}, ${chosen.quality}, ${chosen.bitrate}, ${chosen.fps}fps"
-        )
-        return chosen
-    }
-    val fallback = videoOnlyStreams.maxByOrNull { it.height }
-    Log.d(
-        "VideoStream",
-        "Fallback: ${fallback?.format?.mimeType}, ${fallback?.codec}, ${fallback?.width}x${fallback?.height}, ${fallback?.quality}, ${fallback?.bitrate}, ${fallback?.fps}fps"
-    )
-    return fallback
-}
-
 fun StreamExtractor.subtitle(): SubtitlesStream? {
     val locale = Locale.getDefault()
     val subtitlesM4a = getSubtitles(MediaFormat.SRT)
@@ -234,23 +193,30 @@ class VideoJobModel(
             state.error()
             return
         }
-        val bestVideo = extractor.bestVideoStream(videoQuality.value)
-            ?: throw IllegalStateException("Video stream not found")
+        val bestVideo =
+            VideoStreamSelection(
+                extractor.videoStreams + extractor.videoOnlyStreams,
+                videoQuality.value
+            ).best()
         val bestAudio = AudioStreamSelection(extractor.audioStreams).best()
         val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
-        val streamFiles = PlayOnDlnaStreamDownload(
+        val download = PlayOnDlnaStreamDownload(
             extractor.id,
             bestVideo.content,
-            bestAudio.content,
-            subtitle,
             cacheDir,
             state
-        ).startDownload()
-
+        )
+        if (bestAudio != null) {
+            download.withAudioStream(bestAudio.content)
+        }
+        if (subtitle != null) {
+            download.withSubtitle(subtitle)
+        }
+        val streamFiles = download.start()
         val muxFile = File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
         val ffmpegCmd = PlayOnDlnaFfmpegCommand(
             streamFiles,
-            bestAudio.hasBestCompatibility,
+            bestAudio?.hasBestCompatibility ?: true,
             muxFile,
             isInternalSubtitleEnabled.value
         )

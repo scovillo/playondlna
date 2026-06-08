@@ -19,6 +19,7 @@
 package io.github.scovillo.playondlna.download
 
 import android.util.Log
+import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.preparation.VideoJobState
 import io.github.scovillo.playondlna.server.Subtitle
 import kotlinx.coroutines.Dispatchers
@@ -52,20 +53,24 @@ private fun formatBytes(bytes: Long): String {
 }
 
 class PlayOnDlnaFileDownload(
+    val filePrefix: String,
+    val fileSuffix: String,
     val url: String,
     val userAgent: String,
-    private val outputFile: File,
     private val chunkCalculation: ChunkCalculation,
     private val client: OkHttpClient,
+    private val cacheDir: File
 ) {
     private lateinit var chunkProgress: LongArray
+    private lateinit var outputFile: File
     private var _totalSize = 1L
     val totalSize: Long get() = _totalSize
+    val result: File get() = outputFile
 
     suspend fun start(
         onProgress: (totalDownloaded: Long) -> Unit
     ): File = coroutineScope {
-
+        outputFile = File.createTempFile(filePrefix, fileSuffix, cacheDir)
         _totalSize = getContentLengthViaRange(url)
         if (_totalSize <= 0L) throw IOException("Invalid content length")
 
@@ -170,64 +175,69 @@ class PlayOnDlnaFileDownload(
     }
 }
 
-class PlayOnDlnaVideoStream(val videoFile: File, val audioFile: File, val subtitle: Subtitle?) {
+class PlayOnDlnaVideoInput(
+    val videoFile: File,
+    val audioFile: File?,
+    val subtitle: Subtitle?
+) {
     fun delete() {
+        AppLog.i("PlayOnDlnaVideoInput", "Deleting $videoFile, $audioFile")
         videoFile.delete()
-        audioFile.delete()
+        audioFile?.delete()
     }
 }
 
 class PlayOnDlnaStreamDownload(
     private val id: String,
-    private val videoUrl: String,
-    private val audioUrl: String,
-    private val subtitleStream: SubtitlesStream?,
+    videoUrl: String,
     private val cacheDir: File,
     private val state: VideoJobState,
-    val logTimeInMillis: Int = 3000
+    val logTimeInMillis: Int = 3000,
+    val userAgent: String = YoutubeParsingHelper.getAndroidUserAgent(null)
 ) {
-    suspend fun startDownload(): PlayOnDlnaVideoStream = coroutineScope {
-        val files = mutableListOf(
-            File.createTempFile("${id}_video_", ".tmp", cacheDir),
-            File.createTempFile("${id}_audio_", ".tmp", cacheDir)
-        )
-        val userAgent = YoutubeParsingHelper.getAndroidUserAgent(null)
-        val downloads = mutableListOf(
+    val downloads: MutableMap<String, PlayOnDlnaFileDownload> = mutableMapOf()
+
+    init {
+        downloads["video"] =
             PlayOnDlnaFileDownload(
+                "${id}_video_",
+                ".tmp",
                 videoUrl,
                 userAgent,
-                files[0],
                 ChunkCalculation(16, 8 * 1024 * 1024),
-                okHttpClient
-            ),
+                okHttpClient,
+                cacheDir
+            )
+    }
+
+    fun withAudioStream(audioUrl: String) {
+        downloads["audio"] =
             PlayOnDlnaFileDownload(
+                "${id}_audio_",
+                ".tmp",
                 audioUrl,
                 userAgent,
-                files[1],
                 ChunkCalculation(6, 4 * 1024 * 1024),
-                okHttpClient
+                okHttpClient,
+                cacheDir
             )
-        )
-        if (subtitleStream != null) {
-            files.add(
-                File.createTempFile(
-                    "${id}_subtitle_",
-                    ".${subtitleStream.locale.language}.srt",
-                    cacheDir
-                )
-            )
-            downloads.add(
-                PlayOnDlnaFileDownload(
-                    subtitleStream.content,
-                    userAgent,
-                    files[2],
-                    ChunkCalculation(2, 4 * 1024 * 1024),
-                    okHttpClient
-                )
-            )
-        }
-        val progress = LongArray(downloads.size)
+    }
 
+    fun withSubtitle(subtitleStream: SubtitlesStream) {
+        downloads["subtitle"] =
+            PlayOnDlnaFileDownload(
+                "${id}_subtitle_",
+                ".${subtitleStream.locale.language}.srt",
+                subtitleStream.content,
+                userAgent,
+                ChunkCalculation(2, 4 * 1024 * 1024),
+                okHttpClient,
+                cacheDir
+            )
+    }
+
+    suspend fun start(): PlayOnDlnaVideoInput = coroutineScope {
+        val progress = LongArray(downloads.size)
         val startTime = System.currentTimeMillis()
         val progressJob = launch(Dispatchers.Main) {
             var lastTotal = 0L
@@ -237,7 +247,7 @@ class PlayOnDlnaStreamDownload(
                 delay(20L)
 
                 val totalDownloaded = progress.sum()
-                val totalSize = downloads.sumOf { it.totalSize }
+                val totalSize = downloads.values.sumOf { it.totalSize }
                 val progressPercent =
                     (totalDownloaded.toDouble() * 100 / totalSize).toFloat().coerceIn(0.0f, 100.0f)
 
@@ -264,25 +274,21 @@ class PlayOnDlnaStreamDownload(
                 }
             }
         }
-        val jobs = downloads.mapIndexed { index, job ->
+        val jobs = downloads.values.mapIndexed { index, job ->
             async(Dispatchers.IO) {
                 job.start { progress[index] = it }
             }
         }
-        val results = jobs.awaitAll()
+        jobs.awaitAll()
         progressJob.cancelAndJoin()
         Log.d(
             "Download",
-            "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${files[0]}, Audio -> ${files[1]}, Subtitle -> ${
-                files.getOrNull(
-                    2
-                )
-            }"
+            "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${downloads["video"]!!.result}, Audio -> ${downloads["audio"]?.result}, Subtitle -> ${downloads["subtitle"]?.result}"
         )
-        return@coroutineScope PlayOnDlnaVideoStream(
-            videoFile = results[0],
-            audioFile = results[1],
-            subtitle = if (results.size > 2) Subtitle(results[2]) else null
+        return@coroutineScope PlayOnDlnaVideoInput(
+            videoFile = downloads["video"]!!.result,
+            audioFile = downloads["audio"]?.result,
+            subtitle = if (downloads.containsKey("subtitle")) Subtitle(downloads["subtitle"]!!.result) else null
         )
     }
 }

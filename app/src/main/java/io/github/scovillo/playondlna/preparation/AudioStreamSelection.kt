@@ -51,18 +51,17 @@ class AudioStreamSelection(
     private val audioStreams: List<AudioStream>,
     private val locale: Locale = Locale.getDefault()
 ) {
-    init {
-        if (audioStreams.isEmpty()) {
-            throw IllegalStateException("No audio stream found!")
-        }
-    }
-
-    fun best(): AudioStream {
-        AppLog.i(
-            "[ALL] AudioStreams",
-            audioStreams.joinToString(System.lineSeparator()) { it.info }
-        )
+    fun best(): AudioStream? {
         AppLog.i("AudioStream", "System language: ${locale.language}")
+        if (audioStreams.isEmpty()) {
+            AppLog.w("AudioStreams", "No audio streams found!")
+            return null
+        } else {
+            AppLog.i(
+                "[ALL] AudioStreams",
+                audioStreams.joinToString(System.lineSeparator()) { it.info }
+            )
+        }
         val originals = this.audioStreams.originals()
         AppLog.i(
             "[ORIGINAL] AudioStreams",
