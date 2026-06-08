@@ -50,7 +50,7 @@ class AudioStreamSelectionTest {
 
         val classUnderTest = AudioStreamSelection(testAudioStreams, Locale("de"))
 
-        Assert.assertEquals("Test en 2", classUnderTest.best().id)
+        Assert.assertEquals("Test en 2", classUnderTest.best()?.id)
     }
 
     @Test
@@ -102,7 +102,7 @@ class AudioStreamSelectionTest {
 
         val classUnderTest = AudioStreamSelection(testAudioStreams, Locale("de"))
 
-        Assert.assertEquals("Test de 3", classUnderTest.best().id)
+        Assert.assertEquals("Test de 3", classUnderTest.best()?.id)
     }
 
     @Test
@@ -136,7 +136,7 @@ class AudioStreamSelectionTest {
 
         val classUnderTest = AudioStreamSelection(testAudioStreams, Locale("de"))
 
-        Assert.assertEquals("Test en 2", classUnderTest.best().id)
+        Assert.assertEquals("Test en 2", classUnderTest.best()?.id)
     }
 
     @Test
@@ -167,6 +167,6 @@ class AudioStreamSelectionTest {
 
         val classUnderTest = AudioStreamSelection(testAudioStreams, Locale("de"))
 
-        Assert.assertEquals("Test de 1", classUnderTest.best().id)
+        Assert.assertEquals("Test de 1", classUnderTest.best()?.id)
     }
 }
