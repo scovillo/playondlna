@@ -1,0 +1,3 @@
+Verbesserungen:
+
+- Alle Video Streams werden nun in die Auswahl aufgenommen

@@ -1,0 +1,3 @@
+Improvements:
+
+- All video streams are now being added to the selection

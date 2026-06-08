@@ -1,6 +1,6 @@
 # PlayOnDlna
 
-📦 **Version:** 10 (1.9)
+📦 **Version:** 11 (1.10)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
@@ -80,7 +80,7 @@ file in the sourcerepository for full license information.
   - io.github.scovillo:ffmpeg-kit:1.15
   - com.arthenica:smart-exception-java:0.2.1
   - org.nanohttpd:nanohttpd:2.3.1
-  - com.github.teamnewpipe:NewPipeExtractor:v0.26.0
+  - com.github.teamnewpipe:NewPipeExtractor:v0.26.2
   - com.squareup.okhttp3:okhttp:4.12.0
   - com.arthenica:ffmpeg-kit-custom:main
 
