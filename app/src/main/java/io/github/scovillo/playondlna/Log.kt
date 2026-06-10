@@ -19,61 +19,126 @@
 package io.github.scovillo.playondlna
 
 enum class PlayOnDlnaLogStream {
-    Console, Android
+    Console,
+    Android,
 }
 
 private interface PlayOnDlnaLogBridge {
+    fun v(
+        tag: String,
+        msg: String,
+    )
 
-    fun v(tag: String, msg: String)
-    fun d(tag: String, msg: String)
-    fun i(tag: String, msg: String)
-    fun w(tag: String, msg: String)
-    fun e(tag: String, msg: String, throwable: Throwable? = null)
+    fun d(
+        tag: String,
+        msg: String,
+    )
 
-    fun wtf(tag: String, msg: String, throwable: Throwable? = null)
+    fun i(
+        tag: String,
+        msg: String,
+    )
+
+    fun w(
+        tag: String,
+        msg: String,
+    )
+
+    fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable? = null,
+    )
+
+    fun wtf(
+        tag: String,
+        msg: String,
+        throwable: Throwable? = null,
+    )
 }
 
 private object ConsoleLogBridge : PlayOnDlnaLogBridge {
+    override fun v(
+        tag: String,
+        msg: String,
+    ) = println("VERBOSE: $tag: $msg")
 
-    override fun v(tag: String, msg: String) = println("VERBOSE: $tag: $msg")
-    override fun d(tag: String, msg: String) = println("DEBUG: $tag: $msg")
-    override fun i(tag: String, msg: String) = println("INFO: $tag: $msg")
-    override fun w(tag: String, msg: String) = println("WARN: $tag: $msg")
+    override fun d(
+        tag: String,
+        msg: String,
+    ) = println("DEBUG: $tag: $msg")
 
-    override fun e(tag: String, msg: String, throwable: Throwable?) {
+    override fun i(
+        tag: String,
+        msg: String,
+    ) = println("INFO: $tag: $msg")
+
+    override fun w(
+        tag: String,
+        msg: String,
+    ) = println("WARN: $tag: $msg")
+
+    override fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         println("ERROR: $tag: $msg")
         throwable?.printStackTrace()
     }
 
-    override fun wtf(tag: String, msg: String, throwable: Throwable?) {
+    override fun wtf(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         println("WTF: $tag: $msg")
         throwable?.printStackTrace()
     }
 }
 
 private object AndroidLogBridge : PlayOnDlnaLogBridge {
-
-    override fun v(tag: String, msg: String) {
+    override fun v(
+        tag: String,
+        msg: String,
+    ) {
         android.util.Log.v(tag, msg)
     }
 
-    override fun d(tag: String, msg: String) {
+    override fun d(
+        tag: String,
+        msg: String,
+    ) {
         android.util.Log.d(tag, msg)
     }
 
-    override fun i(tag: String, msg: String) {
+    override fun i(
+        tag: String,
+        msg: String,
+    ) {
         android.util.Log.i(tag, msg)
     }
 
-    override fun w(tag: String, msg: String) {
+    override fun w(
+        tag: String,
+        msg: String,
+    ) {
         android.util.Log.w(tag, msg)
     }
 
-    override fun e(tag: String, msg: String, throwable: Throwable?) {
+    override fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         android.util.Log.e(tag, msg, throwable)
     }
 
-    override fun wtf(tag: String, msg: String, throwable: Throwable?) {
+    override fun wtf(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         android.util.Log.wtf(tag, msg, throwable)
     }
 }
@@ -87,27 +152,47 @@ object AppLog : PlayOnDlnaLogBridge {
         stream = value
     }
 
-    override fun v(tag: String, msg: String) {
+    override fun v(
+        tag: String,
+        msg: String,
+    ) {
         bridge.v(tag, msg)
     }
 
-    override fun d(tag: String, msg: String) {
+    override fun d(
+        tag: String,
+        msg: String,
+    ) {
         bridge.d(tag, msg)
     }
 
-    override fun i(tag: String, msg: String) {
+    override fun i(
+        tag: String,
+        msg: String,
+    ) {
         bridge.i(tag, msg)
     }
 
-    override fun w(tag: String, msg: String) {
+    override fun w(
+        tag: String,
+        msg: String,
+    ) {
         bridge.w(tag, msg)
     }
 
-    override fun e(tag: String, msg: String, throwable: Throwable?) {
+    override fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         bridge.e(tag, msg, throwable)
     }
 
-    override fun wtf(tag: String, msg: String, throwable: Throwable?) {
+    override fun wtf(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) {
         bridge.wtf(tag, msg, throwable)
     }
 }

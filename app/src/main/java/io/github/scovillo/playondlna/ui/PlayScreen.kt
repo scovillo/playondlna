@@ -49,9 +49,9 @@ import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.VideoJobStatus
 
 @Composable
-fun PlayScreen(
+fun playScreen(
     videoJobModel: VideoJobModel,
-    contentDlnaComposeView: @Composable () -> Unit
+    contentDlnaComposeView: @Composable () -> Unit,
 ) {
     val progress by videoJobModel.progress
     val title by videoJobModel.title
@@ -64,7 +64,7 @@ fun PlayScreen(
                     Toast.makeText(
                         context,
                         context.getString(event.messageResId),
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_LONG,
                     ).show()
 
                 is ToastEvent.ShowPlain ->
@@ -73,52 +73,58 @@ fun PlayScreen(
         }
     }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .padding(top = 50.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(top = 50.dp),
         verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = if (title == "idle") stringResource(R.string.src_link) else title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = colorResource(id = R.color.white),
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         Text(
-            text = when (status) {
-                VideoJobStatus.IDLE -> stringResource(R.string.idle)
-                VideoJobStatus.PREPARING -> stringResource(R.string.preparing)
-                VideoJobStatus.FINALIZING -> stringResource(R.string.finalizing)
-                VideoJobStatus.READY -> stringResource(R.string.ready)
-                VideoJobStatus.ERROR -> stringResource(R.string.error)
-            },
-            modifier = Modifier
-                .fillMaxWidth(),
+            text =
+                when (status) {
+                    VideoJobStatus.IDLE -> stringResource(R.string.idle)
+                    VideoJobStatus.PREPARING -> stringResource(R.string.preparing)
+                    VideoJobStatus.FINALIZING -> stringResource(R.string.finalizing)
+                    VideoJobStatus.READY -> stringResource(R.string.ready)
+                    VideoJobStatus.ERROR -> stringResource(R.string.error)
+                },
+            modifier =
+                Modifier
+                    .fillMaxWidth(),
             color = colorResource(id = R.color.white),
             fontSize = 24.sp,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
         LinearProgressIndicator(
             progress = { progress / 100f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .padding(14.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .padding(14.dp),
             color = colorResource(id = R.color.icon_color),
             trackColor = ProgressIndicatorDefaults.linearTrackColor,
             strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
         )
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
         ) {
             contentDlnaComposeView()
         }

@@ -33,9 +33,10 @@ class OkHttpDownloadClient : Downloader() {
 
     override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): Response {
         val requestBody = this.body(request)
-        val reqBuilder = Request.Builder()
-            .url(request.url())
-            .method(request.httpMethod(), requestBody)
+        val reqBuilder =
+            Request.Builder()
+                .url(request.url())
+                .method(request.httpMethod(), requestBody)
 
         for ((key, value) in request.headers()) {
             reqBuilder.addHeader(key, value.joinToString(";"))
@@ -46,14 +47,14 @@ class OkHttpDownloadClient : Downloader() {
             val body = response.body?.string()
             Log.i(
                 "OkHttpDownloadClient",
-                "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | $body"
+                "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | $body",
             )
             return Response(
                 response.code,
                 response.message,
                 response.headers.toMultimap(),
                 body,
-                response.request.url.toString()
+                response.request.url.toString(),
             )
         } catch (e: IOException) {
             throw RuntimeException("HTTP error", e)
@@ -68,8 +69,9 @@ class OkHttpDownloadClient : Downloader() {
                 request.headers()["Content-Type"]?.first() ?: "application/octet-stream"
             val mediaType = contentType.toMediaTypeOrNull()
             return data.toRequestBody(mediaType)
-        } else if (request.httpMethod() == "POST")
+        } else if (request.httpMethod() == "POST") {
             return "".toRequestBody("text/plain".toMediaTypeOrNull())
+        }
         return null
     }
 }

@@ -71,14 +71,13 @@ fun getLocalIpAddress(): String? {
 }
 
 class VideoHttpServer(port: Int) : NanoHTTPD(port) {
-
     val allFiles = mutableMapOf<String, VideoFile>()
 
     override fun serve(session: IHTTPSession): Response {
         Log.i("VideoHttpServer", "-> ${session.uri}")
         Log.d(
             "RequestHeaders",
-            session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator())
+            session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator()),
         )
         val uriParts = session.uri.split("/")
         val id = uriParts[1]
@@ -90,35 +89,38 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
                     ?: return newFixedLengthResponse(
                         Response.Status.NOT_FOUND,
                         MIME_PLAINTEXT,
-                        "Subtitle not found for video id $id!"
+                        "Subtitle not found for video id $id!",
                     )
             val fis = FileInputStream(subtitle.file)
-            val response = newFixedLengthResponse(
-                Response.Status.OK,
-                "text/srt",
-                fis,
-                subtitle.file.length()
-            )
+            val response =
+                newFixedLengthResponse(
+                    Response.Status.OK,
+                    "text/srt",
+                    fis,
+                    subtitle.file.length(),
+                )
             return response
         }
 
-        val file = allFiles[id]?.value
-            ?: return newFixedLengthResponse(
-                Response.Status.NOT_FOUND,
-                MIME_PLAINTEXT,
-                "Video with id $id not found!"
-            )
+        val file =
+            allFiles[id]?.value
+                ?: return newFixedLengthResponse(
+                    Response.Status.NOT_FOUND,
+                    MIME_PLAINTEXT,
+                    "Video with id $id not found!",
+                )
         val fileLength = file.length()
         val rangeHeader = session.headers["range"]
         try {
-            val (start, end) = if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-                val range = rangeHeader.removePrefix("bytes=").split("-")
-                val start = range[0].toLongOrNull() ?: 0L
-                val end = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
-                start.coerceAtMost(fileLength - 1) to end.coerceAtMost(fileLength - 1)
-            } else {
-                0L to (fileLength - 1)
-            }
+            val (start, end) =
+                if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                    val range = rangeHeader.removePrefix("bytes=").split("-")
+                    val start = range[0].toLongOrNull() ?: 0L
+                    val end = range.getOrNull(1)?.toLongOrNull() ?: (fileLength - 1)
+                    start.coerceAtMost(fileLength - 1) to end.coerceAtMost(fileLength - 1)
+                } else {
+                    0L to (fileLength - 1)
+                }
             val contentLength = end - start + 1
             val fis = FileInputStream(file)
             var skipped = 0L
@@ -127,24 +129,26 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
                 if (skipNow <= 0) break
                 skipped += skipNow
             }
-            val response = if (rangeHeader != null) {
-                newFixedLengthResponse(
-                    Response.Status.PARTIAL_CONTENT,
-                    "video/mp4",
-                    fis,
-                    contentLength
-                ).apply {
-                    addHeader("Content-Range", "bytes $start-$end/$fileLength")
+            val response =
+                if (rangeHeader != null) {
+                    newFixedLengthResponse(
+                        Response.Status.PARTIAL_CONTENT,
+                        "video/mp4",
+                        fis,
+                        contentLength,
+                    ).apply {
+                        addHeader("Content-Range", "bytes $start-$end/$fileLength")
+                    }
+                } else {
+                    newFixedLengthResponse(Response.Status.OK, "video/mp4", fis, contentLength).apply {
+                        addHeader(
+                            "contentFeatures.dlna.org",
+                            "DLNA.ORG_PN=${allFiles[id]!!.videoQuality.dlnaProfile}.;DLNA.ORG_OP=11;" +
+                                "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000",
+                        )
+                        addHeader("transferMode.dlna.org", "Streaming")
+                    }
                 }
-            } else {
-                newFixedLengthResponse(Response.Status.OK, "video/mp4", fis, contentLength).apply {
-                    addHeader(
-                        "contentFeatures.dlna.org",
-                        "DLNA.ORG_PN=${allFiles[id]!!.videoQuality.dlnaProfile}.;DLNA.ORG_OP=11;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
-                    )
-                    addHeader("transferMode.dlna.org", "Streaming")
-                }
-            }
             response.addHeader("Accept-Ranges", "bytes")
             response.addHeader("Connection", "keep-alive")
             Log.i("VideoHttpServer", "<- ${session.uri}")
@@ -154,7 +158,7 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
             return newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
-                "IO Error: ${e.message}"
+                "IO Error: ${e.message}",
             )
         }
     }
@@ -163,7 +167,6 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
 val videoHttpServer = VideoHttpServer(serverPort)
 
 class WebServerService : Service() {
-
     override fun onCreate() {
         super.onCreate()
         try {
@@ -172,14 +175,19 @@ class WebServerService : Service() {
         } catch (e: IOException) {
             e.printStackTrace()
         }
-        val notification: Notification = NotificationCompat.Builder(this, "http_channel")
-            .setContentTitle("HTTP-Streaming active")
-            .setContentText("Server running on http://${getLocalIpAddress()}:$serverPort/")
-            .build()
+        val notification: Notification =
+            NotificationCompat.Builder(this, "http_channel")
+                .setContentTitle("HTTP-Streaming active")
+                .setContentText("Server running on http://${getLocalIpAddress()}:$serverPort/")
+                .build()
         startForeground(1, notification)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         return START_STICKY
     }
 

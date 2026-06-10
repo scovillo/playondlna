@@ -3,12 +3,12 @@ package io.github.scovillo.playondlna.download
 data class Chunk(
     val start: Long,
     val end: Long,
-    val totalBytes: Long
+    val totalBytes: Long,
 )
 
 class ChunkCalculation(
     private val maxThreads: Int,
-    private val minSizeInBytes: Long
+    private val minSizeInBytes: Long,
 ) {
     private var currentThreads: Int = maxThreads
 
@@ -22,12 +22,13 @@ class ChunkCalculation(
         var start = 0L
 
         for (i in 0 until currentThreads) {
-            val size = if (remainder > 0) {
-                remainder--
-                baseChunk + 1
-            } else {
-                baseChunk
-            }
+            val size =
+                if (remainder > 0) {
+                    remainder--
+                    baseChunk + 1
+                } else {
+                    baseChunk
+                }
             val end = start + size - 1
             chunks.add(Chunk(start, end, size))
             start = end + 1

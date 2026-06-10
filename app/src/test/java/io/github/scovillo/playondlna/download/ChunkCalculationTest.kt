@@ -4,13 +4,13 @@ import org.junit.Assert
 import org.junit.Test
 
 class ChunkCalculationTest {
-
     @Test
     fun matchingTotalLength() {
-        val classUnderTest = ChunkCalculation(
-            maxThreads = 8,
-            minSizeInBytes = 2 * 1024 * 1024L,
-        )
+        val classUnderTest =
+            ChunkCalculation(
+                maxThreads = 8,
+                minSizeInBytes = 2 * 1024 * 1024L,
+            )
 
         val chunks = classUnderTest.chunks(6 * 1024 * 1024L)
         Assert.assertEquals(3, chunks.size)
@@ -30,10 +30,11 @@ class ChunkCalculationTest {
 
     @Test
     fun greaterTotalLength1() {
-        val classUnderTest = ChunkCalculation(
-            maxThreads = 8,
-            minSizeInBytes = 2 * 1024 * 1024L
-        )
+        val classUnderTest =
+            ChunkCalculation(
+                maxThreads = 8,
+                minSizeInBytes = 2 * 1024 * 1024L,
+            )
 
         val chunks = classUnderTest.chunks(6 * 1024 * 1024L + 100)
         Assert.assertEquals(3, chunks.size)
@@ -53,10 +54,11 @@ class ChunkCalculationTest {
 
     @Test
     fun greaterTotalLength2() {
-        val classUnderTest = ChunkCalculation(
-            maxThreads = 8,
-            minSizeInBytes = 2 * 1024 * 1024L
-        )
+        val classUnderTest =
+            ChunkCalculation(
+                maxThreads = 8,
+                minSizeInBytes = 2 * 1024 * 1024L,
+            )
 
         val chunks = classUnderTest.chunks(6 * 1024 * 1024L + 1)
         Assert.assertEquals(3, chunks.size)
@@ -76,10 +78,11 @@ class ChunkCalculationTest {
 
     @Test
     fun lowerTotalLength1() {
-        val classUnderTest = ChunkCalculation(
-            maxThreads = 8,
-            minSizeInBytes = 2 * 1024 * 1024L
-        )
+        val classUnderTest =
+            ChunkCalculation(
+                maxThreads = 8,
+                minSizeInBytes = 2 * 1024 * 1024L,
+            )
 
         val chunks = classUnderTest.chunks(6 * 1024 * 1024L - 100)
         Assert.assertEquals(2, chunks.size)
@@ -95,10 +98,11 @@ class ChunkCalculationTest {
 
     @Test
     fun lowerTotalLength2() {
-        val classUnderTest = ChunkCalculation(
-            maxThreads = 8,
-            minSizeInBytes = 2 * 1024 * 1024L
-        )
+        val classUnderTest =
+            ChunkCalculation(
+                maxThreads = 8,
+                minSizeInBytes = 2 * 1024 * 1024L,
+            )
 
         val chunks = classUnderTest.chunks(6 * 1024 * 1024L - 1)
         Assert.assertEquals(2, chunks.size)

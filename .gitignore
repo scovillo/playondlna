@@ -9,3 +9,4 @@
 local.properties
 /.idea/
 /.kotlin/
+.vscode

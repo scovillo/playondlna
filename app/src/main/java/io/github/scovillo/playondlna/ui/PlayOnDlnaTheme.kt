@@ -9,19 +9,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 
-private val darkColorScheme = darkColorScheme(
-    primary = Color.Red,
-    onPrimary = Color.Black,
-    background = Color.Black,
-    onBackground = Color.White,
-    surface = Color.DarkGray,
-    onSurface = Color.White,
-)
+private val darkColorScheme =
+    darkColorScheme(
+        primary = Color.Red,
+        onPrimary = Color.Black,
+        background = Color.Black,
+        onBackground = Color.White,
+        surface = Color.DarkGray,
+        onSurface = Color.White,
+    )
 
 @Composable
-fun PlayOnDlnaTheme(
-    content: @Composable () -> Unit
-) {
+fun playOnDlnaTheme(content: @Composable () -> Unit) {
     val view = LocalView.current
     val window = (view.context as Activity).window
     window.decorView.setOnApplyWindowInsetsListener { view, insets ->
@@ -32,6 +31,6 @@ fun PlayOnDlnaTheme(
     }
     MaterialTheme(
         colorScheme = darkColorScheme,
-        content = content
+        content = content,
     )
 }

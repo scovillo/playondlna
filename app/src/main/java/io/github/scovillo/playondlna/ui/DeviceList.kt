@@ -66,7 +66,10 @@ import io.github.scovillo.playondlna.preparation.VideoJobModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScreenModel) {
+fun dlnaListScreen(
+    videoJobModel: VideoJobModel,
+    dlnaModel: DlnaDevicesListScreenModel,
+) {
     val devices by dlnaModel.devices.collectAsState()
     val isLoading by dlnaModel.isLoading.collectAsState()
     val favorites by dlnaModel.favoriteDevices.locations.collectAsState()
@@ -83,7 +86,7 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScree
                     Toast.makeText(
                         context,
                         context.getString(event.messageResId),
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_LONG,
                     ).show()
 
                 is ToastEvent.ShowPlain ->
@@ -95,11 +98,12 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScree
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        label = "rotation",
     )
     Scaffold(
         topBar = {
@@ -110,18 +114,18 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScree
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            modifier = Modifier.rotate(if (isLoading) rotation else 0f)
+                            modifier = Modifier.rotate(if (isLoading) rotation else 0f),
                         )
                     }
                 },
-                windowInsets = WindowInsets(0)
+                windowInsets = WindowInsets(0),
             )
-        }
+        },
     ) { padding ->
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
         ) {
             LazyColumn {
                 items(devices) { device ->
@@ -134,26 +138,26 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScree
                                 if (videoFile != null) {
                                     dlnaModel.playVideoOnDevice(device, videoFile)
                                 }
-                            }
+                            },
                     ) {
                         val isFavorite = device.location in favorites
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.padding(16.dp)) {
                                 Text(
                                     device.friendlyName,
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleMedium,
                                 )
                                 Text(
                                     device.modelName,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
                                     device.location,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                             }
                             Spacer(Modifier.weight(1f))
@@ -164,15 +168,17 @@ fun DlnaListScreen(videoJobModel: VideoJobModel, dlnaModel: DlnaDevicesListScree
                                     } else {
                                         dlnaModel.favoriteDevices.addLocation(device.location)
                                     }
-                                }
+                                },
                             ) {
                                 Icon(
-                                    imageVector = if (isFavorite)
-                                        Icons.Filled.Star
-                                    else
-                                        Icons.Outlined.StarBorder,
+                                    imageVector =
+                                        if (isFavorite) {
+                                            Icons.Filled.Star
+                                        } else {
+                                            Icons.Outlined.StarBorder
+                                        },
                                     contentDescription = "Save device",
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(32.dp),
                                 )
                             }
                         }

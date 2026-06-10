@@ -25,7 +25,9 @@ class SettingsRepository(private val context: Context) {
             val name = prefs[Keys.VIDEO_QUALITY]
             if (name != null) {
                 VideoQuality.valueOf(name)
-            } else VideoQuality.P720
+            } else {
+                VideoQuality.P720
+            }
         }.distinctUntilChanged()
 
     val isSubtitleEnabledFlow: Flow<Boolean> =
@@ -68,22 +70,23 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveFavoriteDeviceLocation(location: String) {
         context.dataStore.edit { prefs ->
-            val current = prefs[Keys.FAVORITE_LOCATIONS]
-                ?.split("|")
-                ?.filter { it.isNotBlank() }
-                ?: emptyList()
+            val current =
+                prefs[Keys.FAVORITE_LOCATIONS]
+                    ?.split("|")
+                    ?.filter { it.isNotBlank() }
+                    ?: emptyList()
             val updated = (current + location).distinct()
             prefs[Keys.FAVORITE_LOCATIONS] = updated.joinToString("|")
         }
     }
 
-
     suspend fun removeFavoriteLocation(location: String) {
         context.dataStore.edit { prefs ->
-            val current = prefs[Keys.FAVORITE_LOCATIONS]
-                ?.split("|")
-                ?.filter { it.isNotBlank() }
-                ?: emptyList()
+            val current =
+                prefs[Keys.FAVORITE_LOCATIONS]
+                    ?.split("|")
+                    ?.filter { it.isNotBlank() }
+                    ?: emptyList()
             val updated = current.filterNot { it == location }
             prefs[Keys.FAVORITE_LOCATIONS] =
                 updated.joinToString("|")

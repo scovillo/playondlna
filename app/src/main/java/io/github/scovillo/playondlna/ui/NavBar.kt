@@ -16,11 +16,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 data class PlayOnDlnaNavItem(val title: String, val icon: ImageVector, val route: String)
 
 @Composable
-fun PlayOnDlnaNavBar(navController: NavHostController) {
-    val items = listOf(
-        PlayOnDlnaNavItem("Play", Icons.Default.PlayArrow, "play"),
-        PlayOnDlnaNavItem("Settings", Icons.Default.Settings, "settings")
-    )
+fun playOnDlnaNavBar(navController: NavHostController) {
+    val items =
+        listOf(
+            PlayOnDlnaNavItem("Play", Icons.Default.PlayArrow, "play"),
+            PlayOnDlnaNavItem("Settings", Icons.Default.Settings, "settings"),
+        )
 
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -38,7 +39,7 @@ fun PlayOnDlnaNavBar(navController: NavHostController) {
                             saveState = true
                         }
                     }
-                }
+                },
             )
         }
     }

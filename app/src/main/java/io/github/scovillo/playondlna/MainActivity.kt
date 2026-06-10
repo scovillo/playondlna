@@ -36,11 +36,11 @@ import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
 import io.github.scovillo.playondlna.server.WebServerService
-import io.github.scovillo.playondlna.ui.DlnaListScreen
-import io.github.scovillo.playondlna.ui.MainScreen
-import io.github.scovillo.playondlna.ui.PlayOnDlnaTheme
-import io.github.scovillo.playondlna.ui.PlayScreen
-import io.github.scovillo.playondlna.ui.SettingsScreen
+import io.github.scovillo.playondlna.ui.dlnaListScreen
+import io.github.scovillo.playondlna.ui.mainScreen
+import io.github.scovillo.playondlna.ui.playOnDlnaTheme
+import io.github.scovillo.playondlna.ui.playScreen
+import io.github.scovillo.playondlna.ui.settingsScreen
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
 import org.schabi.newpipe.extractor.NewPipe
@@ -57,46 +57,51 @@ class MainActivity : ComponentActivity() {
                 NotificationChannel(
                     "http_channel",
                     "HTTP Server",
-                    NotificationManager.IMPORTANCE_LOW
-                )
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         val settingsRepository = SettingsRepository(this)
-        videoJobModel = VideoJobModel(
-            settingsRepository,
-            WifiConnectionState(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager),
-            cacheDir
-        )
+        videoJobModel =
+            VideoJobModel(
+                settingsRepository,
+                WifiConnectionState(
+                    getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager,
+                ),
+                cacheDir,
+            )
         val videoSettingsState = VideoSettingsState(settingsRepository)
-        val cacheControl = CacheControl(
-            cacheDir,
-            videoJobModel.currentVideoFile,
-            videoJobModel.currentSession,
-            videoJobModel.completedSessions
-        )
+        val cacheControl =
+            CacheControl(
+                cacheDir,
+                videoJobModel.currentVideoFile,
+                videoJobModel.currentSession,
+                videoJobModel.completedSessions,
+            )
         val favoriteDevices = FavoriteDevices(settingsRepository)
-        val dlnaDevicesListScreenModel = DlnaDevicesListScreenModel(
-            ViewModelProvider(this)[SsdpDevices::class.java],
-            favoriteDevices
-        )
+        val dlnaDevicesListScreenModel =
+            DlnaDevicesListScreenModel(
+                ViewModelProvider(this)[SsdpDevices::class.java],
+                favoriteDevices,
+            )
         setContent {
-            PlayOnDlnaTheme {
-                MainScreen(
+            playOnDlnaTheme {
+                mainScreen(
                     playScreen = {
-                        PlayScreen(videoJobModel) {
-                            DlnaListScreen(
+                        playScreen(videoJobModel) {
+                            dlnaListScreen(
                                 videoJobModel,
-                                dlnaDevicesListScreenModel
+                                dlnaDevicesListScreenModel,
                             )
                         }
                     },
                     settingsScreen = {
-                        SettingsScreen(
+                        settingsScreen(
                             videoSettingsState,
                             favoriteDevices,
-                            cacheControl
+                            cacheControl,
                         )
-                    }
+                    },
                 )
             }
         }

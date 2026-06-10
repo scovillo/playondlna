@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 
 class DlnaDevicesListScreenModel(
     private val ssdpDevices: SsdpDevices,
-    val favoriteDevices: FavoriteDevices
+    val favoriteDevices: FavoriteDevices,
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
@@ -56,23 +56,27 @@ class DlnaDevicesListScreenModel(
         viewModelScope.launch {
             _isLoading.value = true
             _devices.value = emptyList()
-            val jobs = listOf(
-                launch(Dispatchers.IO) {
-                    val ssdp = ssdpDevices.discover()
-                    _devices.update { it + ssdp }
-                },
-                launch(Dispatchers.IO) {
-                    val manual = favoriteDevices.discover()
-                    _devices.update { it + manual }
-                }
-            )
+            val jobs =
+                listOf(
+                    launch(Dispatchers.IO) {
+                        val ssdp = ssdpDevices.discover()
+                        _devices.update { it + ssdp }
+                    },
+                    launch(Dispatchers.IO) {
+                        val manual = favoriteDevices.discover()
+                        _devices.update { it + manual }
+                    },
+                )
             jobs.joinAll()
             _devices.update { it.distinctBy { device -> device.location } }
             _isLoading.value = false
         }
     }
 
-    fun playVideoOnDevice(device: DlnaDevice, videoFile: VideoFile) {
+    fun playVideoOnDevice(
+        device: DlnaDevice,
+        videoFile: VideoFile,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             if (device.avTransportUrl != null) {
                 try {
@@ -85,7 +89,7 @@ class DlnaDevicesListScreenModel(
             } else {
                 Log.e(
                     "playVideoOnDevice",
-                    "No AVTransport URL found for ${device.friendlyName} @ ${device.location}"
+                    "No AVTransport URL found for ${device.friendlyName} @ ${device.location}",
                 )
                 _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))
             }

@@ -15,7 +15,6 @@ class VideoJobStateTest {
         Assert.assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
-
     @Test
     fun finalizing() {
         val classUnderTest = VideoJobState()

@@ -27,18 +27,19 @@ class FavoriteDevices(private val settingsRepository: SettingsRepository) : View
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(5000),
-                emptySet()
+                emptySet(),
             )
 
     fun discoverLocation(url: URL) {
         viewModelScope.launch(Dispatchers.IO) {
             val location = url.toString()
             try {
-                val device = fetchDeviceDescription(
-                    usn = "manual-$location",
-                    st = "manual",
-                    location = location
-                )
+                val device =
+                    fetchDeviceDescription(
+                        usn = "manual-$location",
+                        st = "manual",
+                        location = location,
+                    )
                 if (device != null) {
                     if (device.deviceType.contains("MediaRenderer")) {
                         AppLog.i("FavoriteDevices", device.toString())
@@ -79,7 +80,7 @@ class FavoriteDevices(private val settingsRepository: SettingsRepository) : View
                 fetchDeviceDescription(
                     usn = "manual-$location",
                     st = "manual",
-                    location = location
+                    location = location,
                 )
             } catch (_: Exception) {
                 AppLog.w("loadManualDevices", "$location not reachable")

@@ -27,8 +27,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 val client = OkHttpClient()
 
-fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
-    val uriSoapPayload = """
+fun playUriOnDevice(
+    avTransportUrl: String,
+    videoFile: VideoFile,
+) {
+    val uriSoapPayload =
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
                     s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -42,24 +46,26 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
             </u:SetAVTransportURI>
           </s:Body>
         </s:Envelope>
-    """.trimIndent()
+        """.trimIndent()
     Log.i("playUriOnDevice", uriSoapPayload)
-    val setUriRequest = Request.Builder()
-        .url(avTransportUrl)
-        .post(uriSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-        .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
-        .build()
+    val setUriRequest =
+        Request.Builder()
+            .url(avTransportUrl)
+            .post(uriSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"")
+            .build()
     val setUriResponse = client.newCall(setUriRequest).execute()
     if (!setUriResponse.isSuccessful) {
         Log.e("playUriOnDevice =>", uriSoapPayload)
         Log.e(
             "playUriOnDevice <=",
-            setUriResponse.body?.string() ?: "setUriResponse body undefined."
+            setUriResponse.body?.string() ?: "setUriResponse body undefined.",
         )
         throw Exception("SetAVTransportURI failed: ${setUriResponse.code} - ${setUriResponse.message}")
     }
     setUriResponse.close()
-    val playSoapPayload = """
+    val playSoapPayload =
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
                     s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -70,12 +76,13 @@ fun playUriOnDevice(avTransportUrl: String, videoFile: VideoFile) {
             </u:Play>
           </s:Body>
         </s:Envelope>
-    """.trimIndent()
-    val playRequest = Request.Builder()
-        .url(avTransportUrl)
-        .post(playSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
-        .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
-        .build()
+        """.trimIndent()
+    val playRequest =
+        Request.Builder()
+            .url(avTransportUrl)
+            .post(playSoapPayload.toRequestBody("text/xml; charset=utf-8".toMediaType()))
+            .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
+            .build()
     val playResponse = client.newCall(playRequest).execute()
     if (!playResponse.isSuccessful) {
         Log.e("playUriOnDevice =>", playSoapPayload)

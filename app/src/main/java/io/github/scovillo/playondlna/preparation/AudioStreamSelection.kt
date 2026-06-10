@@ -23,7 +23,6 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.AudioTrackType
 import java.util.Locale
 
-
 val AudioStream.isOriginal: Boolean
     get() {
         return audioTrackType == AudioTrackType.ORIGINAL
@@ -34,22 +33,25 @@ val AudioStream.hasBestCompatibility: Boolean
     }
 
 fun List<AudioStream>.originals(): List<AudioStream> = filter { it.isOriginal }
-fun List<AudioStream>.withBestCompatibility(): List<AudioStream> =
-    this.filter { it.hasBestCompatibility }
+
+fun List<AudioStream>.withBestCompatibility(): List<AudioStream> = this.filter { it.hasBestCompatibility }
 
 fun List<AudioStream>.preferringLocale(locale: Locale): AudioStream =
-    (filter { it.audioLocale?.language?.startsWith(locale.language) == true }
-        .maxByOrNull { it.averageBitrate }
-        ?: maxBy { it.averageBitrate })
+    (
+        filter { it.audioLocale?.language?.startsWith(locale.language) == true }
+            .maxByOrNull { it.averageBitrate }
+            ?: maxBy { it.averageBitrate }
+    )
 
 val AudioStream.info: String
     get() {
-        return "audioTrackName=$audioTrackName, audioTrackType=$audioTrackType, mimeType=${format?.mimeType}, codec=$codec, averageBitrate=$averageBitrate, audioLocale=$audioLocale"
+        return "audioTrackName=$audioTrackName, audioTrackType=$audioTrackType, mimeType=${format?.mimeType}, " +
+            "codec=$codec, averageBitrate=$averageBitrate, audioLocale=$audioLocale"
     }
 
 class AudioStreamSelection(
     private val audioStreams: List<AudioStream>,
-    private val locale: Locale = Locale.getDefault()
+    private val locale: Locale = Locale.getDefault(),
 ) {
     fun best(): AudioStream? {
         AppLog.i("AudioStream", "System language: ${locale.language}")
@@ -59,21 +61,25 @@ class AudioStreamSelection(
         } else {
             AppLog.i(
                 "[ALL] AudioStreams",
-                audioStreams.joinToString(System.lineSeparator()) { it.info }
+                audioStreams.joinToString(System.lineSeparator()) { it.info },
             )
         }
         val originals = this.audioStreams.originals()
         AppLog.i(
             "[ORIGINAL] AudioStreams",
-            if (originals.isEmpty()) "Empty!" else originals.joinToString(System.lineSeparator()) { it.info }
+            if (originals.isEmpty()) "Empty!" else originals.joinToString(System.lineSeparator()) { it.info },
         )
         if (originals.isNotEmpty()) {
             val bestCompatibilities = originals.withBestCompatibility()
             AppLog.i(
                 "[ORIGINAL] Best compatible AudioStreams",
-                if (bestCompatibilities.isEmpty()) "Empty!" else bestCompatibilities.joinToString(
-                    System.lineSeparator()
-                ) { it.info }
+                if (bestCompatibilities.isEmpty()) {
+                    "Empty!"
+                } else {
+                    bestCompatibilities.joinToString(
+                        System.lineSeparator(),
+                    ) { it.info }
+                },
             )
             if (bestCompatibilities.isNotEmpty()) {
                 val selected = bestCompatibilities.preferringLocale(locale)
@@ -88,9 +94,13 @@ class AudioStreamSelection(
         val compatibleStreams = audioStreams.withBestCompatibility()
         AppLog.i(
             "[COMPATIBLE] AudioStreams",
-            if (compatibleStreams.isEmpty()) "Empty!" else compatibleStreams.joinToString(System.lineSeparator()) {
-                "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
-            }
+            if (compatibleStreams.isEmpty()) {
+                "Empty!"
+            } else {
+                compatibleStreams.joinToString(System.lineSeparator()) {
+                    "${it.audioTrackName}, ${it.audioTrackType}, ${it.format?.mimeType}, ${it.codec}, ${it.bitrate}, ${it.audioLocale}"
+                }
+            },
         )
         if (compatibleStreams.isNotEmpty()) {
             val selected = compatibleStreams.preferringLocale(locale)
@@ -101,7 +111,7 @@ class AudioStreamSelection(
         val fallback = audioStreams.preferringLocale(locale)
         AppLog.i(
             "[FALLBACK] AudioStreams",
-            fallback.info
+            fallback.info,
         )
         return fallback
     }

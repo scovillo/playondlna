@@ -23,9 +23,8 @@ class CacheControl(
     private val cacheDir: File,
     private val currentVideoFile: State<VideoFile?>,
     private val currentSession: State<Session?>,
-    private val sizeCalculationTrigger: Flow<Any>
+    private val sizeCalculationTrigger: Flow<Any>,
 ) : ViewModel() {
-
     init {
         viewModelScope.launch {
             sizeCalculationTrigger.collect {
@@ -54,8 +53,9 @@ class CacheControl(
 
     fun clearCache() {
         viewModelScope.launch(Dispatchers.IO) {
-            if (!cacheDir.exists())
+            if (!cacheDir.exists()) {
                 return@launch
+            }
             val runningSessions = FFmpegKit.listSessions()
             val currentSession = currentSession.value
             runningSessions.forEach {
@@ -66,9 +66,12 @@ class CacheControl(
             }
             val currentVideoFile = currentVideoFile.value
             cacheDir.listFiles()?.forEach { file ->
-                if (file.exists() && (currentVideoFile == null || !file.name.contains(
-                        currentVideoFile.id
-                    ))
+                if (file.exists() && (
+                        currentVideoFile == null ||
+                            !file.name.contains(
+                                currentVideoFile.id,
+                            )
+                    )
                 ) {
                     file.delete()
                 }

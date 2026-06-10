@@ -45,18 +45,19 @@ data class DlnaDevice(
     val modelName: String,
     val deviceType: String,
     val avTransportUrl: String?,
-    val renderingControlUrl: String?
+    val renderingControlUrl: String?,
 )
 
 suspend fun discoverDlnaDevices(
     wifiManager: WifiManager,
-    timeoutMs: Long = 5000
+    timeoutMs: Long = 5000,
 ): List<DlnaDevice> =
     coroutineScope {
-        val lock = wifiManager.createMulticastLock("PlayOnDlna:ssdp").apply {
-            setReferenceCounted(true)
-            acquire()
-        }
+        val lock =
+            wifiManager.createMulticastLock("PlayOnDlna:ssdp").apply {
+                setReferenceCounted(true)
+                acquire()
+            }
         try {
             val multicastAddress = InetAddress.getByName("239.255.255.250")
             val searchTargets =
@@ -65,26 +66,28 @@ suspend fun discoverDlnaDevices(
                     "upnp:rootdevice",
                     "urn:schemas-upnp-org:device:MediaRenderer:1",
                     "urn:schemas-upnp-org:device:MediaServer:1",
-                    "urn:schemas-upnp-org:service:AVTransport:1"
+                    "urn:schemas-upnp-org:service:AVTransport:1",
                 )
 
-            val socket = DatagramSocket(0).apply {
-                soTimeout = 1000
-            }
+            val socket =
+                DatagramSocket(0).apply {
+                    soTimeout = 1000
+                }
 
             val seenLocations = mutableSetOf<String>()
             val seenUsns = mutableSetOf<String>()
             val fetchJobs = mutableListOf<Deferred<DlnaDevice?>>()
 
             fun createSsdpRequest(st: String): ByteArray {
-                val request = """
-            M-SEARCH * HTTP/1.1
-            HOST: 239.255.255.250:1900
-            MAN: "ssdp:discover"
-            MX: 5
-            ST: $st
+                val request =
+                    """
+                    M-SEARCH * HTTP/1.1
+                    HOST: 239.255.255.250:1900
+                    MAN: "ssdp:discover"
+                    MX: 5
+                    ST: $st
 
-        """.trimIndent().replace("\n", "\r\n") + "\r\n"
+                    """.trimIndent().replace("\n", "\r\n") + "\r\n"
                 return request.toByteArray(Charsets.UTF_8)
             }
 
@@ -116,9 +119,10 @@ suspend fun discoverDlnaDevices(
                             AppLog.i("UPNP", "New device found: $location")
                             seenLocations += location
                             seenUsns += usn
-                            val job = async {
-                                fetchDeviceDescription(usn, st, location)
-                            }
+                            val job =
+                                async {
+                                    fetchDeviceDescription(usn, st, location)
+                                }
                             fetchJobs += job
                         }
                     }
@@ -131,7 +135,7 @@ suspend fun discoverDlnaDevices(
             result.forEach {
                 Log.d(
                     "UPNP",
-                    "⏵ ${it.friendlyName} (${it.modelName}, ${it.deviceType}) @ ${it.location}"
+                    "⏵ ${it.friendlyName} (${it.modelName}, ${it.deviceType}) @ ${it.location}",
                 )
             }
             return@coroutineScope result
@@ -148,13 +152,22 @@ fun parseSSDPHeaders(response: String): Map<String, String> {
         .drop(1)
         .mapNotNull {
             val idx = it.indexOf(':')
-            if (idx != -1) it.substring(0, idx).trim().uppercase() to it.substring(idx + 1)
-                .trim() else null
+            if (idx != -1) {
+                it.substring(0, idx).trim().uppercase() to
+                    it.substring(idx + 1)
+                        .trim()
+            } else {
+                null
+            }
         }
         .toMap()
 }
 
-fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevice? {
+fun fetchDeviceDescription(
+    usn: String,
+    st: String,
+    location: String,
+): DlnaDevice? {
     return try {
         val stream = URL(location).openStream()
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream)
@@ -184,15 +197,18 @@ fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevic
             usn = usn,
             st = st,
             location = location,
-            friendlyName = device.getElementsByTagName("friendlyName").item(0)?.textContent
-                ?: "unknown",
-            manufacturer = device.getElementsByTagName("manufacturer").item(0)?.textContent
-                ?: "unknown",
+            friendlyName =
+                device.getElementsByTagName("friendlyName").item(0)?.textContent
+                    ?: "unknown",
+            manufacturer =
+                device.getElementsByTagName("manufacturer").item(0)?.textContent
+                    ?: "unknown",
             modelName = device.getElementsByTagName("modelName").item(0)?.textContent ?: "unknown",
-            deviceType = device.getElementsByTagName("deviceType").item(0)?.textContent
-                ?: "unknown",
+            deviceType =
+                device.getElementsByTagName("deviceType").item(0)?.textContent
+                    ?: "unknown",
             avTransportUrl = avTransportControlUrl,
-            renderingControlUrl = renderingControlUrl
+            renderingControlUrl = renderingControlUrl,
         )
     } catch (e: Exception) {
         Log.e("UPNP", "Error at $location: ${e.message}")
@@ -201,7 +217,10 @@ fun fetchDeviceDescription(usn: String, st: String, location: String): DlnaDevic
     }
 }
 
-fun resolveUrl(base: String, path: String?): String? {
+fun resolveUrl(
+    base: String,
+    path: String?,
+): String? {
     if (path == null) return null
     return try {
         val baseUrl = URL(base)
@@ -209,7 +228,8 @@ fun resolveUrl(base: String, path: String?): String? {
             baseUrl.protocol,
             baseUrl.host,
             baseUrl.port.takeIf { it > 0 } ?: baseUrl.defaultPort,
-            path).toString()
+            path,
+        ).toString()
     } catch (e: Exception) {
         e.printStackTrace()
         null

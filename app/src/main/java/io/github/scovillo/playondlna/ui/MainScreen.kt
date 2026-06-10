@@ -9,19 +9,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun MainScreen(
+fun mainScreen(
     playScreen: @Composable () -> Unit,
-    settingsScreen: @Composable () -> Unit
+    settingsScreen: @Composable () -> Unit,
 ) {
     val navController = rememberNavController()
 
     Scaffold(
-        bottomBar = { PlayOnDlnaNavBar(navController = navController) }
+        bottomBar = { playOnDlnaNavBar(navController = navController) },
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = "play",
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
         ) {
             composable("play") { playScreen() }
             composable("settings") { settingsScreen() }
