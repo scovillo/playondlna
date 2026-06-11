@@ -1,0 +1,7 @@
+Neue Funktionen:
+
+- Einfügen eines Links aus der Zwischenablage mithilfe eines Buttons ist nun möglich
+
+Behobene Fehler:
+
+- Es sind nun wieder separate Streams mit besserer Qualität verfügbar

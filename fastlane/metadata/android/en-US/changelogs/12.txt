@@ -1,0 +1,7 @@
+New features:
+
+- Pasting a link from the clipboard by button is now possible
+
+Fixed issues:
+
+- Separate streams with better quality are now available again

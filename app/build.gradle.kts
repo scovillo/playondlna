@@ -1,3 +1,5 @@
+import org.intellij.lang.annotations.Language
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,8 +18,8 @@ android {
         applicationId = "io.github.scovillo.playondlna"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.10"
+        versionCode = 12
+        versionName = "1.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -133,59 +135,62 @@ tasks.register("generateReadme") {
                 .joinToString("\n") {
                     "  - ${it.group ?: ""}:${it.name}:${it.version ?: "unspecified"}"
                 }
+
+        @Suppress("MaxLineLength")
+        @Language("R")
         val content =
             """
-            # $appName
+# $appName
 
-            📦 **Version:** $versionCode ($versionName)
-            ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
+📦 **Version:** $versionCode ($versionName)
+⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
 
-            ## 🤖 Android Configuration
+## 🤖 Android Configuration
 
-            - **Application ID:** $appId
-            - **Compile SDK:** $compileSdk
-            - **Min SDK:** $minSdk
-            - **Target SDK:** $targetSdk
+- **Application ID:** $appId
+- **Compile SDK:** $compileSdk
+- **Min SDK:** $minSdk
+- **Target SDK:** $targetSdk
 
-            The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
+The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
 
-            ## 📱 Description
+## 📱 Description
 
-            ${descText.trimIndent()}
+${descText.trimIndent()}
 
-            The app is built entirely on free software libraries.
-            All dependencies are compatible with the GNU GPLv3 license.
-            The app itself is licensed under the GNU GPLv3. See the 
-            [THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
-            file in the sourcerepository for full license information.
+The app is built entirely on free software libraries.
+All dependencies are compatible with the GNU GPLv3 license.
+The app itself is licensed under the GNU GPLv3. See the 
+[THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
+file in the sourcerepository for full license information.
 
-            ## 🎁 Donation
+## 🎁 Donation
 
-            [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤️-pink?logo=github&style=flat-square)](https://github.com/sponsors/scovillo)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤️-pink?logo=github&style=flat-square)](https://github.com/sponsors/scovillo)
 
-            [![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
+[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
 
-            ## 🛠️ Build Instructions
+## 🛠️ Build Instructions
 
-            ```bash
-            ./gradlew build
-            ```
+```bash
+./gradlew build
+```
 
-            ## 📚 Dependencies
+## 📚 Dependencies
 
-            $dependencies
-              - com.arthenica:ffmpeg-kit-custom:main
+$dependencies
+  - com.arthenica:ffmpeg-kit-custom:main
 
-            ## 📄 License
+## 📄 License
 
-            PlayOnDlna - An Android application to play media on dlna devices
-            Copyright (C) 2025 Lukas Scheerer
+PlayOnDlna - An Android application to play media on dlna devices
+Copyright (C) 2025 Lukas Scheerer
 
-            Licensed under the GNU General Public License v3.0
+Licensed under the GNU General Public License v3.0
 
-            You should have received a copy of the GNU GPL v3 in the [LICENSE](https://github.com/scovillo/playondlna/blob/main/LICENSE)
-            file along with this program. If not, see <https://www.gnu.org/licenses/>
-            """.trimIndent()
+You should have received a copy of the GNU GPL v3 in the [LICENSE](https://github.com/scovillo/playondlna/blob/main/LICENSE)
+file along with this program. If not, see <https://www.gnu.org/licenses/>
+            """.trimMargin().trimIndent()
 
         readmeFile.writeText(content)
     }
