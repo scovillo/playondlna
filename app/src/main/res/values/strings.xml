@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">PlayOnDlna</string>
-    <string name="src_link">Use "Share" Feature to provide a YouTube link</string>
+    <string name="src_link">Provide a YouTube link by \'Share\' or clipboard ➡</string>
+    <string name="paste_from_clipboard">Paste from clipboard</string>
     <string name="idle">💤 Idle</string>
     <string name="preparing">🔍 Preparing</string>
     <string name="finalizing">🚀 Finalizing</string>
