@@ -121,6 +121,8 @@ fun settingsScreen(
         item { Spacer(Modifier.height(20.dp)) }
         item { subtitles(videoSettingsState) }
         item { Spacer(Modifier.height(20.dp)) }
+        item { wlanProtection(videoSettingsState) }
+        item { Spacer(Modifier.height(20.dp)) }
         item { customFavoriteDevices(favoriteDevices) }
         items(
             items = deviceLocations.toList(),
@@ -378,6 +380,34 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
                     if (it) {
                         videoSettingsState.onSubtitleEnabledSelect(true)
                     }
+                },
+            )
+        }
+        Spacer(Modifier.padding(bottom = 20.dp))
+    }
+}
+
+@Composable
+fun wlanProtection(videoSettingsState: VideoSettingsState) {
+    val isEnabled by videoSettingsState.isWlanProtectionEnabled
+    Column {
+        Text(stringResource(R.string.wlan_protection_title), style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.wlan_protection_label))
+                Text(
+                    stringResource(R.string.wlan_protection_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = {
+                    videoSettingsState.onWlanProtectionEnabledSelect(it)
                 },
             )
         }

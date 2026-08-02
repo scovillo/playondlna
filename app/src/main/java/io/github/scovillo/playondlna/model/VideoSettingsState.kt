@@ -46,15 +46,18 @@ class VideoSettingsState(private val repository: SettingsRepository) : ViewModel
     private val _videoQuality = mutableStateOf(VideoQuality.P720)
     private val _isSubtitleEnabled = mutableStateOf(false)
     private val _isInternalSubtitleEnabled = mutableStateOf(false)
+    private val _isWlanProtectionEnabled = mutableStateOf(true)
     val videoQuality: State<VideoQuality> get() = _videoQuality
     val isSubtitleEnabled: State<Boolean> get() = _isSubtitleEnabled
     val isInternalSubtitleEnabled: State<Boolean> get() = _isInternalSubtitleEnabled
+    val isWlanProtectionEnabled: State<Boolean> get() = _isWlanProtectionEnabled
 
     init {
         viewModelScope.launch {
             _videoQuality.value = repository.videoQualityFlow.first()
             _isSubtitleEnabled.value = repository.isSubtitleEnabledFlow.first()
             _isInternalSubtitleEnabled.value = repository.isInternalSubtitleEnabledFlow.first()
+            _isWlanProtectionEnabled.value = repository.isWlanProtectionEnabledFlow.first()
         }
     }
 
@@ -76,6 +79,13 @@ class VideoSettingsState(private val repository: SettingsRepository) : ViewModel
         _isInternalSubtitleEnabled.value = value
         viewModelScope.launch {
             repository.saveInternalSubtitleEnabled(value)
+        }
+    }
+
+    fun onWlanProtectionEnabledSelect(value: Boolean) {
+        _isWlanProtectionEnabled.value = value
+        viewModelScope.launch {
+            repository.saveWlanProtectionEnabled(value)
         }
     }
 }
