@@ -312,8 +312,8 @@ fun videoQuality(videoSettingsState: VideoSettingsState) {
             Text(
                 stringResource(
                     R.string.prefer_quality,
-                    stringResource(videoSettingsState.videoQuality.value.titleRes)
-                )
+                    stringResource(videoSettingsState.videoQuality.value.titleRes),
+                ),
             )
         }
         DropdownMenu(

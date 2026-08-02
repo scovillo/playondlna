@@ -174,8 +174,11 @@ class VideoJobModel(
                     throw e
                 } catch (e: ContentNotAvailableException) {
                     _toastEvents.emit(
-                        if (e.message != null) ToastEvent.ShowPlain(e.message!!)
-                        else ToastEvent.Show(R.string.error_loading_video)
+                        if (e.message != null) {
+                            ToastEvent.ShowPlain(e.message!!)
+                        } else {
+                            ToastEvent.Show(R.string.error_loading_video)
+                        },
                     )
                     state.error()
                 } catch (e: Exception) {
