@@ -1,0 +1,6 @@
+New Features:
+
+- Wi-Fi protection can be turned on and off in the settings
+- The app is available in German
+- Videos that have already been downloaded can now be played again from the library
+- The streaming server now includes a status notification and the option to stop it

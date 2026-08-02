@@ -1,6 +1,6 @@
 # PlayOnDlna
 
-📦 **Version:** 12 (1.11)
+📦 **Version:** 13 (1.12)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration
@@ -44,8 +44,8 @@ To achieve this, follow the instructions below.<br>
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.
-The app itself is licensed under the GNU GPLv3. See the 
-[THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) 
+The app itself is licensed under the GNU GPLv3. See the
+[THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md)
 file in the sourcerepository for full license information.
 
 ## 🎁 Donation

@@ -1,0 +1,6 @@
+Neue Funktionen:
+
+- Der Wlan Schutz kann in den Einstellungen an und aus geschaltet werden
+- Die App ist in deutsch verfügbar
+- Bereits geladene Videos können nun in der Bibliothek erneut aus dem Speicher abgespielt werden
+- Für den Streaming Server gibt es jetzt eine Benachrichtigung zum Status und die Möglickeit diesen zu beenden
