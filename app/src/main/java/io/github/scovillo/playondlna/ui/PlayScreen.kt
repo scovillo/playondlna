@@ -41,7 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,7 +51,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.scovillo.playondlna.R
@@ -68,7 +67,7 @@ fun playScreen(
     val status by videoJobModel.status
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(ClipboardManager::class.java)
-    var lastPasteAt by remember { mutableStateOf(0L) }
+    var lastPasteAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         videoJobModel.toastEvents.collect { event ->
             when (event) {
@@ -103,8 +102,6 @@ fun playScreen(
             Text(
                 text = if (title == "idle") stringResource(R.string.src_link) else title,
                 modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 color = colorResource(id = R.color.white),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,

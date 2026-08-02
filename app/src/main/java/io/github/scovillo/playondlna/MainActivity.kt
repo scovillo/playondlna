@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
             .createNotificationChannel(
                 NotificationChannel(
                     "http_channel",
-                    "HTTP Server",
+                    getString(R.string.notification_channel_name),
                     NotificationManager.IMPORTANCE_LOW,
                 ),
             )

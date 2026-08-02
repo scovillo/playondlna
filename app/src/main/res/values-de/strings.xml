@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">PlayOnDlna</string>
+    <string name="src_link">Gib einen YouTube-Link per \'Teilen\' oder aus der Zwischenablage an ➡</string>
+    <string name="paste_from_clipboard">Aus Zwischenablage einfügen</string>
+    <string name="idle">💤 Warten</string>
+    <string name="preparing">🔍 Vorbereitung</string>
+    <string name="finalizing">🚀 Abschluss</string>
+    <string name="ready">🍿 Bereit</string>
+    <string name="error">❌ Fehler</string>
+    <string name="clear_cache">Cache leeren</string>
+    <string name="available_players">Verfügbare Player</string>
+    <string name="wlan_disconnected">WLAN getrennt! Downloads abgebrochen, um dein mobiles Datenvolumen zu schützen 🔒</string>
+    <string name="multicast_disabled">Suche fehlgeschlagen! Multicast ist in deinem aktuellen Netzwerk nicht möglich</string>
+    <string name="playback_failed">Wiedergabe fehlgeschlagen!</string>
+    <string name="player_incompatible">Media Player derzeit inkompatibel!</string>
+    <string name="cache_cleared">Cache geleert!</string>
+    <string name="cache_usage">Aktuell belegter Speicher: </string>
+    <string name="cache_usage_value">%1$.1f GB</string>
+    <string name="cache_desc">Aufräumen und Platz freigeben ↓</string>
+    <string name="location_not_renderer">Ziel ist kein MediaRenderer!</string>
+    <string name="location_not_reachable">Ziel ist nicht erreichbar!</string>
+    <string name="favorite_devices_title">🌟 Favorisierte Geräte</string>
+    <string name="favorite_devices_desc">
+Hier kannst du deine bevorzugten Netzwerkplayer verwalten.
+Du kannst auch eine benutzerdefinierte URL hinzufügen, um ein Gerät in den automatischen Scan einzubeziehen.
+Bitte verwende die URL des Media-Player-Dienstes des Geräts. Wenn du dir unsicher bist, schau im Benutzerhandbuch des Geräts nach.\n
+Beispiele:\n
+- Kodi\n
+  http://192.168.178.80:1379/\n
+- Samsung Smart TVs (UE-Serie)\n
+  http://192.168.178.80:9197/dmr
+    </string>
+    <string name="support_title">🎁 PlayOnDlna unterstützen</string>
+    <string name="support_desc_1">Diese App ist komplett kostenlos und werbefrei. Wenn sie dir gute Dienste leistet und du etwas zurückgeben möchtest, kannst du gerne eine der folgenden Optionen nutzen.</string>
+    <string name="support_desc_2">Der einfachste Weg, PlayOnDlna zu unterstützen, ist, ihm einen Stern auf GitHub zu geben. Sterne erhöhen die Sichtbarkeit des Projekts in der GitHub-Community und können helfen, mehr Nutzer und Mitwirkende zu gewinnen.</string>
+    <string name="star">Stern</string>
+    <string name="give_star">Einen Stern auf GitHub geben</string>
+    <string name="feedback_desc">Hast du eine coole Idee für die App, suchst nach einer Lösung für ein Problem oder hast etwas gefunden, das nicht richtig funktioniert?</string>
+    <string name="discussions">Diskussionen</string>
+    <string name="join_discussions">An Diskussionen auf GitHub teilnehmen</string>
+    <string name="issue">Problem</string>
+    <string name="create_issue">Ein Problem auf GitHub melden</string>
+    <string name="financial_support_desc">Möchtest du noch einen Schritt weiter gehen und finanziell unterstützen?</string>
+    <string name="sponsor">Sponsoren</string>
+    <string name="become_sponsor">Sponsor auf GitHub werden</string>
+    <string name="donate">Spenden</string>
+    <string name="buy_coffee">Mir einen Kaffee via PayPal ausgeben</string>
+    <string name="video_quality_title">🎥 Videoqualität</string>
+    <string name="video_quality_desc">Wähle deine bevorzugte Videoqualität. Aus Kompatibilitätsgründen kann die letztendlich gewählte Qualität niedriger sein als deine bevorzugte.</string>
+    <string name="prefer_quality">%1$s bevorzugen</string>
+    <string name="subtitles_title">📝 Untertitel</string>
+    <string name="subtitles_locale_label">Untertitel entsprechend deiner Gerätesprache aktivieren</string>
+    <string name="subtitles_external_desc">Standardmäßig wird ein externer Untertitel bereitgestellt.</string>
+    <string name="subtitles_internal_label">Internen Untertitel aktivieren</string>
+    <string name="subtitles_internal_desc">Wenn dein Player Probleme mit externen Untertiteln hat, aktiviere zusätzlich einen internen Untertitel, der im Video enthalten ist. Dies verlängert die Vorbereitungszeit des Videos!</string>
+    <string name="wlan_protection_title">🔒 WLAN-Schutz</string>
+    <string name="wlan_protection_label">WLAN-Schutz aktivieren</string>
+    <string name="wlan_protection_desc">Wenn aktiviert, werden Downloads abgebrochen, wenn das WLAN getrennt wird, um dein mobiles Datenvolumen zu schützen.</string>
+    <string name="device_url_hint">Geräte-URL (z. B. http://192.168.178.80:1379/)</string>
+    <string name="add_device_url">Geräte-URL hinzufügen</string>
+    <string name="cache_title">💾 Cache</string>
+    <string name="info_title">💡 Info</string>
+    <string name="app_version">App-Version: %1$s</string>
+    <string name="refresh">Aktualisieren</string>
+    <string name="save_device">Gerät speichern</string>
+    <string name="error_loading_video">Fehler beim Laden des Videos</string>
+    <string name="nav_play">Wiedergabe</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="notification_channel_name">HTTP-Server</string>
+    <string name="q_360p">360p</string>
+    <string name="q_480p">480p</string>
+    <string name="q_720p">720p</string>
+    <string name="q_1080p">1080p</string>
+    <string name="q_1440p">1440p</string>
+    <string name="q_2160p">2160p</string>
+    <string name="device_icon">📺</string>
+</resources>

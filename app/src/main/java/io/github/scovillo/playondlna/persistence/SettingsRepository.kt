@@ -17,6 +17,7 @@ class SettingsRepository(private val context: Context) {
         val VIDEO_QUALITY = stringPreferencesKey("video_quality")
         val IS_SUBTITLE_ENABLED = booleanPreferencesKey("is_subtitle_enabled")
         val IS_INTERNAL_SUBTITLE_ENABLED = booleanPreferencesKey("is_internal_subtitle_enabled")
+        val IS_WLAN_PROTECTION_ENABLED = booleanPreferencesKey("is_wlan_protection_enabled")
         val FAVORITE_LOCATIONS = stringPreferencesKey("favorite_locations")
     }
 
@@ -42,6 +43,12 @@ class SettingsRepository(private val context: Context) {
             value ?: false
         }.distinctUntilChanged()
 
+    val isWlanProtectionEnabledFlow: Flow<Boolean> =
+        context.dataStore.data.map { prefs ->
+            val value = prefs[Keys.IS_WLAN_PROTECTION_ENABLED]
+            value ?: true
+        }.distinctUntilChanged()
+
     val favoriteDeviceLocationsFlow: Flow<List<String>> =
         context.dataStore.data.map { prefs ->
             prefs[Keys.FAVORITE_LOCATIONS]
@@ -65,6 +72,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveInternalSubtitleEnabled(value: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[Keys.IS_INTERNAL_SUBTITLE_ENABLED] = value
+        }
+    }
+
+    suspend fun saveWlanProtectionEnabled(value: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.IS_WLAN_PROTECTION_ENABLED] = value
         }
     }
 

@@ -111,6 +111,13 @@ class VideoJobModel(
                 started = SharingStarted.Eagerly,
                 initialValue = false,
             )
+    private val isWlanProtectionEnabled: StateFlow<Boolean> =
+        settingsRepository.isWlanProtectionEnabledFlow
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = true,
+            )
     private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
     val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
@@ -166,7 +173,13 @@ class VideoJobModel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: ContentNotAvailableException) {
-                    _toastEvents.emit(ToastEvent.ShowPlain(e.message ?: "Error loading video"))
+                    _toastEvents.emit(
+                        if (e.message != null) {
+                            ToastEvent.ShowPlain(e.message!!)
+                        } else {
+                            ToastEvent.Show(R.string.error_loading_video)
+                        },
+                    )
                     state.error()
                 } catch (e: Exception) {
                     Log.e("VideoJobModel", "Error in job for $url", e)
@@ -191,7 +204,7 @@ class VideoJobModel(
     }
 
     private suspend fun mux(extractor: StreamExtractor) {
-        if (wifiConnectionState.isConnected()) {
+        if (!isWlanProtectionEnabled.value || wifiConnectionState.isConnected()) {
             state.preparing()
         } else {
             state.error()
@@ -272,7 +285,7 @@ class VideoJobModel(
                 if (runningJobs.isEmpty()) {
                     continue
                 }
-                if (!wifiConnectionState.isConnected()) {
+                if (isWlanProtectionEnabled.value && !wifiConnectionState.isConnected()) {
                     withContext(Dispatchers.Main) {
                         _toastEvents.emit(ToastEvent.Show(R.string.wlan_disconnected))
                         state.error()

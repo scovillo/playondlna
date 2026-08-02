@@ -113,7 +113,7 @@ fun dlnaListScreen(
                     IconButton(onClick = { dlnaModel.discoverDevices() }) {
                         Icon(
                             Icons.Default.Refresh,
-                            contentDescription = "Refresh",
+                            contentDescription = stringResource(R.string.refresh),
                             modifier = Modifier.rotate(if (isLoading) rotation else 0f),
                         )
                     }
@@ -177,7 +177,7 @@ fun dlnaListScreen(
                                         } else {
                                             Icons.Outlined.StarBorder
                                         },
-                                    contentDescription = "Save device",
+                                    contentDescription = stringResource(R.string.save_device),
                                     modifier = Modifier.size(32.dp),
                                 )
                             }

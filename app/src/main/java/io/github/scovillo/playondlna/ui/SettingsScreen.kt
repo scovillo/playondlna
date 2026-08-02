@@ -121,6 +121,8 @@ fun settingsScreen(
         item { Spacer(Modifier.height(20.dp)) }
         item { subtitles(videoSettingsState) }
         item { Spacer(Modifier.height(20.dp)) }
+        item { wlanProtection(videoSettingsState) }
+        item { Spacer(Modifier.height(20.dp)) }
         item { customFavoriteDevices(favoriteDevices) }
         items(
             items = deviceLocations.toList(),
@@ -142,22 +144,16 @@ fun settingsScreen(
 fun supportPlayOnDlna() {
     val context = LocalContext.current
     return Column {
-        Text("\uD83C\uDF81 Support PlayOnDlna", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.support_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
-        Text(
-            "This app is completely free and ad-free. If it serves you well and you'd like to give something back, " +
-                "you're welcome to use one of the following options.",
-        )
-        Text(
-            "The simplest way to support PlayOnDlna is by giving it a star on GitHub. " +
-                "Stars increase the project’s visibility within the GitHub community and can help attract more users and contributors.",
-        )
+        Text(stringResource(R.string.support_desc_1))
+        Text(stringResource(R.string.support_desc_2))
         Button(
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/scovillo/playondlna".toUri(),
+                        context.getString(R.string.url_github).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -173,22 +169,20 @@ fun supportPlayOnDlna() {
         ) {
             Icon(
                 imageVector = Icons.Default.Star,
-                contentDescription = "Star",
+                contentDescription = stringResource(R.string.star),
                 tint = Color.Yellow,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("Give a Star on GitHub")
+            Text(stringResource(R.string.give_star))
         }
         Spacer(Modifier.height(12.dp))
-        Text(
-            "You have a cool idea for the app, looking for troubleshooting or found something which is not working correctly?",
-        )
+        Text(stringResource(R.string.feedback_desc))
         Button(
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/scovillo/playondlna/discussions".toUri(),
+                        context.getString(R.string.url_discussions).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -204,18 +198,18 @@ fun supportPlayOnDlna() {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Chat,
-                contentDescription = "Discussions",
+                contentDescription = stringResource(R.string.discussions),
                 tint = Color.Green,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("Join discussions on Github")
+            Text(stringResource(R.string.join_discussions))
         }
         Button(
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/scovillo/playondlna/issues".toUri(),
+                        context.getString(R.string.url_issues).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -231,20 +225,20 @@ fun supportPlayOnDlna() {
         ) {
             Icon(
                 imageVector = Icons.Default.BugReport,
-                contentDescription = "Issue",
+                contentDescription = stringResource(R.string.issue),
                 tint = Color.Green,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("Create an issue on Github")
+            Text(stringResource(R.string.create_issue))
         }
         Spacer(Modifier.height(12.dp))
-        Text("You would like to go a step further and support financially?")
+        Text(stringResource(R.string.financial_support_desc))
         Button(
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/sponsors/scovillo".toUri(),
+                        context.getString(R.string.url_sponsor).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -260,18 +254,18 @@ fun supportPlayOnDlna() {
         ) {
             Icon(
                 imageVector = Icons.Default.Favorite,
-                contentDescription = "Sponsor",
+                contentDescription = stringResource(R.string.sponsor),
                 tint = Color.White,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("Become sponsor on GitHub️")
+            Text(stringResource(R.string.become_sponsor))
         }
         Button(
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://www.paypal.me/muemmelmaus".toUri(),
+                        context.getString(R.string.url_paypal).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -287,11 +281,11 @@ fun supportPlayOnDlna() {
         ) {
             Icon(
                 imageVector = Icons.Default.Coffee,
-                contentDescription = "Donate",
+                contentDescription = stringResource(R.string.donate),
                 tint = Color.White,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("Buy me a coffee via PayPal")
+            Text(stringResource(R.string.buy_coffee))
         }
     }
 }
@@ -300,11 +294,9 @@ fun supportPlayOnDlna() {
 fun videoQuality(videoSettingsState: VideoSettingsState) {
     var expanded by remember { mutableStateOf(false) }
     return Column {
-        Text("\uD83D\uDCF9 Video Quality", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.video_quality_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
-        Text(
-            "Choose your preferred video quality. Due to compatibility reasons, the finally chosen quality can be lower than your preferred.",
-        )
+        Text(stringResource(R.string.video_quality_desc))
         Button(
             onClick = { expanded = true },
             modifier =
@@ -317,7 +309,12 @@ fun videoQuality(videoSettingsState: VideoSettingsState) {
                     contentColor = colorResource(id = R.color.white),
                 ),
         ) {
-            Text("Prefer ${videoSettingsState.videoQuality.value.title}")
+            Text(
+                stringResource(
+                    R.string.prefer_quality,
+                    stringResource(videoSettingsState.videoQuality.value.titleRes),
+                ),
+            )
         }
         DropdownMenu(
             expanded = expanded,
@@ -329,7 +326,7 @@ fun videoQuality(videoSettingsState: VideoSettingsState) {
                         videoSettingsState.onVideoQualitySelect(quality)
                         expanded = false
                     },
-                    text = { Text(quality.title) },
+                    text = { Text(stringResource(quality.titleRes)) },
                 )
             }
         }
@@ -341,16 +338,16 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
     val isSubtitleEnabled by videoSettingsState.isSubtitleEnabled
     val isInternalSubtitleEnabled by videoSettingsState.isInternalSubtitleEnabled
     Column {
-        Text("\uD83D\uDCDD Subtitles", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.subtitles_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Enable subtitle referring to your device locale")
+                Text(stringResource(R.string.subtitles_locale_label))
                 Text(
-                    "By default an external subtitle is provided.",
+                    stringResource(R.string.subtitles_external_desc),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -370,10 +367,9 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Enable internal subtitle")
+                Text(stringResource(R.string.subtitles_internal_label))
                 Text(
-                    "If your player has problems with external subtitles, enable additionally an internal subtitle shipped with the video." +
-                        " This will increase the video preparation time!",
+                    stringResource(R.string.subtitles_internal_desc),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -384,6 +380,34 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
                     if (it) {
                         videoSettingsState.onSubtitleEnabledSelect(true)
                     }
+                },
+            )
+        }
+        Spacer(Modifier.padding(bottom = 20.dp))
+    }
+}
+
+@Composable
+fun wlanProtection(videoSettingsState: VideoSettingsState) {
+    val isEnabled by videoSettingsState.isWlanProtectionEnabled
+    Column {
+        Text(stringResource(R.string.wlan_protection_title), style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.wlan_protection_label))
+                Text(
+                    stringResource(R.string.wlan_protection_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = {
+                    videoSettingsState.onWlanProtectionEnabledSelect(it)
                 },
             )
         }
@@ -439,7 +463,7 @@ fun deviceItem(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("📺")
+                Text(stringResource(R.string.device_icon))
                 Spacer(Modifier.width(12.dp))
                 Text(device)
             }
@@ -449,7 +473,6 @@ fun deviceItem(
 
 @Composable
 fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
-    val context = LocalContext.current
     var urlInput by remember { mutableStateOf("") }
     val isValidUrl =
         remember(urlInput) {
@@ -462,16 +485,16 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
         }
     Column {
         Text(
-            context.getString(R.string.favorite_devices_title),
+            stringResource(R.string.favorite_devices_title),
             style = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.height(16.dp))
-        Text(context.getString(R.string.favorite_devices_desc))
+        Text(stringResource(R.string.favorite_devices_desc))
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = urlInput,
             onValueChange = { urlInput = it },
-            label = { Text("Device URL (e.g. http://192.168.178.80:1379/)") },
+            label = { Text(stringResource(R.string.device_url_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             isError = urlInput.isNotEmpty() && !isValidUrl,
@@ -492,7 +515,7 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add device URL")
+            Text(stringResource(R.string.add_device_url))
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -500,21 +523,21 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
 
 @Composable
 fun clearCache(cacheControl: CacheControl) {
-    val context = LocalContext.current
     val sizeInGb by cacheControl.sizeInGb.collectAsState()
     return Column {
-        Text("\uD83D\uDCBE Cache", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.cache_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
         Text(
             buildAnnotatedString {
-                append(context.getString(R.string.cache_usage))
+                append(stringResource(R.string.cache_usage))
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append("  %1$.1f GB".format(sizeInGb))
+                    append("  ")
+                    append(stringResource(R.string.cache_usage_value, sizeInGb))
                 }
             },
         )
         Spacer(Modifier.height(16.dp))
-        Text(context.getString(R.string.cache_desc))
+        Text(stringResource(R.string.cache_desc))
         Button(
             onClick = { cacheControl.clearCache() },
             modifier =
@@ -529,7 +552,7 @@ fun clearCache(cacheControl: CacheControl) {
         ) {
             Icon(
                 imageVector = Icons.Default.CleaningServices,
-                contentDescription = "Clear Cache",
+                contentDescription = stringResource(R.string.clear_cache),
                 tint = Color.White,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
@@ -541,7 +564,7 @@ fun clearCache(cacheControl: CacheControl) {
 @Composable
 fun info(context: Context) {
     return Column {
-        Text("\uD83D\uDCA1 Info", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.info_title), style = MaterialTheme.typography.titleLarge)
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val versionName = packageInfo.versionName
         Button(
@@ -549,7 +572,7 @@ fun info(context: Context) {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/scovillo/playondlna/releases".toUri(),
+                        context.getString(R.string.url_releases).toUri(),
                     )
                 context.startActivity(intent)
             },
@@ -565,11 +588,11 @@ fun info(context: Context) {
         ) {
             Icon(
                 imageVector = Icons.Default.Favorite,
-                contentDescription = "App Version",
+                contentDescription = null,
                 tint = Color.White,
             )
             Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text("App Version: $versionName")
+            Text(stringResource(R.string.app_version, versionName ?: ""))
         }
     }
 }
