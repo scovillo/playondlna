@@ -166,7 +166,10 @@ class VideoJobModel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: ContentNotAvailableException) {
-                    _toastEvents.emit(ToastEvent.ShowPlain(e.message ?: "Error loading video"))
+                    _toastEvents.emit(
+                        if (e.message != null) ToastEvent.ShowPlain(e.message!!)
+                        else ToastEvent.Show(R.string.error_loading_video)
+                    )
                     state.error()
                 } catch (e: Exception) {
                     Log.e("VideoJobModel", "Error in job for $url", e)

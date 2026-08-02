@@ -41,7 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,7 +68,7 @@ fun playScreen(
     val status by videoJobModel.status
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(ClipboardManager::class.java)
-    var lastPasteAt by remember { mutableStateOf(0L) }
+    var lastPasteAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         videoJobModel.toastEvents.collect { event ->
             when (event) {
