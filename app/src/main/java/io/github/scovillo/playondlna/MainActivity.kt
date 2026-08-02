@@ -18,16 +18,23 @@
 
 package io.github.scovillo.playondlna
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
@@ -46,24 +53,36 @@ import io.github.scovillo.playondlna.ui.playScreen
 import io.github.scovillo.playondlna.ui.settingsScreen
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
+import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
     private lateinit var videoJobModel: VideoJobModel
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { _ ->
+            startWebServerService()
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()
         NewPipe.init(OkHttpDownloadClient())
-        getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(
-                NotificationChannel(
-                    "http_channel",
-                    getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                ),
-            )
-        ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
+        createNotificationChannel()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        startWebServerService()
+
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
@@ -76,6 +95,13 @@ class MainActivity : ComponentActivity() {
                 cacheDir,
                 libraryManager,
             )
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                videoJobModel.playbackStarted.collect {
+                    startWebServerService()
+                }
+            }
+        }
         val videoSettingsState = VideoSettingsState(settingsRepository)
         val cacheControl =
             CacheControl(
@@ -140,5 +166,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun createNotificationChannel() {
+        getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(
+                NotificationChannel(
+                    "http_channel",
+                    getString(R.string.notification_channel_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+            )
+    }
+
+    private fun startWebServerService() {
+        ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
     }
 }

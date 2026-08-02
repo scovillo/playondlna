@@ -92,6 +92,7 @@ class VideoJobModel(
     private val _title = mutableStateOf("idle")
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     private val _completedSessions = MutableSharedFlow<Long>()
+    private val _playbackStarted = MutableSharedFlow<Unit>()
     private val state = VideoJobState()
 
     private val videoQuality: StateFlow<VideoQuality> =
@@ -131,6 +132,7 @@ class VideoJobModel(
     val status: State<VideoJobStatus> get() = state.status
     val toastEvents = _toastEvents.asSharedFlow()
     val completedSessions = _completedSessions.asSharedFlow()
+    val playbackStarted = _playbackStarted.asSharedFlow()
 
     init {
         this.monitorWifiConnection()
@@ -140,6 +142,7 @@ class VideoJobModel(
         val job =
             viewModelScope.launch(Dispatchers.IO) {
                 try {
+                    _playbackStarted.emit(Unit)
                     Log.i("VideoJobModel", "Requesting: $url")
                     _currentVideoFile.value = null
                     _currentSession.value = null
@@ -222,6 +225,7 @@ class VideoJobModel(
 
     fun loadFromLibrary(item: LibraryItem) {
         viewModelScope.launch {
+            _playbackStarted.emit(Unit)
             _currentVideoFile.value = null
             _currentSession.value = null
             _title.value = item.metadata.title
