@@ -51,7 +51,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.scovillo.playondlna.R
@@ -103,8 +102,6 @@ fun playScreen(
             Text(
                 text = if (title == "idle") stringResource(R.string.src_link) else title,
                 modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 color = colorResource(id = R.color.white),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,

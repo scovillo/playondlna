@@ -74,10 +74,10 @@ Examples:\n
     <string name="q_1440p">1440p</string>
     <string name="q_2160p">2160p</string>
     <string name="device_icon">📺</string>
-    <string name="url_github">https://github.com/scovillo/playondlna</string>
-    <string name="url_discussions">https://github.com/scovillo/playondlna/discussions</string>
-    <string name="url_issues">https://github.com/scovillo/playondlna/issues</string>
-    <string name="url_sponsor">https://github.com/sponsors/scovillo</string>
-    <string name="url_paypal">https://paypal.me/muemmelmaus</string>
-    <string name="url_releases">https://github.com/scovillo/playondlna/releases</string>
+    <string name="url_github" translatable="false">https://github.com/scovillo/playondlna</string>
+    <string name="url_discussions" translatable="false">https://github.com/scovillo/playondlna/discussions</string>
+    <string name="url_issues" translatable="false">https://github.com/scovillo/playondlna/issues</string>
+    <string name="url_sponsor" translatable="false">https://github.com/sponsors/scovillo</string>
+    <string name="url_paypal" translatable="false">https://paypal.me/muemmelmaus</string>
+    <string name="url_releases" translatable="false">https://github.com/scovillo/playondlna/releases</string>
 </resources>
