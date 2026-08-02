@@ -28,7 +28,10 @@ import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
+import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.VideoQuality
+import io.github.scovillo.playondlna.persistence.LibraryItem
+import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.server.Subtitle
 import io.github.scovillo.playondlna.server.VideoFile
@@ -82,6 +85,7 @@ class VideoJobModel(
     settingsRepository: SettingsRepository,
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
+    private val libraryManager: LibraryManager,
 ) : ViewModel() {
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
@@ -167,6 +171,19 @@ class VideoJobModel(
                         _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                         state.ready()
                         Log.d("VideoFile", "Available under ${_currentVideoFile.value!!.url}")
+                        val metadata =
+                            LibraryMetadata(
+                                id = extractor.id,
+                                title = extractor.name,
+                                uploader = extractor.uploaderName,
+                                durationInSeconds = extractor.length,
+                                thumbnailUri = extractor.thumbnails.firstOrNull()?.url,
+                                qualityName = "${videoQuality.value.height}p",
+                            )
+                        libraryManager.saveMetadata(metadata)
+                        metadata.thumbnailUri?.let { thumbUrl ->
+                            libraryManager.downloadThumbnail(extractor.id, thumbUrl)
+                        }
                     } else {
                         mux(extractor)
                     }
@@ -201,6 +218,29 @@ class VideoJobModel(
         Log.w("VideoJobModel", "Cancelling ${runningJobs.size} running jobs")
         runningJobs.forEach { it.cancel() }
         runningJobs.clear()
+    }
+
+    fun loadFromLibrary(item: LibraryItem) {
+        viewModelScope.launch {
+            _currentVideoFile.value = null
+            _currentSession.value = null
+            _title.value = item.metadata.title
+
+            val videoFile =
+                VideoFile(
+                    id = item.metadata.id,
+                    title = item.metadata.title,
+                    uploader = item.metadata.uploader,
+                    durationInSeconds = item.metadata.durationInSeconds,
+                    value = item.videoFile,
+                    videoQuality = videoQuality.value,
+                    subtitle = null,
+                )
+
+            videoHttpServer.allFiles[item.metadata.id] = videoFile
+            _currentVideoFile.value = videoFile
+            state.ready()
+        }
     }
 
     private suspend fun mux(extractor: StreamExtractor) {
@@ -258,6 +298,21 @@ class VideoJobModel(
                                 )
                             _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                             state.ready()
+                            val metadata =
+                                LibraryMetadata(
+                                    id = extractor.id,
+                                    title = extractor.name,
+                                    uploader = extractor.uploaderName,
+                                    durationInSeconds = extractor.length,
+                                    thumbnailUri = extractor.thumbnails.firstOrNull()?.url,
+                                    qualityName = "${bestVideo.height}p",
+                                )
+                            libraryManager.saveMetadata(metadata)
+                            metadata.thumbnailUri?.let { thumbUrl ->
+                                viewModelScope.launch {
+                                    libraryManager.downloadThumbnail(extractor.id, thumbUrl)
+                                }
+                            }
                         }
                     } else {
                         Log.e("Mux", "Muxing failed!")

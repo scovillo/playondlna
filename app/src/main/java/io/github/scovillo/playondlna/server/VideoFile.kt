@@ -40,38 +40,40 @@ class Subtitle(val file: File) {
 }
 
 class VideoFile(
-    private val extractor: StreamExtractor,
+    val id: String,
+    val title: String,
+    val uploader: String,
+    val durationInSeconds: Long,
     val value: File,
     val videoQuality: VideoQuality,
     val subtitle: Subtitle?,
 ) {
-    val title: String
-        get() {
-            return this.extractor.name
-        }
-
-    val id: String
-        get() {
-            return this.extractor.id
-        }
+    constructor(
+        extractor: StreamExtractor,
+        value: File,
+        videoQuality: VideoQuality,
+        subtitle: Subtitle?,
+    ) : this(
+        extractor.id,
+        extractor.name,
+        extractor.uploaderName,
+        extractor.length,
+        value,
+        videoQuality,
+        subtitle,
+    )
 
     val durationInMs: Long
         get() {
-            return extractor.length * 1000
+            return durationInSeconds * 1000
         }
 
     val duration: String
         get() {
-            val hours = this.extractor.length / 3600
-            val minutes = (this.extractor.length % 3600) / 60
-            val secs = this.extractor.length % 60
+            val hours = durationInSeconds / 3600
+            val minutes = (durationInSeconds % 3600) / 60
+            val secs = durationInSeconds % 60
             return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, secs)
-        }
-
-    val uploader: String
-        get() {
-            this.extractor.length
-            return this.extractor.uploaderName
         }
 
     val url: String

@@ -21,6 +21,7 @@ package io.github.scovillo.playondlna.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -40,6 +41,7 @@ fun playOnDlnaNavBar(navController: NavHostController) {
     val items =
         listOf(
             PlayOnDlnaNavItem(R.string.nav_play, Icons.Default.PlayArrow, "play"),
+            PlayOnDlnaNavItem(R.string.nav_library, Icons.Default.VideoLibrary, "library"),
             PlayOnDlnaNavItem(R.string.nav_settings, Icons.Default.Settings, "settings"),
         )
 

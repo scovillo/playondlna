@@ -31,12 +31,15 @@ import androidx.lifecycle.ViewModelProvider
 import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
+import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.VideoSettingsState
+import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
 import io.github.scovillo.playondlna.server.WebServerService
 import io.github.scovillo.playondlna.ui.dlnaListScreen
+import io.github.scovillo.playondlna.ui.libraryScreen
 import io.github.scovillo.playondlna.ui.mainScreen
 import io.github.scovillo.playondlna.ui.playOnDlnaTheme
 import io.github.scovillo.playondlna.ui.playScreen
@@ -62,6 +65,8 @@ class MainActivity : ComponentActivity() {
             )
         ContextCompat.startForegroundService(this, Intent(this, WebServerService::class.java))
         val settingsRepository = SettingsRepository(this)
+        val libraryManager = LibraryManager(cacheDir)
+        val libraryViewModel = LibraryViewModel(libraryManager)
         videoJobModel =
             VideoJobModel(
                 settingsRepository,
@@ -69,6 +74,7 @@ class MainActivity : ComponentActivity() {
                     getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager,
                 ),
                 cacheDir,
+                libraryManager,
             )
         val videoSettingsState = VideoSettingsState(settingsRepository)
         val cacheControl =
@@ -93,6 +99,13 @@ class MainActivity : ComponentActivity() {
                                 videoJobModel,
                                 dlnaDevicesListScreenModel,
                             )
+                        }
+                    },
+                    libraryScreen = { navController ->
+                        libraryScreen(libraryViewModel, videoJobModel) {
+                            navController.navigate("play") {
+                                launchSingleTop = true
+                            }
                         }
                     },
                     settingsScreen = {

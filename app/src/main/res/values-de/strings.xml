@@ -65,7 +65,9 @@ Beispiele:\n
     <string name="save_device">Gerät speichern</string>
     <string name="error_loading_video">Fehler beim Laden des Videos</string>
     <string name="nav_play">Wiedergabe</string>
+    <string name="nav_library">Bibliothek</string>
     <string name="nav_settings">Einstellungen</string>
+    <string name="no_entries">Keine Videos im Cache</string>
     <string name="notification_channel_name">HTTP-Server</string>
     <string name="q_360p">360p</string>
     <string name="q_480p">480p</string>
