@@ -19,12 +19,16 @@
 package io.github.scovillo.playondlna.server
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import fi.iki.elonen.NanoHTTPD
+import io.github.scovillo.playondlna.R
 import java.io.FileInputStream
 import java.io.IOException
 import java.net.Inet4Address
@@ -166,6 +170,8 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
 
 val videoHttpServer = VideoHttpServer(serverPort)
 
+const val ACTION_STOP_SERVER = "io.github.scovillo.playondlna.server.ACTION_STOP_SERVER"
+
 class WebServerService : Service() {
     override fun onCreate() {
         super.onCreate()
@@ -175,12 +181,37 @@ class WebServerService : Service() {
         } catch (e: IOException) {
             e.printStackTrace()
         }
+
+        val stopIntent =
+            Intent(this, WebServerService::class.java).apply {
+                action = ACTION_STOP_SERVER
+            }
+        val stopPendingIntent =
+            PendingIntent.getService(
+                this,
+                0,
+                stopIntent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+
         val notification: Notification =
             NotificationCompat.Builder(this, "http_channel")
-                .setContentTitle("HTTP-Streaming active")
-                .setContentText("Server running on http://${getLocalIpAddress()}:$serverPort/")
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(getString(R.string.notification_text, getLocalIpAddress(), serverPort))
+                .setSmallIcon(R.drawable.playondlna_icon)
+                .setOngoing(true)
+                .addAction(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    getString(R.string.stop),
+                    stopPendingIntent,
+                )
                 .build()
-        startForeground(1, notification)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(1, notification)
+        }
     }
 
     override fun onStartCommand(
@@ -188,6 +219,10 @@ class WebServerService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        if (intent?.action == ACTION_STOP_SERVER) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         return START_STICKY
     }
 
