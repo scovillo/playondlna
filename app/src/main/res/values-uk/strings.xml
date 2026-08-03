@@ -62,6 +62,7 @@
     <string name="info_title">💡 Інформація</string>
     <string name="app_version">Версія застосунку: %1$s</string>
     <string name="refresh">Оновити</string>
+	<string name="stop">Зупинити</string>							
     <string name="save_device">Зберегти пристрій</string>
     <string name="error_loading_video">Помилка завантаження відео</string>
     <string name="nav_play">Відтворення</string>
