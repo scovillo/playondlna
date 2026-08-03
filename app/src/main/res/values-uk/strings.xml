@@ -69,6 +69,8 @@
     <string name="nav_settings">Налаштування</string>
     <string name="no_entries">У кеші немає відео</string>
     <string name="notification_channel_name">HTTP сервер</string>
+	<string name="notification_title">Передача активна</string>
+	<string name="notification_text">Сервер працює за адресою http://%1$s:%2$d/</string>
     <string name="q_360p">360p</string>
     <string name="q_480p">480p</string>
     <string name="q_720p">720p</string>
