@@ -1,0 +1,82 @@
+<resources>
+    <string name="app_name">PlayOnDlna</string>
+    <string name="src_link">Вставте посилання YouTube через «Поділитися» або з буфера ➡</string>
+    <string name="paste_from_clipboard">Вставити з буфера</string>
+    <string name="idle">💤 Очікування</string>
+    <string name="preparing">🔍 Підготовка</string>
+    <string name="finalizing">🚀 Завершення</string>
+    <string name="ready">🍿 Готово</string>
+    <string name="error">❌ Помилка</string>
+    <string name="clear_cache">Очистити кеш</string>
+    <string name="available_players">Доступні плеєри</string>
+    <string name="wlan_disconnected">Wi-Fi відключено! Завантаження скасовано для захисту мобільного трафіку 🔒</string>
+    <string name="multicast_disabled">Помилка сканування! Multicast недоступний у вашій мережі</string>
+    <string name="playback_failed">Не вдалося відтворити!</string>
+    <string name="player_incompatible">Медіаплеєр наразі несумісний!</string>
+    <string name="cache_cleared">Кеш очищено!</string>
+    <string name="cache_usage">Використано місця: </string>
+    <string name="cache_usage_value">%1$.1f ГБ</string>
+    <string name="cache_desc">Очистіть і звільніть місце ↓</string>
+    <string name="location_not_renderer">Пристрій не є MediaRenderer!</string>
+    <string name="location_not_reachable">Пристрій недоступний!</string>
+    <string name="favorite_devices_title">🌟 Улюблені пристрої</string>
+    <string name="favorite_devices_desc">
+Тут ви можете керувати улюбленими мережевими плеєрами.
+Також можна додати власну URL-адресу, щоб включити пристрій в автоматичне сканування.
+Використовуйте URL сервісу медіаплеєра пристрою. Якщо не впевнені, перевірте посібник користувача пристрою.\n
+Приклади:\n
+- Kodi\n
+  http://192.168.178.80:1379/\n
+- Samsung Smart TV (серія UE)\n
+  http://192.168.178.80:9197/dmr
+    </string>
+    <string name="support_title">🎁 Підтримати PlayOnDlna</string>
+    <string name="support_desc_1">Цей застосунок повністю безкоштовний і без реклами. Якщо вважаєте його корисним і хочете віддячити — скористайтеся одним із варіантів нижче.</string>
+    <string name="support_desc_2">Найпростіший спосіб підтримати PlayOnDlna — поставити зірку на GitHub. Це підвищує видимість проєкту та допомагає залучити нових користувачів і розробників.</string>
+    <string name="star">Зірка</string>
+    <string name="give_star">Поставити зірку на GitHub</string>
+    <string name="feedback_desc">Маєте ідею для застосунку, шукаєте вирішення проблеми або знайшли помилку?</string>
+    <string name="discussions">Обговорення</string>
+    <string name="join_discussions">Долучитися до обговорень на GitHub</string>
+    <string name="issue">Проблема</string>
+    <string name="create_issue">Створити issue на GitHub</string>
+    <string name="financial_support_desc">Хочете підтримати фінансово?</string>
+    <string name="sponsor">Спонсор</string>
+    <string name="become_sponsor">Стати спонсором на GitHub</string>
+    <string name="donate">Пожертвувати</string>
+    <string name="buy_coffee">Купити каву через PayPal</string>
+    <string name="video_quality_title">🎥 Якість відео</string>
+    <string name="video_quality_desc">Оберіть бажану якість відео. Через обмеження сумісності фактична якість може бути нижчою.</string>
+    <string name="prefer_quality">Бажана якість %1$s</string>
+    <string name="subtitles_title">📝 Субтитри</string>
+    <string name="subtitles_locale_label">Увімкнути субтитри відповідно до мови пристрою</string>
+    <string name="subtitles_external_desc">За замовчуванням використовується зовнішній файл субтитрів.</string>
+    <string name="subtitles_internal_label">Увімкнути внутрішні субтитри</string>
+    <string name="subtitles_internal_desc">Якщо плеєр має проблеми із зовнішніми субтитрами, увімкніть внутрішні. Це збільшить час підготовки відео!</string>
+    <string name="wlan_protection_title">🔒 Захист Wi-Fi</string>
+    <string name="wlan_protection_label">Увімкнути захист Wi-Fi</string>
+    <string name="wlan_protection_desc">Якщо увімкнено, завантаження скасовуються при відключенні Wi-Fi для захисту мобільного трафіку.</string>
+    <string name="device_url_hint">URL пристрою (напр. http://192.168.178.80:1379/)</string>
+    <string name="add_device_url">Додати URL пристрою</string>
+    <string name="cache_title">💾 Кеш</string>
+    <string name="info_title">💡 Інформація</string>
+    <string name="app_version">Версія застосунку: %1$s</string>
+    <string name="refresh">Оновити</string>
+	<string name="stop">Зупинити</string>							
+    <string name="save_device">Зберегти пристрій</string>
+    <string name="error_loading_video">Помилка завантаження відео</string>
+    <string name="nav_play">Відтворення</string>
+    <string name="nav_library">Бібліотека</string>
+    <string name="nav_settings">Налаштування</string>
+    <string name="no_entries">У кеші немає відео</string>
+    <string name="notification_channel_name">HTTP сервер</string>
+	<string name="notification_title">Передача активна</string>
+	<string name="notification_text">Сервер працює за адресою http://%1$s:%2$d/</string>
+    <string name="q_360p">360p</string>
+    <string name="q_480p">480p</string>
+    <string name="q_720p">720p</string>
+    <string name="q_1080p">1080p</string>
+    <string name="q_1440p">1440p</string>
+    <string name="q_2160p">2160p</string>
+    <string name="device_icon">📺</string>
+</resources>
