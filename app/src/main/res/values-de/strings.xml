@@ -31,20 +31,22 @@ Beispiele:\n
   http://192.168.178.80:9197/dmr
     </string>
     <string name="support_title">🎁 PlayOnDlna unterstützen</string>
-    <string name="support_desc_1">Diese App ist komplett kostenlos und werbefrei. Wenn sie dir gute Dienste leistet und du etwas zurückgeben möchtest, kannst du gerne eine der folgenden Optionen nutzen.</string>
-    <string name="support_desc_2">Der einfachste Weg, PlayOnDlna zu unterstützen, ist, ihm einen Stern auf GitHub zu geben. Sterne erhöhen die Sichtbarkeit des Projekts in der GitHub-Community und können helfen, mehr Nutzer und Mitwirkende zu gewinnen.</string>
-    <string name="star">Stern</string>
-    <string name="give_star">Einen Stern auf GitHub geben</string>
-    <string name="feedback_desc">Hast du eine coole Idee für die App, suchst nach einer Lösung für ein Problem oder hast etwas gefunden, das nicht richtig funktioniert?</string>
+    <string name="support_desc_1">PlayOnDlna ist kostenlos, werbefrei und Open Source. Wenn dir die App hilft, kannst du ihre Weiterentwicklung unterstützen.</string>
+    <string name="support_desc_2">Schon ein Stern auf GitHub hilft dabei, PlayOnDlna sichtbarer zu machen und mehr Nutzer sowie Mitwirkende zu erreichen.</string>
+    <string name="star">GitHub-Star</string>
+    <string name="give_star">PlayOnDlna einen Stern geben</string>
+    <string name="feedback_desc">Du hast eine Idee, eine Frage oder etwas funktioniert nicht wie erwartet? Feedback und Fehlerberichte helfen dabei, PlayOnDlna besser zu machen.</string>
     <string name="discussions">Diskussionen</string>
-    <string name="join_discussions">An Diskussionen auf GitHub teilnehmen</string>
-    <string name="issue">Problem</string>
-    <string name="create_issue">Ein Problem auf GitHub melden</string>
-    <string name="financial_support_desc">Möchtest du noch einen Schritt weiter gehen und finanziell unterstützen?</string>
-    <string name="sponsor">Sponsoren</string>
-    <string name="become_sponsor">Sponsor auf GitHub werden</string>
-    <string name="donate">Spenden</string>
-    <string name="buy_coffee">Mir einen Kaffee via PayPal ausgeben</string>
+    <string name="join_discussions">Ideen und Fragen auf GitHub teilen</string>
+    <string name="issue">Problem melden</string>
+    <string name="create_issue">Fehler oder Problem auf GitHub melden</string>
+    <string name="financial_support_desc">PlayOnDlna wird unabhängig entwickelt. Mit einer freiwilligen Unterstützung hilfst du dabei, die App langfristig zu pflegen, neue Funktionen umzusetzen und die Kompatibilität mit verschiedenen Geräten zu verbessern.</string>
+    <string name="liberapay">Liberapay</string>
+    <string name="support_on_liberapay">Entwicklung über Liberapay unterstützen</string>
+    <string name="donate">PayPal</string>
+    <string name="buy_coffee">Mir einen Kaffee ausgeben ☕</string>
+    <string name="sponsor">GitHub Sponsors</string>
+    <string name="become_sponsor">Entwicklung über GitHub Sponsors unterstützen</string>
     <string name="video_quality_title">🎥 Videoqualität</string>
     <string name="video_quality_desc">Wähle deine bevorzugte Videoqualität. Aus Kompatibilitätsgründen kann die letztendlich gewählte Qualität niedriger sein als deine bevorzugte.</string>
     <string name="prefer_quality">%1$s bevorzugen</string>

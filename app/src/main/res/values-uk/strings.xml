@@ -31,20 +31,22 @@
   http://192.168.178.80:9197/dmr
     </string>
     <string name="support_title">🎁 Підтримати PlayOnDlna</string>
-    <string name="support_desc_1">Цей застосунок повністю безкоштовний і без реклами. Якщо вважаєте його корисним і хочете віддячити — скористайтеся одним із варіантів нижче.</string>
-    <string name="support_desc_2">Найпростіший спосіб підтримати PlayOnDlna — поставити зірку на GitHub. Це підвищує видимість проєкту та допомагає залучити нових користувачів і розробників.</string>
+    <string name="support_desc_1">PlayOnDlna — безкоштовний, без реклами та з відкритим кодом. Якщо застосунок вам допомагає, ви можете підтримати його подальший розвиток.</string>
+    <string name="support_desc_2">Навіть зірка на GitHub допомагає зробити PlayOnDlna помітнішим і залучити більше користувачів та розробників.</string>
     <string name="star">Зірка</string>
-    <string name="give_star">Поставити зірку на GitHub</string>
-    <string name="feedback_desc">Маєте ідею для застосунку, шукаєте вирішення проблеми або знайшли помилку?</string>
+    <string name="give_star">Поставити PlayOnDlna зірку на GitHub</string>
+    <string name="feedback_desc">Маєте ідею, питання або щось працює не так, як очікується? Відгуки та звіти про помилки допомагають зробити PlayOnDlna кращим.</string>
     <string name="discussions">Обговорення</string>
-    <string name="join_discussions">Долучитися до обговорень на GitHub</string>
-    <string name="issue">Проблема</string>
-    <string name="create_issue">Створити issue на GitHub</string>
-    <string name="financial_support_desc">Хочете підтримати фінансово?</string>
+    <string name="join_discussions">Ділитися ідеями та питаннями на GitHub</string>
+    <string name="issue">Повідомити про проблему</string>
+    <string name="create_issue">Повідомити про помилку або проблему на GitHub</string>
+    <string name="financial_support_desc">PlayOnDlna розробляється незалежно. Добровільна підтримка допомагає підтримувати застосунок у довгостроковій перспективі, впроваджувати нові функції та покращувати сумісність із різними пристроями.</string>
+    <string name="liberapay">Ліберапей</string>
+    <string name="support_on_liberapay">Підтримати розробку через Ліберапей</string>
     <string name="sponsor">Спонсор</string>
-    <string name="become_sponsor">Стати спонсором на GitHub</string>
+    <string name="become_sponsor">Підтримати розробку через GitHub Спонсор</string>
     <string name="donate">Пожертвувати</string>
-    <string name="buy_coffee">Купити каву через PayPal</string>
+    <string name="buy_coffee">Пригостити мене кавою ☕</string>
     <string name="video_quality_title">🎥 Якість відео</string>
     <string name="video_quality_desc">Оберіть бажану якість відео. Через обмеження сумісності фактична якість може бути нижчою.</string>
     <string name="prefer_quality">Бажана якість %1$s</string>
