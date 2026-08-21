@@ -160,15 +160,37 @@ ${descText.trimIndent()}
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.
-The app itself is licensed under the GNU GPLv3. See the
-[THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md)
-file in the sourcerepository for full license information.
+The app itself is licensed under the GNU GPLv3.
+See the [THIRD_PARTY_LICENSES.md](https://github.com/scovillo/playondlna/blob/main/THIRD_PARTY_LICENSES.md) for full license information.
 
-## 🎁 Donation
+## 🎁 Support PlayOnDlna
 
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤️-pink?logo=github&style=flat-square)](https://github.com/sponsors/scovillo)
+PlayOnDlna is free, open source, and developed independently.
 
-[![PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
+If the app is useful to you, you can support its continued development with a voluntary donation.
+
+Donations help with:
+
+- Maintenance, bug fixes, and new features
+- Testing on different devices and DLNA players
+- Continued development of this free and open-source project
+
+PlayOnDlna will remain fully usable without any donation.
+
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/scovillo/donate)
+
+[![Donate using GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-❤️-pink?logo=github&style=flat-square)](https://github.com/sponsors/scovillo)
+
+[![Donate using PayPal](https://www.paypalobjects.com/webstatic/icon/pp50.png)](https://paypal.me/muemmelmaus)
+
+You can also support the project without donating:
+
+- ⭐ Star the project on [GitHub](https://github.com/scovillo/playondlna)
+- Share PlayOnDlna with others
+- Send feedback or bug reports
+- Contribute code or translations
+
+Thank you for every kind of support! ❤️
 
 ## 🛠️ Build Instructions
 
