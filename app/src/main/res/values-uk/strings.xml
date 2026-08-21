@@ -16,7 +16,11 @@
     <string name="cache_cleared">Кеш очищено!</string>
     <string name="cache_usage">Використано місця: </string>
     <string name="cache_usage_value">%1$.1f ГБ</string>
-    <string name="cache_desc">Очистіть і звільніть місце ↓</string>
+    <string name="cache_desc">Видалити бібліотеку та звільнити місце ↓</string>
+    <string name="clear_library_dialog_title">Видалити бібліотеку?</string>
+    <string name="clear_library_dialog_message">Ви справді хочете видалити всю свою бібліотеку? Цю дію неможливо скасувати.</string>
+    <string name="delete">Видалити</string>
+    <string name="cancel">Скасувати</string>
     <string name="location_not_renderer">Пристрій не є MediaRenderer!</string>
     <string name="location_not_reachable">Пристрій недоступний!</string>
     <string name="favorite_devices_title">🌟 Улюблені пристрої</string>

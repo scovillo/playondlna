@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -55,6 +56,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -464,7 +466,9 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
 @Composable
 fun clearCache(cacheControl: CacheControl) {
     val sizeInGb by cacheControl.sizeInGb.collectAsState()
-    return Column {
+    var showClearLibraryDialog by remember { mutableStateOf(false) }
+
+    Column {
         Text(stringResource(R.string.cache_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(ContentSpacing))
         Text(
@@ -483,7 +487,30 @@ fun clearCache(cacheControl: CacheControl) {
             icon = Icons.Default.CleaningServices,
             text = stringResource(id = R.string.clear_cache),
             color = colorResource(id = R.color.icon_color),
-            onClick = { cacheControl.clearCache() },
+            onClick = { showClearLibraryDialog = true },
+        )
+    }
+
+    if (showClearLibraryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearLibraryDialog = false },
+            title = { Text(stringResource(R.string.clear_library_dialog_title)) },
+            text = { Text(stringResource(R.string.clear_library_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearLibraryDialog = false
+                        cacheControl.clearCache()
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearLibraryDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
         )
     }
 }

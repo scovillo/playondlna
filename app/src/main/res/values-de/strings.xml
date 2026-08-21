@@ -16,7 +16,11 @@
     <string name="cache_cleared">Cache geleert!</string>
     <string name="cache_usage">Aktuell belegter Speicher: </string>
     <string name="cache_usage_value">%1$.1f GB</string>
-    <string name="cache_desc">Aufräumen und Platz freigeben ↓</string>
+    <string name="cache_desc">Bibliothek löschen und Platz freigeben ↓</string>
+    <string name="clear_library_dialog_title">Bibliothek löschen?</string>
+    <string name="clear_library_dialog_message">Möchtest du wirklich deine komplette Bibliothek löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.</string>
+    <string name="delete">Löschen</string>
+    <string name="cancel">Abbrechen</string>
     <string name="location_not_renderer">Ziel ist kein MediaRenderer!</string>
     <string name="location_not_reachable">Ziel ist nicht erreichbar!</string>
     <string name="favorite_devices_title">🌟 Favorisierte Geräte</string>

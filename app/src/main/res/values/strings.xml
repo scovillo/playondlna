@@ -16,7 +16,11 @@
     <string name="cache_cleared">Cache cleared!</string>
     <string name="cache_usage">Currently used space: </string>
     <string name="cache_usage_value">%1$.1f GB</string>
-    <string name="cache_desc">Clean up and free space ↓</string>
+    <string name="cache_desc">Delete library and free up space ↓</string>
+    <string name="clear_library_dialog_title">Delete library?</string>
+    <string name="clear_library_dialog_message">Do you really want to delete your entire library? This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
     <string name="location_not_renderer">Location is not a MediaRenderer!</string>
     <string name="location_not_reachable">Location is not reachable!</string>
     <string name="favorite_devices_title">🌟 Favorite Devices</string>
