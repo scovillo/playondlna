@@ -39,8 +39,10 @@ import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryViewModel
+import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.model.VideoSettingsState
 import io.github.scovillo.playondlna.persistence.LibraryManager
+import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
@@ -50,6 +52,7 @@ import io.github.scovillo.playondlna.ui.libraryScreen
 import io.github.scovillo.playondlna.ui.mainScreen
 import io.github.scovillo.playondlna.ui.playOnDlnaTheme
 import io.github.scovillo.playondlna.ui.playScreen
+import io.github.scovillo.playondlna.ui.playlistsScreen
 import io.github.scovillo.playondlna.ui.settingsScreen
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
@@ -86,6 +89,7 @@ class MainActivity : ComponentActivity() {
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
+        val playlistViewModel = PlaylistViewModel(PlaylistManager(cacheDir))
         videoJobModel =
             VideoJobModel(
                 settingsRepository,
@@ -128,11 +132,19 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     libraryScreen = { navController ->
-                        libraryScreen(libraryViewModel, videoJobModel) {
+                        libraryScreen(libraryViewModel, playlistViewModel, videoJobModel) {
                             navController.navigate("play") {
                                 launchSingleTop = true
                             }
                         }
+                    },
+                    playlistsScreen = { navController ->
+                        playlistsScreen(
+                            playlistViewModel,
+                            libraryViewModel,
+                            videoJobModel,
+                            navController,
+                        )
                     },
                     settingsScreen = {
                         settingsScreen(

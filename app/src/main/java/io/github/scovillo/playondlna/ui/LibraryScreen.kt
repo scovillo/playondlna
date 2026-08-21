@@ -17,8 +17,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryViewModel
+import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,14 +52,18 @@ import java.util.Locale
 @Composable
 fun libraryScreen(
     libraryViewModel: LibraryViewModel,
+    playlistViewModel: PlaylistViewModel,
     videoJobModel: VideoJobModel,
     onVideoSelected: () -> Unit,
 ) {
     val items by libraryViewModel.items
     val isLoading by libraryViewModel.isLoading
+    val playlists by playlistViewModel.playlists
+    var videoToAdd by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         libraryViewModel.loadLibrary()
+        playlistViewModel.loadPlaylists()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -129,11 +138,27 @@ fun libraryScreen(
                                     )
                                 }
                             }
+                            IconButton(onClick = { videoToAdd = item.metadata.id }) {
+                                Icon(
+                                    Icons.Default.PlaylistAdd,
+                                    contentDescription = stringResource(R.string.add_to_playlist),
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    videoToAdd?.let { videoId ->
+        addToPlaylistDialog(
+            playlists = playlists,
+            onDismiss = { videoToAdd = null },
+            onPlaylistSelected = {
+                playlistViewModel.addVideo(it, videoId)
+                videoToAdd = null
+            },
+        )
     }
 }
 
