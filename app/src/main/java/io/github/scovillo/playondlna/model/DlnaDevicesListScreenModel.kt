@@ -25,6 +25,7 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
 import io.github.scovillo.playondlna.upnpdlna.playUriOnDevice
@@ -77,11 +78,18 @@ class DlnaDevicesListScreenModel(
         device: DlnaDevice,
         videoFile: VideoFile,
     ) {
+        playMediaOnDevice(device, DlnaMedia(videoFile.url, videoFile.metaData))
+    }
+
+    fun playMediaOnDevice(
+        device: DlnaDevice,
+        media: DlnaMedia,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             if (device.avTransportUrl != null) {
                 try {
                     Log.d("playVideoOnDevice", "Send playback command to ${device.avTransportUrl}")
-                    playUriOnDevice(device.avTransportUrl, videoFile)
+                    playUriOnDevice(device.avTransportUrl, media)
                 } catch (exception: Exception) {
                     exception.printStackTrace()
                     _toastEvents.emit(ToastEvent.Show(R.string.playback_failed))

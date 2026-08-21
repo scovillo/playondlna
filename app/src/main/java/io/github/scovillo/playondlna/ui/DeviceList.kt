@@ -63,12 +63,14 @@ import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun dlnaListScreen(
     videoJobModel: VideoJobModel,
     dlnaModel: DlnaDevicesListScreenModel,
+    playlistMedia: DlnaMedia? = null,
 ) {
     val devices by dlnaModel.devices.collectAsState()
     val isLoading by dlnaModel.isLoading.collectAsState()
@@ -134,9 +136,13 @@ fun dlnaListScreen(
                             .padding(8.dp)
                             .fillMaxWidth()
                             .clickable {
-                                val videoFile = videoJobModel.currentVideoFile.value
-                                if (videoFile != null) {
-                                    dlnaModel.playVideoOnDevice(device, videoFile)
+                                if (playlistMedia != null) {
+                                    dlnaModel.playMediaOnDevice(device, playlistMedia)
+                                } else {
+                                    val videoFile = videoJobModel.currentVideoFile.value
+                                    if (videoFile != null) {
+                                        dlnaModel.playVideoOnDevice(device, videoFile)
+                                    }
                                 }
                             },
                     ) {

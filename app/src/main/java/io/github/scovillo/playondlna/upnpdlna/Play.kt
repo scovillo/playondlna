@@ -30,23 +30,13 @@ val client = OkHttpClient()
 fun playUriOnDevice(
     avTransportUrl: String,
     videoFile: VideoFile,
+) = playUriOnDevice(avTransportUrl, DlnaMedia(videoFile.url, videoFile.metaData))
+
+fun playUriOnDevice(
+    avTransportUrl: String,
+    media: DlnaMedia,
 ) {
-    val uriSoapPayload =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
-                    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-          <s:Body>
-            <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-              <InstanceID>0</InstanceID>
-              <CurrentURI>${videoFile.url}</CurrentURI>
-              <CurrentURIMetaData>
-              ${videoFile.metaData}
-              </CurrentURIMetaData>
-            </u:SetAVTransportURI>
-          </s:Body>
-        </s:Envelope>
-        """.trimIndent()
+    val uriSoapPayload = setAvTransportUriPayload(media)
     Log.i("playUriOnDevice", uriSoapPayload)
     val setUriRequest =
         Request.Builder()
@@ -91,3 +81,20 @@ fun playUriOnDevice(
     }
     playResponse.close()
 }
+
+fun setAvTransportUriPayload(media: DlnaMedia): String =
+    """
+    <?xml version="1.0" encoding="utf-8"?>
+    <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
+                s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+      <s:Body>
+        <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+          <InstanceID>0</InstanceID>
+          <CurrentURI>${media.url}</CurrentURI>
+          <CurrentURIMetaData>
+          ${media.metaData}
+          </CurrentURIMetaData>
+        </u:SetAVTransportURI>
+      </s:Body>
+    </s:Envelope>
+    """.trimIndent()

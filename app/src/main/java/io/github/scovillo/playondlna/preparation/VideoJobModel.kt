@@ -247,6 +247,24 @@ class VideoJobModel(
         }
     }
 
+    fun preparePlaylist(items: List<LibraryItem>) {
+        items.forEach { item ->
+            videoHttpServer.allFiles[item.metadata.id] =
+                VideoFile(
+                    id = item.metadata.id,
+                    title = item.metadata.title,
+                    uploader = item.metadata.uploader,
+                    durationInSeconds = item.metadata.durationInSeconds,
+                    value = item.videoFile,
+                    videoQuality = videoQuality.value,
+                    subtitle = null,
+                )
+        }
+        viewModelScope.launch {
+            _playbackStarted.emit(Unit)
+        }
+    }
+
     private suspend fun mux(extractor: StreamExtractor) {
         if (!isWlanProtectionEnabled.value || wifiConnectionState.isConnected()) {
             state.preparing()

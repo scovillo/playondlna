@@ -74,8 +74,9 @@ fun getLocalIpAddress(): String? {
     return null
 }
 
-class VideoHttpServer(port: Int) : NanoHTTPD(port) {
+class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
     val allFiles = mutableMapOf<String, VideoFile>()
+    var playlistProvider: ((String, String) -> PlaylistM3u?)? = null
 
     override fun serve(session: IHTTPSession): Response {
         Log.i("VideoHttpServer", "-> ${session.uri}")
@@ -84,7 +85,13 @@ class VideoHttpServer(port: Int) : NanoHTTPD(port) {
             session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator()),
         )
         val uriParts = session.uri.split("/")
-        val id = uriParts[1]
+        if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "playlist.m3u") {
+            val playlist =
+                playlistProvider?.invoke(uriParts[2], "http://${getLocalIpAddress()}:$serverPort")
+                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found or empty")
+            return newFixedLengthResponse(Response.Status.OK, "audio/mpegurl; charset=utf-8", playlist.content)
+        }
+        val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
 
         val isSubtitle = session.uri.endsWith(".srt", ignoreCase = true)
         if (isSubtitle) {

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +37,7 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.PlaylistViewModel
+import io.github.scovillo.playondlna.persistence.LibraryItem
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 
 @Composable
@@ -44,6 +46,7 @@ fun playlistsScreen(
     libraryViewModel: LibraryViewModel,
     videoJobModel: VideoJobModel,
     navController: NavHostController,
+    onPlayPlaylist: (Playlist, List<LibraryItem>) -> Unit,
 ) {
     val playlists by playlistViewModel.playlists
     val libraryItems by libraryViewModel.items
@@ -63,6 +66,7 @@ fun playlistsScreen(
             libraryViewModel = libraryViewModel,
             videoJobModel = videoJobModel,
             onRemove = { playlistViewModel.removeVideo(playlist.id, it) },
+            onPlay = onPlayPlaylist,
         )
     } else {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -124,18 +128,35 @@ private fun playlistDetails(
     libraryViewModel: LibraryViewModel,
     videoJobModel: VideoJobModel,
     onRemove: (String) -> Unit,
+    onPlay: (Playlist, List<LibraryItem>) -> Unit,
 ) {
     val itemById = libraryViewModel.items.value.associateBy { it.metadata.id }
     val missingCount = playlist.videoIds.count { it !in itemById }
+    val validItems = playlist.videoIds.mapNotNull(itemById::get)
+    var startError by remember(playlist.id) { mutableStateOf(false) }
+    var isStarting by remember(playlist.id) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(playlist.name, style = MaterialTheme.typography.headlineSmall)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(playlist.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            IconButton(onClick = {
+                if (validItems.isEmpty()) {
+                    startError = true
+                } else if (!isStarting) {
+                    isStarting = true
+                    onPlay(playlist, validItems)
+                }
+            }, enabled = !isStarting) {
+                Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
+            }
+        }
         if (missingCount > 0) Text(stringResource(R.string.playlist_missing_videos, missingCount), style = MaterialTheme.typography.bodySmall)
-        if (playlist.videoIds.none { it in itemById }) {
+        if (startError) Text(stringResource(R.string.playlist_no_playable_videos), style = MaterialTheme.typography.bodyMedium)
+        if (validItems.isEmpty()) {
             Text(stringResource(R.string.no_playlist_videos), modifier = Modifier.padding(top = 24.dp))
         } else {
             LazyColumn {
-                items(playlist.videoIds.filter { it in itemById }, key = { it }) { videoId ->
-                    val item = itemById.getValue(videoId)
+                items(validItems, key = { it.metadata.id }) { item ->
+                    val videoId = item.metadata.id
                     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { videoJobModel.loadFromLibrary(item) }) {
                         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {

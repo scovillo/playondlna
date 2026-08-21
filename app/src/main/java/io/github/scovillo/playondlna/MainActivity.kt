@@ -29,6 +29,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -47,6 +51,10 @@ import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
 import io.github.scovillo.playondlna.server.WebServerService
+import io.github.scovillo.playondlna.server.createPlaylistM3u
+import io.github.scovillo.playondlna.server.getLocalIpAddress
+import io.github.scovillo.playondlna.server.serverPort
+import io.github.scovillo.playondlna.server.videoHttpServer
 import io.github.scovillo.playondlna.ui.dlnaListScreen
 import io.github.scovillo.playondlna.ui.libraryScreen
 import io.github.scovillo.playondlna.ui.mainScreen
@@ -54,8 +62,10 @@ import io.github.scovillo.playondlna.ui.playOnDlnaTheme
 import io.github.scovillo.playondlna.ui.playScreen
 import io.github.scovillo.playondlna.ui.playlistsScreen
 import io.github.scovillo.playondlna.ui.settingsScreen
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
+import io.github.scovillo.playondlna.upnpdlna.playlistMedia
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -89,7 +99,8 @@ class MainActivity : ComponentActivity() {
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
-        val playlistViewModel = PlaylistViewModel(PlaylistManager(cacheDir))
+        val playlistManager = PlaylistManager(cacheDir)
+        val playlistViewModel = PlaylistViewModel(playlistManager)
         videoJobModel =
             VideoJobModel(
                 settingsRepository,
@@ -99,6 +110,13 @@ class MainActivity : ComponentActivity() {
                 cacheDir,
                 libraryManager,
             )
+        videoHttpServer.playlistProvider = playlistProvider@{ id, baseUrl ->
+            val playlist = playlistManager.getPlaylists().find { it.id == id } ?: return@playlistProvider null
+            val items = libraryManager.getLibraryItems()
+            createPlaylistM3u(playlist, items, baseUrl).also {
+                if (it != null) videoJobModel.preparePlaylist(items.filter { item -> item.metadata.id in playlist.videoIds })
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 videoJobModel.playbackStarted.collect {
@@ -122,12 +140,14 @@ class MainActivity : ComponentActivity() {
             )
         setContent {
             playOnDlnaTheme {
+                var selectedPlaylistMedia by remember { mutableStateOf<DlnaMedia?>(null) }
                 mainScreen(
                     playScreen = {
                         playScreen(videoJobModel) {
                             dlnaListScreen(
                                 videoJobModel,
                                 dlnaDevicesListScreenModel,
+                                playlistMedia = selectedPlaylistMedia,
                             )
                         }
                     },
@@ -144,6 +164,12 @@ class MainActivity : ComponentActivity() {
                             libraryViewModel,
                             videoJobModel,
                             navController,
+                            onPlayPlaylist = { playlist, items ->
+                                val baseUrl = "http://${getLocalIpAddress()}:$serverPort"
+                                selectedPlaylistMedia = playlistMedia(playlist.id, playlist.name, baseUrl)
+                                videoJobModel.preparePlaylist(items)
+                                navController.navigate("play") { launchSingleTop = true }
+                            },
                         )
                     },
                     settingsScreen = {
