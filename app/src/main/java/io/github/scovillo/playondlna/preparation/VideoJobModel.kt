@@ -65,6 +65,8 @@ import java.util.Collections
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
 
@@ -192,7 +194,7 @@ class VideoJobModel(
     }
 
     private suspend fun prepareYoutubePlaylist(url: String) {
-        val playlistUrl = "https://www.youtube.com/playlist?list=${Uri.encode(Uri.parse(url).getQueryParameter("list"))}"
+        val playlistUrl = "https://www.youtube.com/playlist?list=${Uri.encode(url.toUri().getQueryParameter("list"))}"
         val playlistInfo = org.schabi.newpipe.extractor.playlist.PlaylistInfo.getInfo(ServiceList.YouTube, playlistUrl)
         val entries = playlistInfo.relatedItems.toMutableList()
         var nextPage: Page? = playlistInfo.nextPage
@@ -328,7 +330,9 @@ class VideoJobModel(
             download.withSubtitle(subtitle)
         }
         val streamFiles = download.start()
-        val muxFile = File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
+        val muxFile = withContext(Dispatchers.IO) {
+            File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
+        }
         val ffmpegCmd =
             PlayOnDlnaFfmpegCommand(
                 streamFiles,
@@ -409,7 +413,7 @@ class VideoJobModel(
     private fun monitorWifiConnection() {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(1000)
+                delay(1000.milliseconds)
                 if (runningJobs.isEmpty()) {
                     continue
                 }
@@ -425,7 +429,7 @@ class VideoJobModel(
     }
 }
 
-private fun isYoutubePlaylistUrl(url: String): Boolean = Uri.parse(url).getQueryParameter("list") != null
+private fun isYoutubePlaylistUrl(url: String): Boolean = url.toUri().getQueryParameter("list") != null
 
 internal fun youtubeUrlFromSharedText(text: String): String =
     Regex("https?://[^\\s)\\]]+")

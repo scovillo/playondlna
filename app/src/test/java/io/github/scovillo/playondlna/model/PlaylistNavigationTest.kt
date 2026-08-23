@@ -1,6 +1,7 @@
 package io.github.scovillo.playondlna.model
 
 import io.github.scovillo.playondlna.upnpdlna.TransportCommand
+import io.github.scovillo.playondlna.upnpdlna.playlistIndexForCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

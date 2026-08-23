@@ -38,13 +38,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -120,66 +115,22 @@ fun dlnaListScreen(
             Column {
                 val currentVideo = videoJobModel.currentVideoFile.value
                 val currentThumbnail = videoJobModel.currentThumbnailFile.value
-                Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        asyncThumbnailImage(
-                            file = currentThumbnail,
-                            modifier = Modifier.size(96.dp, 64.dp),
-                        )
-                        Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
-                            Text(
-                                text = playlistMedia?.title ?: currentVideo?.title ?: stringResource(R.string.no_media_selected),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            selectedDevice?.let {
-                                Text(it.friendlyName, style = MaterialTheme.typography.bodyMedium)
-                            }
+                dlnaRemoteControl(
+                    currentVideo = currentVideo,
+                    currentThumbnail = currentThumbnail,
+                    playlistMedia = playlistMedia,
+                    selectedDevice = selectedDevice,
+                    onCommand = dlnaModel::remoteCommand,
+                    onPlay = { device ->
+                        if (playlistVideoFiles.isNotEmpty() && playlistMedia != null) {
+                            dlnaModel.playPlaylistOnDevice(device, playlistMedia, playlistVideoFiles)
+                        } else if (currentVideo != null) {
+                            dlnaModel.playVideoOnDevice(device, currentVideo)
+                        } else {
+                            dlnaModel.remoteCommand(TransportCommand.PLAY)
                         }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                        remoteButton(
-                            Icons.Default.SkipPrevious,
-                            R.string.previous,
-                        ) {
-                            dlnaModel.remoteCommand(TransportCommand.PREVIOUS)
-                        }
-                        remoteButton(
-                            Icons.Default.PlayArrow,
-                            R.string.play,
-                        ) {
-                            selectedDevice?.let { device ->
-                                if (playlistVideoFiles.isNotEmpty() && playlistMedia != null) {
-                                    dlnaModel.playPlaylistOnDevice(device, playlistMedia, playlistVideoFiles)
-                                } else if (currentVideo != null) {
-                                    dlnaModel.playVideoOnDevice(device, currentVideo)
-                                } else {
-                                    dlnaModel.remoteCommand(TransportCommand.PLAY)
-                                }
-                            }
-                        }
-                        remoteButton(
-                            Icons.Default.Pause,
-                            R.string.pause,
-                        ) {
-                            dlnaModel.remoteCommand(TransportCommand.PAUSE)
-                        }
-                        remoteButton(
-                            Icons.Default.Stop,
-                            R.string.stop,
-                        ) {
-                            dlnaModel.remoteCommand(TransportCommand.STOP)
-                        }
-                        remoteButton(
-                            Icons.Default.SkipNext,
-                            R.string.next,
-                        ) {
-                            dlnaModel.remoteCommand(TransportCommand.NEXT)
-                        }
-                    }
-                }
+                    },
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -260,16 +211,5 @@ fun dlnaListScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun remoteButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: Int,
-    onClick: () -> Unit,
-) {
-    IconButton(onClick = onClick, modifier = Modifier.size(64.dp)) {
-        Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(36.dp))
     }
 }
