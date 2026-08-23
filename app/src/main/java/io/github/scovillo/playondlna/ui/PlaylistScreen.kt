@@ -70,7 +70,7 @@ fun playlistsScreen(
         )
     } else {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Button(onClick = { creating = true }, modifier = Modifier.align(Alignment.End)) {
+            Button(onClick = { creating = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Icon(Icons.Default.Add, null)
                 Text(stringResource(R.string.create_playlist), modifier = Modifier.padding(start = 8.dp))
             }
@@ -79,11 +79,18 @@ fun playlistsScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(playlists, key = { it.id }) { item ->
+                        val playableItems = item.videoIds.mapNotNull { videoId -> libraryItems.find { it.metadata.id == videoId } }
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { navController.navigate("playlist/${item.id}") }) {
                             Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium)
                                     Text(stringResource(R.string.playlist_video_count, item.videoIds.size), style = MaterialTheme.typography.bodySmall)
+                                }
+                                IconButton(
+                                    onClick = { onPlayPlaylist(item, playableItems) },
+                                    enabled = playableItems.isNotEmpty(),
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
                                 }
                                 IconButton(onClick = { renaming = item }) { Icon(Icons.Default.Edit, stringResource(R.string.rename_playlist)) }
                                 IconButton(onClick = { deleting = item }) { Icon(Icons.Default.Delete, stringResource(R.string.delete_playlist)) }

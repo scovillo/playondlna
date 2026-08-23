@@ -4,6 +4,7 @@ import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.persistence.LibraryItem
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,6 +26,15 @@ class PlaylistM3uTest {
     @Test
     fun returnsNullWhenNoPlaylistVideoExists() {
         assertNull(createPlaylistM3u(Playlist("list", "Empty", listOf("gone")), emptyList(), "http://host:1"))
+    }
+
+    @Test
+    fun startsAtRequestedEntry() {
+        val playlist = Playlist("list", "My list", listOf("one", "two"))
+        val m3u = createPlaylistM3u(playlist, listOf(item("one", "First"), item("two", "Second")), "http://server", 1)!!
+
+        assertFalse(m3u.content.contains("/one/video.mp4"))
+        assertTrue(m3u.content.contains("/two/video.mp4"))
     }
 
     private fun item(

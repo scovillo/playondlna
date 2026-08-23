@@ -20,6 +20,4 @@ package io.github.scovillo.playondlna.ui
 
 sealed class ToastEvent {
     data class Show(val messageResId: Int) : ToastEvent()
-
-    data class ShowPlain(val message: String) : ToastEvent()
 }

@@ -23,12 +23,11 @@ fun mainScreen(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = "play",
+            startDestination = "library",
             modifier = Modifier.padding(paddingValues),
         ) {
             composable("play") { playScreen() }
             composable("library") { libraryScreen(navController) }
-            composable("playlists") { playlistsScreen(navController) }
             composable("playlist/{playlistId}") { playlistsScreen(navController) }
             composable("settings") { settingsScreen() }
         }

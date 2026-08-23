@@ -20,7 +20,6 @@ package io.github.scovillo.playondlna.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
@@ -41,9 +40,8 @@ data class PlayOnDlnaNavItem(val titleRes: Int, val icon: ImageVector, val route
 fun playOnDlnaNavBar(navController: NavHostController) {
     val items =
         listOf(
-            PlayOnDlnaNavItem(R.string.nav_play, Icons.Default.PlayArrow, "play"),
             PlayOnDlnaNavItem(R.string.nav_library, Icons.Default.VideoLibrary, "library"),
-            PlayOnDlnaNavItem(R.string.nav_playlists, Icons.Default.QueueMusic, "playlists"),
+            PlayOnDlnaNavItem(R.string.nav_play, Icons.Default.PlayArrow, "play"),
             PlayOnDlnaNavItem(R.string.nav_settings, Icons.Default.Settings, "settings"),
         )
 
@@ -55,13 +53,21 @@ fun playOnDlnaNavBar(navController: NavHostController) {
             NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = title) },
                 label = { Text(title) },
-                selected = currentRoute == item.route,
+                selected = currentRoute == item.route || (item.route == "library" && currentRoute == "playlist/{playlistId}"),
                 onClick = {
-                    navController.navigate(item.route) {
-                        launchSingleTop = true
-                        restoreState = true
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
+                    if (item.route == "library") {
+                        if (!navController.popBackStack("library", inclusive = false)) {
+                            navController.navigate("library") {
+                                launchSingleTop = true
+                            }
+                        }
+                    } else {
+                        navController.navigate(item.route) {
+                            launchSingleTop = true
+                            restoreState = true
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                         }
                     }
                 },

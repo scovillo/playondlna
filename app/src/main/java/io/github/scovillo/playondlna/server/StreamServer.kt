@@ -76,7 +76,7 @@ fun getLocalIpAddress(): String? {
 
 class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
     val allFiles = mutableMapOf<String, VideoFile>()
-    var playlistProvider: ((String, String) -> PlaylistM3u?)? = null
+    var playlistProvider: ((String, String, Int) -> PlaylistM3u?)? = null
 
     override fun serve(session: IHTTPSession): Response {
         Log.i("VideoHttpServer", "-> ${session.uri}")
@@ -87,7 +87,11 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
         val uriParts = session.uri.split("/")
         if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "playlist.m3u") {
             val playlist =
-                playlistProvider?.invoke(uriParts[2], "http://${getLocalIpAddress()}:$serverPort")
+                playlistProvider?.invoke(
+                    uriParts[2],
+                    "http://${getLocalIpAddress()}:$serverPort",
+                    session.parameters["startIndex"]?.firstOrNull()?.toIntOrNull() ?: 0,
+                )
                     ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found or empty")
             return newFixedLengthResponse(Response.Status.OK, "audio/mpegurl; charset=utf-8", playlist.content)
         }

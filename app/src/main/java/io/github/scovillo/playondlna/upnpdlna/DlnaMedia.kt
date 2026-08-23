@@ -5,6 +5,7 @@ import io.github.scovillo.playondlna.server.escapeXml
 data class DlnaMedia(
     val url: String,
     val metaData: String,
+    val title: String? = null,
 )
 
 fun playlistMedia(
@@ -20,5 +21,11 @@ fun playlistMedia(
                 """<upnp:class xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">object.container.playlistContainer</upnp:class>""" +
                 """<res protocolInfo="http-get:*:audio/mpegurl:*">${url.escapeXml()}</res></item></DIDL-Lite>"""
         ).escapeXml()
-    return DlnaMedia(url, metadata)
+    return DlnaMedia(url, metadata, title)
+}
+
+fun DlnaMedia.startingAt(index: Int): DlnaMedia {
+    require(index >= 0)
+    val indexedUrl = "$url?startIndex=$index"
+    return DlnaMedia(indexedUrl, metaData.replace(url, indexedUrl))
 }

@@ -258,7 +258,7 @@ class PlayOnDlnaStreamDownload(
                         val progressPercent =
                             (totalDownloaded.toDouble() * 100 / totalSize).toFloat().coerceIn(0.0f, 100.0f)
 
-                        state.updateProgress(progressPercent)
+                        state.updateDownloadProgress(progressPercent)
 
                         val now = System.currentTimeMillis()
                         if (now - lastLogTime >= logTimeInMillis) {

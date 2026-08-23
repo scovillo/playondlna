@@ -109,9 +109,6 @@ fun settingsScreen(
                         context.getString(event.messageResId),
                         Toast.LENGTH_LONG,
                     ).show()
-
-                is ToastEvent.ShowPlain ->
-                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
         }
     }

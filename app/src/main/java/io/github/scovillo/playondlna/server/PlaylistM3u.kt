@@ -12,9 +12,11 @@ fun createPlaylistM3u(
     playlist: Playlist,
     libraryItems: List<LibraryItem>,
     baseUrl: String,
+    startIndex: Int = 0,
 ): PlaylistM3u? {
     val itemsById = libraryItems.associateBy { it.metadata.id }
-    val entries = playlist.videoIds.mapNotNull(itemsById::get)
+    val allEntries = playlist.videoIds.mapNotNull(itemsById::get)
+    val entries = allEntries.drop(startIndex.coerceIn(0, allEntries.lastIndex.coerceAtLeast(0)))
     if (entries.isEmpty()) return null
     val content =
         buildString {

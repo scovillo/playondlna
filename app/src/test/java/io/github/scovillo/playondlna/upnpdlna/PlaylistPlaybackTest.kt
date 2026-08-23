@@ -7,7 +7,7 @@ class PlaylistPlaybackTest {
     @Test
     fun usesM3uUrlAndPlaylistProtocolInfoInSetUriCommand() {
         val media = playlistMedia("id", "List", "http://192.168.1.2:8080")
-        val payload = setAvTransportUriPayload(media)
+        val payload = avTransportUriPayload(media)
 
         assertTrue(payload.contains("<CurrentURI>http://192.168.1.2:8080/playlists/id/playlist.m3u</CurrentURI>"))
         assertTrue(payload.contains("audio/mpegurl"))
