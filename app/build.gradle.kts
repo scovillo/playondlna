@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "io.github.scovillo.playondlna"
-    compileSdk = 35
+    compileSdk = 36
 
     dependenciesInfo {
         includeInApk = false
@@ -17,9 +17,9 @@ android {
     defaultConfig {
         applicationId = "io.github.scovillo.playondlna"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 13
-        versionName = "1.12"
+        targetSdk = 36
+        versionCode = 14
+        versionName = "1.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -1,0 +1,7 @@
+Neu in Version 1.13:
+
+- Playlists erstellen, organisieren und direkt auf deinem DLNA-Gerät abspielen
+- Ganze Playlist-Links bequem in einem Durchgang herunterladen
+- Neue Fernbedienung mit Titel, Wiedergabesteuerung und schnellem Wechsel zum nächsten Video
+- Mehr Sicherheit: Die Bibliothek wird erst nach deiner Bestätigung gelöscht
+- Jetzt auch auf Ukrainisch – plus klarere Hinweise bei Link- und Downloadfehlern

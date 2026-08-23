@@ -1,6 +1,6 @@
 # PlayOnDlna
 
-📦 **Version:** 13 (1.12)
+📦 **Version:** 14 (1.13)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 
 ## 🤖 Android Configuration

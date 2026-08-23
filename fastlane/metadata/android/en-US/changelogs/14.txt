@@ -1,0 +1,7 @@
+New in version 1.13:
+
+- Create, organize and play playlists directly on your DLNA device
+- Download entire playlist links in one convenient step
+- New remote control with title, playback controls and quick access to the next video
+- More peace of mind: your library is only deleted after confirmation
+- Now available in Ukrainian, with clearer messages for link and download errors
