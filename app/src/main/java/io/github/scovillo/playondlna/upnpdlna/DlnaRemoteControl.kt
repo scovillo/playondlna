@@ -18,15 +18,19 @@
 
 package io.github.scovillo.playondlna.upnpdlna
 
+import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.server.VideoFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Transport boundary used by [DlnaRemoteControl]. */
@@ -94,7 +98,7 @@ class DlnaRemoteControl(
 ) {
     private var playbackJob: Job? = null
     private var nativeSyncJob: Job? = null
-    private val _playbackSession = MutableStateFlow<PlaybackSession?>(null)
+    private val playbackSession = MutableStateFlow<PlaybackSession?>(null)
 
     fun playVideo(
         device: DlnaDevice,
@@ -132,7 +136,7 @@ class DlnaRemoteControl(
                         try {
                             transport.play(device, nativePlaylist)
                             saveNativePlaylistSupport(device.usn, true)
-                            _playbackSession.value = PlaybackSession(device, PlaybackMode.NATIVE_PLAYLIST, videoFiles, 0, nativePlaylist)
+                            playbackSession.value = PlaybackSession(device, PlaybackMode.NATIVE_PLAYLIST, videoFiles, 0, nativePlaylist)
                             startNativePlaylistSync(device)
                             return@launch
                         } catch (exception: Exception) {
@@ -140,7 +144,7 @@ class DlnaRemoteControl(
                             saveNativePlaylistSupport(device.usn, false)
                         }
                     }
-                    _playbackSession.value = PlaybackSession(device, PlaybackMode.APP_MANAGED, videoFiles, 0, nativePlaylist)
+                    playbackSession.value = PlaybackSession(device, PlaybackMode.APP_MANAGED, videoFiles, 0, nativePlaylist)
                     playAppPlaylistFrom(0)
                 } catch (_: CancellationException) {
                     // A newer command superseded this playback session.
@@ -154,24 +158,31 @@ class DlnaRemoteControl(
         device: DlnaDevice,
         command: TransportCommand,
     ) {
-        val session = _playbackSession.value?.takeIf { it.device.location == device.location }
-        if (session == null) {
+        if (playbackSession.value?.device?.location != device.location) {
             sendCommand(device, command)
             return
         }
-        playbackJob?.cancel()
+        val previousPlaybackJob = playbackJob
+        AppLog.i("AppManagedPlaylist", "Manual $command requested at index ${playbackSession.value?.currentIndex}")
+        previousPlaybackJob?.cancel()
         playbackJob =
             scope.launch(Dispatchers.IO) {
                 try {
+                    previousPlaybackJob?.join()
+                    val currentSession = playbackSession.value?.takeIf { it.device.location == device.location } ?: return@launch
+                    AppLog.i("AppManagedPlaylist", "Manual $command runs at index ${currentSession.currentIndex}")
                     when {
-                        command == TransportCommand.NEXT || command == TransportCommand.PREVIOUS -> changeTrack(session, command)
-                        command == TransportCommand.PLAY && session.transportState == TransportState.STOPPED -> resumeStoppedSession(session)
-                        command == TransportCommand.PLAY -> resumeSession(session)
-                        command == TransportCommand.PAUSE || command == TransportCommand.STOP -> pauseOrStop(session, command)
+                        command == TransportCommand.NEXT || command == TransportCommand.PREVIOUS -> changeTrack(currentSession, command)
+                        command == TransportCommand.PLAY && currentSession.transportState == TransportState.STOPPED ->
+                            resumeStoppedSession(currentSession)
+                        command == TransportCommand.PLAY -> resumeSession(currentSession)
+                        command == TransportCommand.PAUSE || command == TransportCommand.STOP -> pauseOrStop(currentSession, command)
                     }
                 } catch (_: CancellationException) {
+                    AppLog.i("AppManagedPlaylist", "Manual $command cancelled")
                     // A newer command superseded this one.
                 } catch (exception: Exception) {
+                    AppLog.e("AppManagedPlaylist", "Manual $command failed", exception)
                     if (isUnsupportedActionError(exception)) markUnsupported(command)
                     onPlaybackFailure(exception)
                 }
@@ -197,11 +208,11 @@ class DlnaRemoteControl(
     ) {
         val index = playlistIndexForCommand(session.currentIndex, session.videoFiles.lastIndex, command) ?: return
         when {
-            session.transportState == TransportState.STOPPED -> _playbackSession.value = session.copy(currentIndex = index)
+            session.transportState == TransportState.STOPPED -> playbackSession.value = session.copy(currentIndex = index)
             session.mode == PlaybackMode.APP_MANAGED -> playAppPlaylistFrom(index)
             else -> {
                 transport.command(session.device, command)
-                _playbackSession.value = session.copy(currentIndex = index)
+                playbackSession.value = session.copy(currentIndex = index)
             }
         }
     }
@@ -215,16 +226,16 @@ class DlnaRemoteControl(
                 if (!isUnsupportedTrackSeekError(exception)) throw exception
                 transport.play(session.device, session.nativePlaylist.startingAt(session.currentIndex))
             }
-            _playbackSession.value = session.copy(transportState = TransportState.PLAYING)
+            playbackSession.value = session.copy(transportState = TransportState.PLAYING)
         } else {
-            _playbackSession.value = session.copy(transportState = TransportState.PLAYING)
+            playbackSession.value = session.copy(transportState = TransportState.PLAYING)
             playAppPlaylistFrom(session.currentIndex)
         }
     }
 
     private suspend fun resumeSession(session: PlaybackSession) {
         transport.command(session.device, TransportCommand.PLAY)
-        _playbackSession.value = session.copy(transportState = TransportState.PLAYING)
+        playbackSession.value = session.copy(transportState = TransportState.PLAYING)
         if (session.mode == PlaybackMode.APP_MANAGED) continueAppPlaylist(session)
     }
 
@@ -233,41 +244,66 @@ class DlnaRemoteControl(
         command: TransportCommand,
     ) {
         transport.command(session.device, command)
-        _playbackSession.value =
+        playbackSession.value =
             session.copy(transportState = if (command == TransportCommand.STOP) TransportState.STOPPED else TransportState.PAUSED_PLAYBACK)
     }
 
     private fun markUnsupported(command: TransportCommand) {
-        _playbackSession.value = _playbackSession.value?.let { it.copy(unsupportedCommands = it.unsupportedCommands + command) }
+        playbackSession.value = playbackSession.value?.let { it.copy(unsupportedCommands = it.unsupportedCommands + command) }
     }
 
     private suspend fun playAppPlaylistFrom(startIndex: Int) {
-        var session = _playbackSession.value ?: return
+        var session = playbackSession.value ?: return
+        AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.videoFiles.size}")
         for (index in startIndex..session.videoFiles.lastIndex) {
+            currentCoroutineContext().ensureActive()
             session = session.copy(currentIndex = index)
-            _playbackSession.value = session
-            transport.play(session.device, DlnaMedia(session.videoFiles[index].url, session.videoFiles[index].metaData))
-            if (index < session.videoFiles.lastIndex) awaitPlaybackEnd(session.device)
+            playbackSession.value = session
+            val videoFile = session.videoFiles[index]
+            AppLog.i("AppManagedPlaylist", "Start ${index + 1}/${session.videoFiles.size}: ${videoFile.id}")
+            try {
+                transport.play(session.device, DlnaMedia(videoFile.url, videoFile.metaData))
+            } catch (exception: Exception) {
+                if (!isTransitionInProgressError(exception)) throw exception
+                AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.videoFiles.size}")
+            }
+            currentCoroutineContext().ensureActive()
+            if (index < session.videoFiles.lastIndex) awaitPlaybackEnd(session.device, videoFile.url)
         }
     }
 
     private suspend fun continueAppPlaylist(session: PlaybackSession) {
         if (session.currentIndex >= session.videoFiles.lastIndex) return
-        awaitPlaybackEnd(session.device)
+        awaitPlaybackEnd(session.device, session.videoFiles[session.currentIndex].url)
         playAppPlaylistFrom(session.currentIndex + 1)
     }
 
-    private suspend fun awaitPlaybackEnd(device: DlnaDevice) {
-        var playbackObserved = false
+    private suspend fun awaitPlaybackEnd(
+        device: DlnaDevice,
+        expectedTrackUri: String,
+    ) {
+        var observation = PlaybackEndObservation()
         var startupPolls = 0
+        var previousState: TransportState? = null
         while (true) {
             delay(1000.milliseconds)
-            when (transportStateWithRetry(device)) {
-                TransportState.PLAYING, TransportState.TRANSITIONING, TransportState.PAUSED_PLAYBACK -> playbackObserved = true
-                TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT -> if (playbackObserved) return
-                TransportState.UNKNOWN -> Unit
+            val state = transportStateWithRetry(device)
+            currentCoroutineContext().ensureActive()
+            val trackUri = runCatching { transport.currentTrackUri(device) }.getOrNull()
+            currentCoroutineContext().ensureActive()
+            if (state != previousState) {
+                AppLog.i("AppManagedPlaylist", "Track state: $state, URI: $trackUri")
+                previousState = state
             }
-            if (!playbackObserved && ++startupPolls >= 15) error("Renderer did not enter an active playback state")
+            val result = observation.observe(state, trackUri, expectedTrackUri)
+            observation = result.observation
+            if (result.playbackEnded) {
+                AppLog.i("AppManagedPlaylist", "Track ended: $expectedTrackUri")
+                return
+            } else {
+                AppLog.i("AppManagedPlaylist", "playbackEnded: ${false}")
+            }
+            if (!observation.playbackObserved && ++startupPolls >= 15) error("Renderer did not enter an active playback state")
         }
     }
 
@@ -292,9 +328,9 @@ class DlnaRemoteControl(
                 while (isActive) {
                     delay(2000.milliseconds)
                     val trackUri = runCatching { transport.currentTrackUri(device) }.getOrNull() ?: continue
-                    val session = _playbackSession.value?.takeIf { it.mode == PlaybackMode.NATIVE_PLAYLIST } ?: return@launch
+                    val session = playbackSession.value?.takeIf { it.mode == PlaybackMode.NATIVE_PLAYLIST } ?: return@launch
                     val index = session.videoFiles.indexOfFirst { it.url == trackUri }
-                    if (index >= 0 && index != session.currentIndex) _playbackSession.value = session.copy(currentIndex = index)
+                    if (index >= 0 && index != session.currentIndex) playbackSession.value = session.copy(currentIndex = index)
                 }
             }
     }
@@ -302,7 +338,7 @@ class DlnaRemoteControl(
     private fun cancelPlayback() {
         playbackJob?.cancel()
         nativeSyncJob?.cancel()
-        _playbackSession.value = null
+        playbackSession.value = null
     }
 }
 
@@ -330,3 +366,54 @@ fun playlistIndexForCommand(
         TransportCommand.PREVIOUS -> (currentIndex - 1).takeIf { it >= 0 }
         else -> null
     }
+
+internal data class PlaybackEndObservation(
+    val expectedTrackObserved: Boolean = false,
+    val consecutiveActivePolls: Int = 0,
+    val playbackObserved: Boolean = false,
+) {
+    fun observe(
+        transportState: TransportState,
+        currentTrackUri: String?,
+        expectedTrackUri: String,
+    ): PlaybackEndResult {
+        val expectedTrackObserved = expectedTrackObserved || trackUrisMatch(currentTrackUri, expectedTrackUri)
+        val isActive =
+            transportState in
+                setOf(TransportState.PLAYING, TransportState.TRANSITIONING, TransportState.PAUSED_PLAYBACK)
+        val consecutiveActivePolls = if (isActive) consecutiveActivePolls + 1 else 0
+        // Require the expected URI to have been seen in an earlier poll. Transport
+        // state and position are separate SOAP calls and can straddle a transition.
+        // After three stable active polls, fall back to transport state because some
+        // renderers omit or rewrite TrackURI even though playback works.
+        val stateBelongsToExpectedTrack = this.expectedTrackObserved || consecutiveActivePolls >= 3
+        val playbackObserved =
+            playbackObserved ||
+                (stateBelongsToExpectedTrack && isActive)
+        val playbackEnded =
+            playbackObserved &&
+                transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
+        return PlaybackEndResult(
+            observation = PlaybackEndObservation(expectedTrackObserved, consecutiveActivePolls, playbackObserved),
+            playbackEnded = playbackEnded,
+        )
+    }
+}
+
+internal fun trackUrisMatch(
+    currentTrackUri: String?,
+    expectedTrackUri: String,
+): Boolean {
+    if (currentTrackUri == null) return false
+    if (currentTrackUri == expectedTrackUri) return true
+    return runCatching {
+        val currentPath = URI(currentTrackUri).normalize().path
+        val expectedPath = URI(expectedTrackUri).normalize().path
+        currentPath.isNotEmpty() && currentPath == expectedPath
+    }.getOrDefault(false)
+}
+
+internal data class PlaybackEndResult(
+    val observation: PlaybackEndObservation,
+    val playbackEnded: Boolean,
+)

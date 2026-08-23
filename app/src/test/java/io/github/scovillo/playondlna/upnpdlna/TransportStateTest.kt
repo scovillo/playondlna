@@ -54,6 +54,13 @@ class TransportStateTest {
     }
 
     @Test
+    fun recognizesSamsungPlayTransitionInProgress() {
+        assertEquals(true, isTransitionInProgressError(UpnpActionException("Play", 500, "<errorCode>701</errorCode>")))
+        assertEquals(false, isTransitionInProgressError(UpnpActionException("Play", 500, "<errorCode>702</errorCode>")))
+        assertEquals(false, isTransitionInProgressError(UpnpActionException("Pause", 500, "<errorCode>701</errorCode>")))
+    }
+
+    @Test
     fun returnsUnknownForMissingTransportState() {
         assertEquals(TransportState.UNKNOWN, parseTransportState("<s:Envelope/>"))
     }

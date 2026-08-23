@@ -19,18 +19,12 @@
 package io.github.scovillo.playondlna.upnpdlna
 
 import android.util.Log
-import io.github.scovillo.playondlna.server.VideoFile
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 val client = OkHttpClient()
-
-fun playUriOnDevice(
-    avTransportUrl: String,
-    videoFile: VideoFile,
-) = playUriOnDevice(avTransportUrl, DlnaMedia(videoFile.url, videoFile.metaData))
 
 fun playUriOnDevice(
     avTransportUrl: String,
@@ -251,7 +245,7 @@ fun parseCurrentTrackUri(responseBody: String): String? =
 
 class UpnpActionException(
     val action: String,
-    val httpCode: Int,
+    httpCode: Int,
     val responseBody: String,
 ) : Exception("$action failed: HTTP $httpCode, UPnP ${parseUpnpErrorCode(responseBody) ?: "unknown"}") {
     val upnpErrorCode: Int? = parseUpnpErrorCode(responseBody)
@@ -272,3 +266,11 @@ fun isUnsupportedPlaylistError(exception: Throwable): Boolean =
 fun isUnsupportedActionError(exception: Throwable): Boolean = exception is UpnpActionException && exception.upnpErrorCode == 401
 
 fun isUnsupportedTrackSeekError(exception: Throwable): Boolean = exception is UpnpActionException && exception.action == "Seek" && exception.upnpErrorCode in setOf(401, 501)
+
+/**
+ * Some Samsung renderers start loading a new URI as part of SetAVTransportURI,
+ * then reject the immediately following Play command while they are transitioning.
+ */
+fun isTransitionInProgressError(exception: Throwable): Boolean {
+    return exception is UpnpActionException && exception.action == "Play" && exception.upnpErrorCode == 701
+}

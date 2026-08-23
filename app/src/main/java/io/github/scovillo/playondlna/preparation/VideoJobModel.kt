@@ -22,6 +22,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -65,7 +66,6 @@ import java.util.Collections
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import androidx.core.net.toUri
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
@@ -330,9 +330,10 @@ class VideoJobModel(
             download.withSubtitle(subtitle)
         }
         val streamFiles = download.start()
-        val muxFile = withContext(Dispatchers.IO) {
-            File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
-        }
+        val muxFile =
+            withContext(Dispatchers.IO) {
+                File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
+            }
         val ffmpegCmd =
             PlayOnDlnaFfmpegCommand(
                 streamFiles,
