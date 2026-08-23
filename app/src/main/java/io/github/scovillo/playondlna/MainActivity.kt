@@ -29,6 +29,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -39,20 +43,29 @@ import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryViewModel
+import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.model.VideoSettingsState
 import io.github.scovillo.playondlna.persistence.LibraryManager
+import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
+import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.server.WebServerService
+import io.github.scovillo.playondlna.server.createPlaylistM3u
+import io.github.scovillo.playondlna.server.getLocalIpAddress
+import io.github.scovillo.playondlna.server.serverPort
+import io.github.scovillo.playondlna.server.videoHttpServer
 import io.github.scovillo.playondlna.ui.dlnaListScreen
 import io.github.scovillo.playondlna.ui.libraryScreen
 import io.github.scovillo.playondlna.ui.mainScreen
 import io.github.scovillo.playondlna.ui.playOnDlnaTheme
-import io.github.scovillo.playondlna.ui.playScreen
+import io.github.scovillo.playondlna.ui.playlistsScreen
 import io.github.scovillo.playondlna.ui.settingsScreen
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
+import io.github.scovillo.playondlna.upnpdlna.playlistMedia
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -86,6 +99,8 @@ class MainActivity : ComponentActivity() {
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
+        val playlistManager = PlaylistManager(cacheDir)
+        val playlistViewModel = PlaylistViewModel(playlistManager)
         videoJobModel =
             VideoJobModel(
                 settingsRepository,
@@ -94,7 +109,15 @@ class MainActivity : ComponentActivity() {
                 ),
                 cacheDir,
                 libraryManager,
+                playlistManager,
             )
+        videoHttpServer.playlistProvider = playlistProvider@{ id, baseUrl, startIndex ->
+            val playlist = playlistManager.getPlaylists().find { it.id == id } ?: return@playlistProvider null
+            val items = libraryManager.getLibraryItems()
+            createPlaylistM3u(playlist, items, baseUrl, startIndex).also {
+                if (it != null) videoJobModel.preparePlaylist(items.filter { item -> item.metadata.id in playlist.videoIds })
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 videoJobModel.playbackStarted.collect {
@@ -115,23 +138,44 @@ class MainActivity : ComponentActivity() {
             DlnaDevicesListScreenModel(
                 ViewModelProvider(this)[SsdpDevices::class.java],
                 favoriteDevices,
+                settingsRepository,
             )
         setContent {
             playOnDlnaTheme {
+                var selectedPlaylistVideoFiles by remember { mutableStateOf(emptyList<VideoFile>()) }
+                var selectedPlaylistMedia by remember { mutableStateOf<DlnaMedia?>(null) }
                 mainScreen(
                     playScreen = {
-                        playScreen(videoJobModel) {
-                            dlnaListScreen(
-                                videoJobModel,
-                                dlnaDevicesListScreenModel,
-                            )
-                        }
+                        dlnaListScreen(
+                            videoJobModel,
+                            dlnaDevicesListScreenModel,
+                            playlistVideoFiles = selectedPlaylistVideoFiles,
+                            playlistMedia = selectedPlaylistMedia,
+                        )
                     },
                     libraryScreen = { navController ->
-                        libraryScreen(libraryViewModel, videoJobModel) {
+                        libraryScreen(libraryViewModel, playlistViewModel, videoJobModel, navController, {
+                            selectedPlaylistVideoFiles = emptyList()
+                            selectedPlaylistMedia = null
                             navController.navigate("play") {
                                 launchSingleTop = true
                             }
+                        }) { playlist, items ->
+                            selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
+                            selectedPlaylistMedia =
+                                playlistMedia(
+                                    playlist.id,
+                                    playlist.name,
+                                    "http://${getLocalIpAddress()}:$serverPort",
+                                )
+                            navController.navigate("play") { launchSingleTop = true }
+                        }
+                    },
+                    playlistsScreen = { navController ->
+                        playlistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController) { playlist, items ->
+                            selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
+                            selectedPlaylistMedia = playlistMedia(playlist.id, playlist.name, "http://${getLocalIpAddress()}:$serverPort")
+                            navController.navigate("play") { launchSingleTop = true }
                         }
                     },
                     settingsScreen = {

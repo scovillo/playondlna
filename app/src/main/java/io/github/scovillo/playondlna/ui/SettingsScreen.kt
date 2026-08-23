@@ -42,9 +42,10 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.HighQuality
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -55,6 +56,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +85,11 @@ import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import kotlinx.coroutines.flow.merge
 import java.net.URL
 
+private val SectionSpacing = 24.dp
+private val ContentSpacing = 16.dp
+private val RelatedContentSpacing = 12.dp
+private val ButtonSpacing = 16.dp
+
 @Composable
 fun settingsScreen(
     videoSettingsState: VideoSettingsState,
@@ -102,9 +109,6 @@ fun settingsScreen(
                         context.getString(event.messageResId),
                         Toast.LENGTH_LONG,
                     ).show()
-
-                is ToastEvent.ShowPlain ->
-                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -116,13 +120,13 @@ fun settingsScreen(
                 .padding(20.dp),
     ) {
         item { supportPlayOnDlna() }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { videoQuality(videoSettingsState) }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { subtitles(videoSettingsState) }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { wlanProtection(videoSettingsState) }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { customFavoriteDevices(favoriteDevices) }
         items(
             items = deviceLocations.toList(),
@@ -133,9 +137,9 @@ fun settingsScreen(
                 onDelete = { favoriteDevices.removeLocation(device) },
             )
         }
-        item { Spacer(Modifier.height(40.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { clearCache(cacheControl) }
-        item { Spacer(Modifier.height(20.dp)) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { info(context) }
     }
 }
@@ -143,12 +147,20 @@ fun settingsScreen(
 @Composable
 fun supportPlayOnDlna() {
     val context = LocalContext.current
-    return Column {
-        Text(stringResource(R.string.support_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
+    Column {
+        Text(
+            stringResource(R.string.support_title),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(Modifier.height(ContentSpacing))
         Text(stringResource(R.string.support_desc_1))
+        Spacer(Modifier.height(RelatedContentSpacing))
         Text(stringResource(R.string.support_desc_2))
-        Button(
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Star,
+            text = stringResource(R.string.give_star),
+            color = Color.DarkGray,
             onClick = {
                 val intent =
                     Intent(
@@ -157,110 +169,28 @@ fun supportPlayOnDlna() {
                     )
                 context.startActivity(intent)
             },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray,
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = stringResource(R.string.star),
-                tint = Color.Yellow,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.give_star))
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(stringResource(R.string.feedback_desc))
-        Button(
-            onClick = {
-                val intent =
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        context.getString(R.string.url_discussions).toUri(),
-                    )
-                context.startActivity(intent)
-            },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray,
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, top = 20.dp, end = 20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Chat,
-                contentDescription = stringResource(R.string.discussions),
-                tint = Color.Green,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.join_discussions))
-        }
-        Button(
-            onClick = {
-                val intent =
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        context.getString(R.string.url_issues).toUri(),
-                    )
-                context.startActivity(intent)
-            },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray,
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.BugReport,
-                contentDescription = stringResource(R.string.issue),
-                tint = Color.Green,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.create_issue))
-        }
-        Spacer(Modifier.height(12.dp))
+        )
+        Spacer(Modifier.height(ContentSpacing))
         Text(stringResource(R.string.financial_support_desc))
-        Button(
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Favorite,
+            text = stringResource(R.string.support_on_liberapay),
+            color = Color(0xFFF6C915),
             onClick = {
                 val intent =
                     Intent(
                         Intent.ACTION_VIEW,
-                        context.getString(R.string.url_sponsor).toUri(),
+                        context.getString(R.string.url_liberapay).toUri(),
                     )
                 context.startActivity(intent)
             },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFEA4AAA),
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, top = 20.dp, end = 20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Favorite,
-                contentDescription = stringResource(R.string.sponsor),
-                tint = Color.White,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.become_sponsor))
-        }
-        Button(
+        )
+        Spacer(Modifier.height(ButtonSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Coffee,
+            text = stringResource(R.string.buy_coffee),
+            color = Color(0xFF003087),
             onClick = {
                 val intent =
                     Intent(
@@ -269,24 +199,51 @@ fun supportPlayOnDlna() {
                     )
                 context.startActivity(intent)
             },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF003087),
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Coffee,
-                contentDescription = stringResource(R.string.donate),
-                tint = Color.White,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.buy_coffee))
-        }
+        )
+        Spacer(Modifier.height(ButtonSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Favorite,
+            text = stringResource(R.string.become_sponsor),
+            color = Color(0xFFEA4AAA),
+            onClick = {
+                val intent =
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        context.getString(R.string.url_sponsor).toUri(),
+                    )
+                context.startActivity(intent)
+            },
+        )
+        Spacer(Modifier.height(ContentSpacing))
+        Text(stringResource(R.string.feedback_desc))
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.AutoMirrored.Filled.Chat,
+            text = stringResource(R.string.join_discussions),
+            color = Color.DarkGray,
+            onClick = {
+                val intent =
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        context.getString(R.string.url_discussions).toUri(),
+                    )
+                context.startActivity(intent)
+            },
+        )
+        Spacer(Modifier.height(ButtonSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.BugReport,
+            text = stringResource(R.string.create_issue),
+            color = Color.DarkGray,
+            onClick = {
+                val intent =
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        context.getString(R.string.url_issues).toUri(),
+                    )
+                context.startActivity(intent)
+            },
+        )
     }
 }
 
@@ -295,27 +252,19 @@ fun videoQuality(videoSettingsState: VideoSettingsState) {
     var expanded by remember { mutableStateOf(false) }
     return Column {
         Text(stringResource(R.string.video_quality_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Text(stringResource(R.string.video_quality_desc))
-        Button(
-            onClick = { expanded = true },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = colorResource(id = R.color.icon_color),
-                    contentColor = colorResource(id = R.color.white),
-                ),
-        ) {
-            Text(
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.HighQuality,
+            text =
                 stringResource(
                     R.string.prefer_quality,
                     stringResource(videoSettingsState.videoQuality.value.titleRes),
                 ),
-            )
-        }
+            color = colorResource(id = R.color.icon_color),
+            onClick = { expanded = true },
+        )
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -339,7 +288,7 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
     val isInternalSubtitleEnabled by videoSettingsState.isInternalSubtitleEnabled
     Column {
         Text(stringResource(R.string.subtitles_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
@@ -361,7 +310,7 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
                 },
             )
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
@@ -383,7 +332,6 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
                 },
             )
         }
-        Spacer(Modifier.padding(bottom = 20.dp))
     }
 }
 
@@ -392,7 +340,7 @@ fun wlanProtection(videoSettingsState: VideoSettingsState) {
     val isEnabled by videoSettingsState.isWlanProtectionEnabled
     Column {
         Text(stringResource(R.string.wlan_protection_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
@@ -411,7 +359,6 @@ fun wlanProtection(videoSettingsState: VideoSettingsState) {
                 },
             )
         }
-        Spacer(Modifier.padding(bottom = 20.dp))
     }
 }
 
@@ -488,9 +435,9 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
             stringResource(R.string.favorite_devices_title),
             style = MaterialTheme.typography.titleLarge,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Text(stringResource(R.string.favorite_devices_desc))
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(RelatedContentSpacing))
         OutlinedTextField(
             value = urlInput,
             onValueChange = { urlInput = it },
@@ -499,34 +446,28 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
             modifier = Modifier.fillMaxWidth(),
             isError = urlInput.isNotEmpty() && !isValidUrl,
         )
-        Spacer(Modifier.height(12.dp))
-        Button(
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Add,
+            text = stringResource(R.string.add_device_url),
+            color = Color(0xFF003087),
             onClick = {
                 favoriteDevices.discoverLocation(URL(urlInput))
                 urlInput = ""
             },
             enabled = isValidUrl,
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF003087),
-                    contentColor = Color.White,
-                ),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.add_device_url))
-        }
-        Spacer(Modifier.height(16.dp))
+        )
     }
 }
 
 @Composable
 fun clearCache(cacheControl: CacheControl) {
     val sizeInGb by cacheControl.sizeInGb.collectAsState()
-    return Column {
+    var showClearLibraryDialog by remember { mutableStateOf(false) }
+
+    Column {
         Text(stringResource(R.string.cache_title), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Text(
             buildAnnotatedString {
                 append(stringResource(R.string.cache_usage))
@@ -536,28 +477,38 @@ fun clearCache(cacheControl: CacheControl) {
                 }
             },
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(ContentSpacing))
         Text(stringResource(R.string.cache_desc))
-        Button(
-            onClick = { cacheControl.clearCache() },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = colorResource(id = R.color.icon_color),
-                    contentColor = colorResource(id = R.color.white),
-                ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.CleaningServices,
-                contentDescription = stringResource(R.string.clear_cache),
-                tint = Color.White,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(id = R.string.clear_cache))
-        }
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.CleaningServices,
+            text = stringResource(id = R.string.clear_cache),
+            color = colorResource(id = R.color.icon_color),
+            onClick = { showClearLibraryDialog = true },
+        )
+    }
+
+    if (showClearLibraryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearLibraryDialog = false },
+            title = { Text(stringResource(R.string.clear_library_dialog_title)) },
+            text = { Text(stringResource(R.string.clear_library_dialog_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearLibraryDialog = false
+                        cacheControl.clearCache()
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearLibraryDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 
@@ -567,7 +518,11 @@ fun info(context: Context) {
         Text(stringResource(R.string.info_title), style = MaterialTheme.typography.titleLarge)
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val versionName = packageInfo.versionName
-        Button(
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.Info,
+            text = stringResource(R.string.app_version, versionName ?: ""),
+            color = colorResource(id = R.color.icon_color),
             onClick = {
                 val intent =
                     Intent(
@@ -576,23 +531,6 @@ fun info(context: Context) {
                     )
                 context.startActivity(intent)
             },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = colorResource(id = R.color.icon_color),
-                    contentColor = Color.White,
-                ),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Favorite,
-                contentDescription = null,
-                tint = Color.White,
-            )
-            Spacer(Modifier.padding(start = 8.dp, top = 20.dp, bottom = 20.dp))
-            Text(stringResource(R.string.app_version, versionName ?: ""))
-        }
+        )
     }
 }

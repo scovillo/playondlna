@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,13 +42,11 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,22 +54,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.server.VideoFile
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
+import io.github.scovillo.playondlna.upnpdlna.TransportCommand
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun dlnaListScreen(
     videoJobModel: VideoJobModel,
     dlnaModel: DlnaDevicesListScreenModel,
+    playlistVideoFiles: List<VideoFile> = emptyList(),
+    playlistMedia: DlnaMedia? = null,
 ) {
     val devices by dlnaModel.devices.collectAsState()
     val isLoading by dlnaModel.isLoading.collectAsState()
     val favorites by dlnaModel.favoriteDevices.locations.collectAsState()
+    val selectedDevice by dlnaModel.selectedDevice.collectAsState()
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
             dlnaModel.discoverDevices()
@@ -88,9 +92,6 @@ fun dlnaListScreen(
                         context.getString(event.messageResId),
                         Toast.LENGTH_LONG,
                     ).show()
-
-                is ToastEvent.ShowPlain ->
-                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -105,11 +106,40 @@ fun dlnaListScreen(
             ),
         label = "rotation",
     )
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.available_players)) },
-                actions = {
+    Scaffold { padding ->
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            Column {
+                val currentVideo = videoJobModel.currentVideoFile.value
+                val currentThumbnail = videoJobModel.currentThumbnailFile.value
+                dlnaRemoteControl(
+                    currentVideo = currentVideo,
+                    currentThumbnail = currentThumbnail,
+                    playlistMedia = playlistMedia,
+                    selectedDevice = selectedDevice,
+                    onCommand = dlnaModel::remoteCommand,
+                    onPlay = { device ->
+                        if (playlistVideoFiles.isNotEmpty() && playlistMedia != null) {
+                            dlnaModel.playPlaylistOnDevice(device, playlistMedia, playlistVideoFiles)
+                        } else if (currentVideo != null) {
+                            dlnaModel.playVideoOnDevice(device, currentVideo)
+                        } else {
+                            dlnaModel.remoteCommand(TransportCommand.PLAY)
+                        }
+                    },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.available_players),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
                     IconButton(onClick = { dlnaModel.discoverDevices() }) {
                         Icon(
                             Icons.Default.Refresh,
@@ -117,69 +147,64 @@ fun dlnaListScreen(
                             modifier = Modifier.rotate(if (isLoading) rotation else 0f),
                         )
                     }
-                },
-                windowInsets = WindowInsets(0),
-            )
-        },
-    ) { padding ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            LazyColumn {
-                items(devices) { device ->
-                    Card(
-                        Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth()
-                            .clickable {
-                                val videoFile = videoJobModel.currentVideoFile.value
-                                if (videoFile != null) {
-                                    dlnaModel.playVideoOnDevice(device, videoFile)
-                                }
-                            },
-                    ) {
-                        val isFavorite = device.location in favorites
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    device.friendlyName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Text(
-                                    device.modelName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    device.location,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                            Spacer(Modifier.weight(1f))
-                            IconButton(
-                                onClick = {
-                                    if (isFavorite) {
-                                        dlnaModel.favoriteDevices.removeLocation(device.location)
-                                    } else {
-                                        dlnaModel.favoriteDevices.addLocation(device.location)
-                                    }
+                }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(devices) { device ->
+                        val isSelected = selectedDevice?.location == device.location
+                        Card(
+                            Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth()
+                                .scale(if (isSelected) 1.03f else 1f)
+                                .clickable {
+                                    dlnaModel.selectDevice(device)
                                 },
+                            colors =
+                                androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = if (isSelected) colorResource(R.color.icon_color) else MaterialTheme.colorScheme.surface,
+                                ),
+                        ) {
+                            val isFavorite = device.location in favorites
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(
-                                    imageVector =
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(
+                                        device.friendlyName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        device.modelName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        device.location,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                Spacer(Modifier.weight(1f))
+                                IconButton(
+                                    onClick = {
                                         if (isFavorite) {
-                                            Icons.Filled.Star
+                                            dlnaModel.favoriteDevices.removeLocation(device.location)
                                         } else {
-                                            Icons.Outlined.StarBorder
-                                        },
-                                    contentDescription = stringResource(R.string.save_device),
-                                    modifier = Modifier.size(32.dp),
-                                )
+                                            dlnaModel.favoriteDevices.addLocation(device.location)
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        imageVector =
+                                            if (isFavorite) {
+                                                Icons.Filled.Star
+                                            } else {
+                                                Icons.Outlined.StarBorder
+                                            },
+                                        contentDescription = stringResource(R.string.save_device),
+                                        modifier = Modifier.size(32.dp),
+                                    )
+                                }
                             }
                         }
                     }

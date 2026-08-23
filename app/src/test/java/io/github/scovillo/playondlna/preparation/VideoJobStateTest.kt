@@ -23,7 +23,7 @@ class VideoJobStateTest {
         classUnderTest.finalizing()
 
         Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.FINALIZING)
-        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
+        Assert.assertEquals(classUnderTest.progress.value, 50.0f)
     }
 
     @Test
@@ -35,6 +35,17 @@ class VideoJobStateTest {
 
         Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.READY)
         Assert.assertEquals(classUnderTest.progress.value, 100.0f)
+    }
+
+    @Test
+    fun idleResetsProgress() {
+        val classUnderTest = VideoJobState()
+        classUnderTest.updateProgress(100f)
+
+        classUnderTest.idle()
+
+        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.IDLE)
+        Assert.assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
     @Test
@@ -56,6 +67,17 @@ class VideoJobStateTest {
         classUnderTest.updateProgress(25f)
 
         Assert.assertEquals(classUnderTest.progress.value, 25.0f)
+    }
+
+    @Test
+    fun mapsDownloadAndFinalizingProgressToHalves() {
+        val classUnderTest = VideoJobState()
+
+        classUnderTest.updateDownloadProgress(100f)
+        Assert.assertEquals(classUnderTest.progress.value, 50.0f)
+
+        classUnderTest.updateFinalizingProgress(50f)
+        Assert.assertEquals(classUnderTest.progress.value, 75.0f)
     }
 
     @Test

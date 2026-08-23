@@ -22,12 +22,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
+import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
+import io.github.scovillo.playondlna.upnpdlna.DlnaRemoteControl
 import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
 import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
-import io.github.scovillo.playondlna.upnpdlna.playUriOnDevice
+import io.github.scovillo.playondlna.upnpdlna.TransportCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,12 +45,25 @@ import kotlinx.coroutines.launch
 class DlnaDevicesListScreenModel(
     private val ssdpDevices: SsdpDevices,
     val favoriteDevices: FavoriteDevices,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val remote =
+        DlnaRemoteControl(
+            scope = viewModelScope,
+            nativePlaylistSupport = settingsRepository::nativePlaylistSupport,
+            saveNativePlaylistSupport = settingsRepository::saveNativePlaylistSupport,
+            onIncompatibleDevice = ::incompatibleDevice,
+            onPlaybackFailure = { _toastEvents.emit(ToastEvent.Show(R.string.playback_failed)) },
+        )
+
+    private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
+    val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), ssdpDevices.toastEvents)
@@ -73,26 +89,30 @@ class DlnaDevicesListScreenModel(
         }
     }
 
+    fun selectDevice(device: DlnaDevice) {
+        _selectedDevice.value = device
+    }
+
     fun playVideoOnDevice(
         device: DlnaDevice,
         videoFile: VideoFile,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (device.avTransportUrl != null) {
-                try {
-                    Log.d("playVideoOnDevice", "Send playback command to ${device.avTransportUrl}")
-                    playUriOnDevice(device.avTransportUrl, videoFile)
-                } catch (exception: Exception) {
-                    exception.printStackTrace()
-                    _toastEvents.emit(ToastEvent.Show(R.string.playback_failed))
-                }
-            } else {
-                Log.e(
-                    "playVideoOnDevice",
-                    "No AVTransport URL found for ${device.friendlyName} @ ${device.location}",
-                )
-                _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))
-            }
-        }
+    ) = remote.playVideo(device, videoFile)
+
+    fun playPlaylistOnDevice(
+        device: DlnaDevice,
+        nativePlaylist: DlnaMedia,
+        videoFiles: List<VideoFile>,
+    ) = remote.playPlaylist(device, nativePlaylist, videoFiles)
+
+    fun remoteCommand(command: TransportCommand) {
+        _selectedDevice.value?.let { remote.command(it, command) }
+    }
+
+    private suspend fun incompatibleDevice(device: DlnaDevice) {
+        Log.e(
+            "playVideoOnDevice",
+            "No AVTransport URL found for ${device.friendlyName} @ ${device.location}",
+        )
+        _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))
     }
 }

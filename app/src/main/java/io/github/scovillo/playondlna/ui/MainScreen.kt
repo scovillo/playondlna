@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 fun mainScreen(
     playScreen: @Composable () -> Unit,
     libraryScreen: @Composable (NavHostController) -> Unit,
+    playlistsScreen: @Composable (NavHostController) -> Unit,
     settingsScreen: @Composable () -> Unit,
 ) {
     val navController = rememberNavController()
@@ -22,11 +23,12 @@ fun mainScreen(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = "play",
+            startDestination = "library",
             modifier = Modifier.padding(paddingValues),
         ) {
             composable("play") { playScreen() }
             composable("library") { libraryScreen(navController) }
+            composable("playlist/{playlistId}") { playlistsScreen(navController) }
             composable("settings") { settingsScreen() }
         }
     }

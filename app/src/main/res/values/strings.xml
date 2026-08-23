@@ -1,12 +1,10 @@
 <resources>
     <string name="app_name">PlayOnDlna</string>
-    <string name="src_link">Provide a YouTube link by \'Share\' or clipboard ➡</string>
-    <string name="paste_from_clipboard">Paste from clipboard</string>
-    <string name="idle">💤 Idle</string>
-    <string name="preparing">🔍 Preparing</string>
-    <string name="finalizing">🚀 Finalizing</string>
-    <string name="ready">🍿 Ready</string>
-    <string name="error">❌ Error</string>
+    <string name="src_link">Provide a link by \'Share\'</string>
+    <string name="no_media_selected">No media selected</string>
+    <string name="or">or</string>
+    <string name="paste_link_from_clipboard">Link from clipboard</string>
+    <string name="playlist_download_position">Video %1$d of %2$d</string>
     <string name="clear_cache">Clear Cache</string>
     <string name="available_players">Available Players</string>
     <string name="wlan_disconnected">Wlan disconnected! Downloads cancelled to protect your mobile data volume 🔒</string>
@@ -16,7 +14,11 @@
     <string name="cache_cleared">Cache cleared!</string>
     <string name="cache_usage">Currently used space: </string>
     <string name="cache_usage_value">%1$.1f GB</string>
-    <string name="cache_desc">Clean up and free space ↓</string>
+    <string name="cache_desc">Delete library and free up space ↓</string>
+    <string name="clear_library_dialog_title">Delete library?</string>
+    <string name="clear_library_dialog_message">Do you really want to delete your entire library? This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
     <string name="location_not_renderer">Location is not a MediaRenderer!</string>
     <string name="location_not_reachable">Location is not reachable!</string>
     <string name="favorite_devices_title">🌟 Favorite Devices</string>
@@ -31,20 +33,22 @@ Examples:\n
   http://192.168.178.80:9197/dmr
     </string>
     <string name="support_title">🎁 Support PlayOnDlna</string>
-    <string name="support_desc_1">This app is completely free and ad-free. If it serves you well and you\'d like to give something back, you\'re welcome to use one of the following options.</string>
-    <string name="support_desc_2">The simplest way to support PlayOnDlna is by giving it a star on GitHub. Stars increase the project’s visibility within the GitHub community and can help attract more users and contributors.</string>
-    <string name="star">Star</string>
-    <string name="give_star">Give a Star on GitHub</string>
-    <string name="feedback_desc">You have a cool idea for the app, looking for troubleshooting or found something which is not working correctly?</string>
+    <string name="support_desc_1">PlayOnDlna is free, ad-free and open source. If the app helps you, you can support its further development.</string>
+    <string name="support_desc_2">Even a star on GitHub helps make PlayOnDlna more visible and reach more users and contributors.</string>
+    <string name="star">GitHub Star</string>
+    <string name="give_star">Give PlayOnDlna a Star on GitHub</string>
+    <string name="feedback_desc">You have an idea, a question or something isn\'t working as expected? Feedback and bug reports help make PlayOnDlna better.</string>
     <string name="discussions">Discussions</string>
-    <string name="join_discussions">Join discussions on Github</string>
-    <string name="issue">Issue</string>
-    <string name="create_issue">Create an issue on Github</string>
-    <string name="financial_support_desc">You would like to go a step further and support financially?</string>
-    <string name="sponsor">Sponsor</string>
-    <string name="become_sponsor">Become sponsor on GitHub</string>
-    <string name="donate">Donate</string>
-    <string name="buy_coffee">Buy me a coffee via PayPal</string>
+    <string name="join_discussions">Share ideas and questions on GitHub</string>
+    <string name="issue">Report Issue</string>
+    <string name="create_issue">Report a bug or issue on GitHub</string>
+    <string name="financial_support_desc">PlayOnDlna is developed independently. With a voluntary contribution you help to maintain the app long-term, implement new features and improve compatibility with various devices.</string>
+    <string name="liberapay">Liberapay</string>
+    <string name="support_on_liberapay">Support development via Liberapay</string>
+    <string name="sponsor">GitHub Sponsors</string>
+    <string name="become_sponsor">Support development via GitHub Sponsors</string>
+    <string name="donate">PayPal</string>
+    <string name="buy_coffee">Buy me a coffee ☕</string>
     <string name="video_quality_title">🎥 Video Quality</string>
     <string name="video_quality_desc">Choose your preferred video quality. Due to compatibility reasons, the finally chosen quality can be lower than your preferred.</string>
     <string name="prefer_quality">Prefer %1$s</string>
@@ -63,12 +67,34 @@ Examples:\n
     <string name="app_version">App Version: %1$s</string>
     <string name="refresh">Refresh</string>
     <string name="stop">Stop</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
     <string name="save_device">Save device</string>
-    <string name="error_loading_video">Error loading video</string>
+    <string name="save">Save</string>
+    <string name="error_processing_link">The link could not be processed.</string>
+    <string name="download_failed">Download failed.</string>
     <string name="nav_play">Play</string>
     <string name="nav_library">Library</string>
     <string name="nav_settings">Settings</string>
+    <string name="library_videos">Videos</string>
+    <string name="library_playlists">Playlists</string>
     <string name="no_entries">No videos in cache</string>
+    <string name="create_playlist">Create playlist</string>
+    <string name="rename_playlist">Rename playlist</string>
+    <string name="delete_playlist">Delete playlist</string>
+    <string name="delete_playlist_message">Delete playlist “%1$s”? Its videos will remain in the library.</string>
+    <string name="playlist_name">Playlist name</string>
+    <string name="no_playlists">No playlists yet</string>
+    <string name="no_playlists_to_add">Create a playlist first to add videos.</string>
+    <string name="playlist_video_count">%1$d videos</string>
+    <string name="no_playlist_videos">No available videos in this playlist</string>
+    <string name="playlist_missing_videos">%1$d videos are no longer available in the library</string>
+    <string name="add_to_playlist">Add to playlist</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="play_playlist">Play playlist</string>
+    <string name="playlist_no_playable_videos">This playlist has no playable videos.</string>
     <string name="notification_channel_name">HTTP Server</string>
     <string name="notification_title">Streaming active</string>
     <string name="notification_text">Server running on http://%1$s:%2$d/</string>
@@ -85,4 +111,5 @@ Examples:\n
     <string name="url_sponsor" translatable="false">https://github.com/sponsors/scovillo</string>
     <string name="url_paypal" translatable="false">https://paypal.me/muemmelmaus</string>
     <string name="url_releases" translatable="false">https://github.com/scovillo/playondlna/releases</string>
+    <string name="url_liberapay" translatable="false">https://liberapay.com/scovillo/donate</string>
 </resources>

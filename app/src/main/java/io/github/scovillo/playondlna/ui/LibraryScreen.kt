@@ -1,7 +1,10 @@
 package io.github.scovillo.playondlna.ui
 
+import android.content.ClipboardManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.SystemClock
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,13 +20,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,13 +47,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryViewModel
+import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.VideoJobStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -47,14 +68,115 @@ import java.util.Locale
 @Composable
 fun libraryScreen(
     libraryViewModel: LibraryViewModel,
+    playlistViewModel: PlaylistViewModel,
+    videoJobModel: VideoJobModel,
+    navController: NavHostController,
+    onVideoSelected: () -> Unit,
+    onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<io.github.scovillo.playondlna.persistence.LibraryItem>) -> Unit,
+) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        downloadPanel(videoJobModel)
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.library_videos)) })
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.library_playlists)) })
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            if (selectedTab == 0) {
+                libraryVideosScreen(libraryViewModel, playlistViewModel, videoJobModel, onVideoSelected)
+            } else {
+                playlistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController, onPlayPlaylist)
+            }
+        }
+    }
+}
+
+@Composable
+private fun downloadPanel(videoJobModel: VideoJobModel) {
+    val progress by videoJobModel.progress
+    val title by videoJobModel.title
+    val playlistPosition by videoJobModel.playlistPosition
+    val status by videoJobModel.status
+    val context = LocalContext.current
+    val clipboardManager = context.getSystemService(ClipboardManager::class.java)
+    var lastPasteAt by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        videoJobModel.toastEvents.collect { event ->
+            when (event) {
+                is ToastEvent.Show -> Toast.makeText(context, context.getString(event.messageResId), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+        val isDownloadActive = title != "idle" && status != VideoJobStatus.ERROR
+        Text(
+            text = if (title == "idle") stringResource(R.string.src_link) else title,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center,
+        )
+        if (!isDownloadActive) {
+            Text(
+                modifier = Modifier.fillMaxWidth().padding(all = 4.dp),
+                text = stringResource(R.string.or),
+                textAlign = TextAlign.Center,
+            )
+            Button(
+                onClick = {
+                    val now = SystemClock.elapsedRealtime()
+                    if (now - lastPasteAt >= 5_000L) {
+                        val url =
+                            clipboardManager.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)
+                                ?.coerceToText(context)?.toString()?.trim()
+                        if (url?.startsWith("http://") == true || url?.startsWith("https://") == true) {
+                            lastPasteAt = now
+                            videoJobModel.prepareVideo(url)
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) {
+                Icon(Icons.Default.ContentPaste, contentDescription = null)
+                Text(stringResource(R.string.paste_link_from_clipboard), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        if (isDownloadActive) {
+            playlistPosition?.let { position ->
+                Text(
+                    text = stringResource(R.string.playlist_download_position, position.current, position.total),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            LinearProgressIndicator(
+                progress = { progress / 100f },
+                modifier = Modifier.fillMaxWidth().height(50.dp).padding(14.dp),
+                trackColor = ProgressIndicatorDefaults.linearTrackColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun libraryVideosScreen(
+    libraryViewModel: LibraryViewModel,
+    playlistViewModel: PlaylistViewModel,
     videoJobModel: VideoJobModel,
     onVideoSelected: () -> Unit,
 ) {
     val items by libraryViewModel.items
     val isLoading by libraryViewModel.isLoading
+    val playlists by playlistViewModel.playlists
+    val completedVideo by videoJobModel.currentVideoFile
+    var videoToAdd by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         libraryViewModel.loadLibrary()
+        playlistViewModel.loadPlaylists()
+    }
+    LaunchedEffect(completedVideo?.id) {
+        if (completedVideo != null) libraryViewModel.loadLibrary()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -129,11 +251,27 @@ fun libraryScreen(
                                     )
                                 }
                             }
+                            IconButton(onClick = { videoToAdd = item.metadata.id }) {
+                                Icon(
+                                    Icons.Default.PlaylistAdd,
+                                    contentDescription = stringResource(R.string.add_to_playlist),
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    videoToAdd?.let { videoId ->
+        addToPlaylistDialog(
+            playlists = playlists,
+            onDismiss = { videoToAdd = null },
+            onPlaylistSelected = {
+                playlistViewModel.addVideo(it, videoId)
+                videoToAdd = null
+            },
+        )
     }
 }
 
@@ -164,7 +302,12 @@ fun asyncThumbnailImage(
             contentScale = ContentScale.Crop,
         )
     } else {
-        Box(modifier = modifier.background(Color.Gray))
+        Image(
+            painter = painterResource(R.drawable.playondlna_icon),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 
