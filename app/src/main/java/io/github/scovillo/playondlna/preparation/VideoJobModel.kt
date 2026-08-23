@@ -72,6 +72,8 @@ enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
 
 data class PlaylistPosition(val current: Int, val total: Int)
 
+private class DownloadFailedException(cause: Throwable) : Exception(cause)
+
 val VideoStream.hasBestCompatibility: Boolean
     get() {
         return format?.mimeType?.startsWith("video/mp4") == true && codec?.startsWith(
@@ -176,6 +178,10 @@ class VideoJobModel(
                     Log.e("VideoJobModel", "Content unavailable for $normalizedUrl", e)
                     _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
                     resetDownloadPanel()
+                } catch (e: DownloadFailedException) {
+                    Log.e("VideoJobModel", "Download failed for $normalizedUrl", e)
+                    _toastEvents.emit(ToastEvent.Show(R.string.download_failed))
+                    resetDownloadPanel()
                 } catch (e: Exception) {
                     Log.e("VideoJobModel", "Error in job for $normalizedUrl", e)
                     _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
@@ -214,8 +220,12 @@ class VideoJobModel(
                     playlistManager.addVideo(playlist.id, prepareSingleVideo(entry.url))
                 } catch (error: CancellationException) {
                     throw error
+                } catch (error: DownloadFailedException) {
+                    Log.e("VideoJobModel", "Download failed for playlist entry ${entry.url}", error)
+                    _toastEvents.emit(ToastEvent.Show(R.string.download_failed))
                 } catch (error: Exception) {
                     Log.e("VideoJobModel", "Could not prepare playlist entry ${entry.url}", error)
+                    _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
                 }
             }
         } finally {
@@ -329,7 +339,14 @@ class VideoJobModel(
         if (subtitle != null) {
             download.withSubtitle(subtitle)
         }
-        val streamFiles = download.start()
+        val streamFiles =
+            try {
+                download.start()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                throw DownloadFailedException(error)
+            }
         val muxFile =
             withContext(Dispatchers.IO) {
                 File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)

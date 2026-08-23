@@ -74,6 +74,7 @@
     <string name="save_device">Зберегти пристрій</string>
     <string name="save">Зберегти</string>
     <string name="error_processing_link">Не вдалося обробити посилання.</string>
+    <string name="download_failed">Не вдалося завантажити.</string>
     <string name="nav_play">Відтворення</string>
     <string name="nav_library">Бібліотека</string>
     <string name="nav_settings">Налаштування</string>
