@@ -101,6 +101,7 @@ class VideoJobModel(
     private val libraryManager: LibraryManager,
     private val playlistManager: PlaylistManager,
 ) : ViewModel() {
+    private val youtubeUrlNormalizer = YoutubeUrlNormalizer()
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
     private var _currentThumbnailFile = mutableStateOf<File?>(null)
     private var _currentSession = mutableStateOf<Session?>(null)
@@ -157,7 +158,7 @@ class VideoJobModel(
     }
 
     fun prepareVideo(url: String) {
-        val normalizedUrl = youtubeUrlFromSharedText(url)
+        val normalizedUrl = youtubeUrlNormalizer.normalize(url)
         val job =
             viewModelScope.launch(Dispatchers.IO) {
                 try {
@@ -448,10 +449,3 @@ class VideoJobModel(
 }
 
 private fun isYoutubePlaylistUrl(url: String): Boolean = url.toUri().getQueryParameter("list") != null
-
-internal fun youtubeUrlFromSharedText(text: String): String =
-    Regex("https?://[^\\s)\\]]+")
-        .find(text)
-        ?.value
-        ?.replace("\\&", "&")
-        ?: text.trim()
