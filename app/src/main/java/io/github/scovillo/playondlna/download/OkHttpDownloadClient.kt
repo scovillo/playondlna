@@ -27,6 +27,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Response
 import java.io.IOException
+import java.util.concurrent.TimeUnit
+
+internal fun createExtractorHttpClient(): OkHttpClient =
+    OkHttpClient.Builder()
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
 
 class HttpStatusException(
     val statusCode: Int,
@@ -45,9 +51,20 @@ internal fun requireSuccessfulHttpStatus(
 }
 
 class OkHttpDownloadClient : Downloader() {
-    private val client = OkHttpClient()
+    private val client = createExtractorHttpClient()
 
     override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): Response {
+        if (request.httpMethod() == "GET" && request.url().startsWith("https://api.media.ccc.de/public/conferences/")) {
+            Log.i("OkHttpDownloadClient", "Skipping unused media.ccc.de conference details: ${request.url()}")
+            return Response(
+                200,
+                "OK",
+                emptyMap(),
+                "{\"logo_url\":\"\"}",
+                request.url(),
+            )
+        }
+
         val requestBody = this.body(request)
         val reqBuilder =
             Request.Builder()

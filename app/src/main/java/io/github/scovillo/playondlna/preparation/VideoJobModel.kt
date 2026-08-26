@@ -101,7 +101,7 @@ class VideoJobModel(
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
     private val libraryManager: LibraryManager,
-    private val playlistManager: PlaylistManager
+    private val playlistManager: PlaylistManager,
 ) : ViewModel() {
     private val youtubeUrlNormalizer = YoutubeUrlNormalizer()
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
