@@ -29,6 +29,7 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.download.HttpStatusException
 import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.VideoQuality
@@ -55,6 +56,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.MediaFormat
+import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.Page
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
@@ -99,7 +101,7 @@ class VideoJobModel(
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
     private val libraryManager: LibraryManager,
-    private val playlistManager: PlaylistManager,
+    private val playlistManager: PlaylistManager
 ) : ViewModel() {
     private val youtubeUrlNormalizer = YoutubeUrlNormalizer()
     private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
@@ -173,8 +175,19 @@ class VideoJobModel(
                         _title.value = "idle"
                         state.idle()
                     }
+                    Log.d("VideoJobModel", "Job for $normalizedUrl completed successfully")
                 } catch (e: CancellationException) {
                     throw e
+                } catch (e: HttpStatusException) {
+                    Log.e("VideoJobModel", "HTTP ${e.statusCode} for $normalizedUrl", e)
+                    _toastEvents.emit(
+                        if (e.statusCode == 401 || e.statusCode == 403) {
+                            ToastEvent.Show(R.string.error_video_requires_authentication)
+                        } else {
+                            ToastEvent.Show(R.string.error_processing_link)
+                        },
+                    )
+                    resetDownloadPanel()
                 } catch (e: ContentNotAvailableException) {
                     Log.e("VideoJobModel", "Content unavailable for $normalizedUrl", e)
                     _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
@@ -191,10 +204,9 @@ class VideoJobModel(
             }
         job.invokeOnCompletion { cause ->
             runningJobs.remove(job)
-            when (cause) {
-                null -> Log.d("VideoJobModel", "Job for $normalizedUrl completed successfully")
-                is CancellationException -> Log.w("VideoJobModel", "Job for $normalizedUrl was cancelled")
-                else -> Log.e("VideoJobModel", "Job for $normalizedUrl failed", cause)
+            when {
+                cause is CancellationException -> Log.w("VideoJobModel", "Job for $normalizedUrl was cancelled")
+                cause != null -> Log.e("VideoJobModel", "Job for $normalizedUrl failed", cause)
             }
         }
         runningJobs.add(job)
@@ -235,7 +247,7 @@ class VideoJobModel(
     }
 
     private suspend fun prepareSingleVideo(url: String): String {
-        val extractor = ServiceList.YouTube.getStreamExtractor(url)
+        val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
         extractor.fetchPage()
         _title.value = extractor.name
         val cachedFile = cacheDir.listFiles()?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("final") }

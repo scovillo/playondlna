@@ -28,6 +28,22 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Response
 import java.io.IOException
 
+class HttpStatusException(
+    val statusCode: Int,
+    statusMessage: String,
+    url: String,
+) : IOException("HTTP $statusCode $statusMessage for $url")
+
+internal fun requireSuccessfulHttpStatus(
+    statusCode: Int,
+    statusMessage: String,
+    url: String,
+) {
+    if (statusCode !in 200..299) {
+        throw HttpStatusException(statusCode, statusMessage, url)
+    }
+}
+
 class OkHttpDownloadClient : Downloader() {
     private val client = OkHttpClient()
 
@@ -49,6 +65,11 @@ class OkHttpDownloadClient : Downloader() {
                 "OkHttpDownloadClient",
                 "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | $body",
             )
+            requireSuccessfulHttpStatus(
+                response.code,
+                response.message,
+                response.request.url.toString(),
+            )
             return Response(
                 response.code,
                 response.message,
@@ -56,6 +77,8 @@ class OkHttpDownloadClient : Downloader() {
                 body,
                 response.request.url.toString(),
             )
+        } catch (e: HttpStatusException) {
+            throw e
         } catch (e: IOException) {
             throw RuntimeException("HTTP error", e)
         }

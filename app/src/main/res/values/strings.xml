@@ -74,6 +74,7 @@ Examples:\n
     <string name="save_device">Save device</string>
     <string name="save">Save</string>
     <string name="error_processing_link">The link could not be processed.</string>
+    <string name="error_video_requires_authentication">This video requires authentication and cannot be played.</string>
     <string name="download_failed">Download failed.</string>
     <string name="nav_play">Play</string>
     <string name="nav_library">Library</string>
