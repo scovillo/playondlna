@@ -8,18 +8,23 @@ class PlayOnDlnaFfmpegCommand(
     private val audioHasBestCompatibility: Boolean,
     private val output: File,
     private val isInternalSubtitleEnabled: Boolean,
+    private val remoteAudioUrl: String? = null,
 ) {
+    private val isAudioOnly
+        get() = streamFiles.videoFile == null
+
     private val hasSubtitle
-        get() = streamFiles.subtitle != null && isInternalSubtitleEnabled
+        get() = !isAudioOnly && streamFiles.subtitle != null && isInternalSubtitleEnabled
 
     fun value(): String {
-        val ffmpegCmd =
-            mutableListOf(
-                "-i",
-                streamFiles.videoFile.absolutePath,
-            )
+        val ffmpegCmd = mutableListOf<String>()
+        if (!isAudioOnly) {
+            ffmpegCmd.addAll(listOf("-i", requireNotNull(streamFiles.videoFile).absolutePath))
+        }
         if (streamFiles.audioFile != null) {
             ffmpegCmd.addAll(listOf("-i", streamFiles.audioFile.absolutePath))
+        } else if (remoteAudioUrl != null) {
+            ffmpegCmd.addAll(listOf("-i", remoteAudioUrl))
         }
         if (hasSubtitle) {
             ffmpegCmd.addAll(
@@ -30,8 +35,12 @@ class PlayOnDlnaFfmpegCommand(
                 ),
             )
         }
-        ffmpegCmd.addAll(listOf("-c:v", "copy"))
-        if (streamFiles.audioFile != null) {
+        if (isAudioOnly) {
+            ffmpegCmd.add("-vn")
+        } else {
+            ffmpegCmd.addAll(listOf("-c:v", "copy"))
+        }
+        if (streamFiles.audioFile != null || remoteAudioUrl != null) {
             if (audioHasBestCompatibility) {
                 ffmpegCmd.addAll(listOf("-c:a", "copy"))
             } else {
@@ -50,7 +59,9 @@ class PlayOnDlnaFfmpegCommand(
                 ),
             )
         }
-        ffmpegCmd.addAll(listOf("-movflags", "faststart", "-shortest", "-y", output.absolutePath))
+        ffmpegCmd.addAll(listOf("-movflags", "faststart"))
+        if (!isAudioOnly) ffmpegCmd.add("-shortest")
+        ffmpegCmd.addAll(listOf("-y", output.absolutePath))
         return ffmpegCmd.joinToString(" ")
     }
 }

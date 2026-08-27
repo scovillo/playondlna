@@ -9,6 +9,7 @@ data class LibraryMetadata(
     val durationInSeconds: Long,
     val thumbnailUri: String? = null,
     val qualityName: String? = null,
+    val isAudioOnly: Boolean = false,
 ) {
     fun toJson(): String {
         val json = JSONObject()
@@ -18,6 +19,7 @@ data class LibraryMetadata(
         json.put("durationInSeconds", durationInSeconds)
         json.put("thumbnailUri", thumbnailUri)
         json.put("qualityName", qualityName)
+        json.put("isAudioOnly", isAudioOnly)
         return json.toString()
     }
 
@@ -31,6 +33,7 @@ data class LibraryMetadata(
                 durationInSeconds = json.getLong("durationInSeconds"),
                 thumbnailUri = if (json.has("thumbnailUri") && !json.isNull("thumbnailUri")) json.getString("thumbnailUri") else null,
                 qualityName = if (json.has("qualityName") && !json.isNull("qualityName")) json.getString("qualityName") else null,
+                isAudioOnly = json.optBoolean("isAudioOnly", false),
             )
         }
     }

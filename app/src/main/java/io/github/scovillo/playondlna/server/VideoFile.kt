@@ -47,12 +47,18 @@ class VideoFile(
     val value: File,
     val videoQuality: VideoQuality,
     val subtitle: Subtitle?,
+    val dlnaProfile: String = videoQuality.dlnaProfile,
+    val isAudioOnly: Boolean = false,
+    val cover: File? = null,
 ) {
     constructor(
         extractor: StreamExtractor,
         value: File,
         videoQuality: VideoQuality,
         subtitle: Subtitle?,
+        dlnaProfile: String = videoQuality.dlnaProfile,
+        isAudioOnly: Boolean = false,
+        cover: File? = null,
     ) : this(
         extractor.id,
         extractor.name,
@@ -61,6 +67,9 @@ class VideoFile(
         value,
         videoQuality,
         subtitle,
+        dlnaProfile,
+        isAudioOnly,
+        cover,
     )
 
     val durationInMs: Long
@@ -78,8 +87,12 @@ class VideoFile(
 
     val url: String
         get() {
-            return "http://${getLocalIpAddress()}:$serverPort/${this.id}/video.mp4"
+            val fileName = if (isAudioOnly) "audio.m4a" else "video.mp4"
+            return "http://${getLocalIpAddress()}:$serverPort/${this.id}/$fileName"
         }
+
+    val coverUrl: String
+        get() = "http://${getLocalIpAddress()}:$serverPort/${this.id}/cover.jpg"
 
     val subtitleUrl: String
         get() {
@@ -87,8 +100,17 @@ class VideoFile(
         }
 
     val metaData: String
-        get() =
-            """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${id.escapeXml()}" parentID="0" restricted="1"><dc:title>${title.escapeXml()}</dc:title><dc:creator>${uploader.escapeXml()}</dc:creator><upnp:class>object.item.videoItem.movie</upnp:class><res protocolInfo="http-get:*:video/mp4:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
+        get() {
+            val mediaClass = if (isAudioOnly) "object.item.audioItem.musicTrack" else "object.item.videoItem.movie"
+            val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
+            val albumArt =
+                if (isAudioOnly && cover != null) {
+                    "<upnp:albumArtURI dlna:profileID=\"JPEG_LRG\">${coverUrl.escapeXml()}</upnp:albumArtURI>"
+                } else {
+                    ""
+                }
+            return """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${id.escapeXml()}" parentID="0" restricted="1"><dc:title>${title.escapeXml()}</dc:title><dc:creator>${uploader.escapeXml()}</dc:creator><upnp:class>$mediaClass</upnp:class>$albumArt<res protocolInfo="http-get:*:$mimeType:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
                 if (subtitle != null) "<res protocolInfo=\"http-get:*:text/srt:*\" xml:lang=\"${subtitle.locale().language}\">${subtitleUrl.escapeXml()}</res>" else ""
             }</item></DIDL-Lite>""".escapeXml()
+        }
 }

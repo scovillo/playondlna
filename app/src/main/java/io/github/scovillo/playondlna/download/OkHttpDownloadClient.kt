@@ -34,6 +34,10 @@ internal fun createExtractorHttpClient(): OkHttpClient =
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+fun String.isMediaCccConferenceUrl(): Boolean {
+    return startsWith("https://api.media.ccc.de/public/conferences/")
+}
+
 class HttpStatusException(
     val statusCode: Int,
     statusMessage: String,
@@ -54,7 +58,7 @@ class OkHttpDownloadClient : Downloader() {
     private val client = createExtractorHttpClient()
 
     override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): Response {
-        if (request.httpMethod() == "GET" && request.url().startsWith("https://api.media.ccc.de/public/conferences/")) {
+        if (request.httpMethod() == "GET" && request.url().isMediaCccConferenceUrl()) {
             Log.i("OkHttpDownloadClient", "Skipping unused media.ccc.de conference details: ${request.url()}")
             return Response(
                 200,

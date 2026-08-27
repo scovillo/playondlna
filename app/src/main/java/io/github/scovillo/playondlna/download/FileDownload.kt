@@ -181,20 +181,20 @@ class PlayOnDlnaFileDownload(
 }
 
 class PlayOnDlnaVideoInput(
-    val videoFile: File,
+    val videoFile: File?,
     val audioFile: File?,
     val subtitle: Subtitle?,
 ) {
     fun delete() {
         AppLog.i("PlayOnDlnaVideoInput", "Deleting $videoFile, $audioFile")
-        videoFile.delete()
+        videoFile?.delete()
         audioFile?.delete()
     }
 }
 
 class PlayOnDlnaStreamDownload(
     private val id: String,
-    videoUrl: String,
+    videoUrl: String?,
     private val cacheDir: File,
     private val state: VideoJobState,
     val logTimeInMillis: Int = 3000,
@@ -203,16 +203,18 @@ class PlayOnDlnaStreamDownload(
     val downloads: MutableMap<String, PlayOnDlnaFileDownload> = mutableMapOf()
 
     init {
-        downloads["video"] =
-            PlayOnDlnaFileDownload(
-                "${id}_video_",
-                ".tmp",
-                videoUrl,
-                userAgent,
-                ChunkCalculation(16, 8 * 1024 * 1024),
-                okHttpClient,
-                cacheDir,
-            )
+        if (videoUrl != null) {
+            downloads["video"] =
+                PlayOnDlnaFileDownload(
+                    "${id}_video_",
+                    ".tmp",
+                    videoUrl,
+                    userAgent,
+                    ChunkCalculation(16, 8 * 1024 * 1024),
+                    okHttpClient,
+                    cacheDir,
+                )
+        }
     }
 
     fun withAudioStream(audioUrl: String) {
@@ -289,13 +291,17 @@ class PlayOnDlnaStreamDownload(
                 }
             jobs.awaitAll()
             progressJob.cancelAndJoin()
-            Log.d(
-                "Download",
-                "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${downloads["video"]!!.result}," +
-                    " Audio -> ${downloads["audio"]?.result}, Subtitle -> ${downloads["subtitle"]?.result}",
-            )
+            if (downloads.isEmpty()) {
+                Log.d("Download", "No local downloads required; FFmpeg will read the remote stream directly")
+            } else {
+                Log.d(
+                    "Download",
+                    "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${downloads["video"]?.result}," +
+                        " Audio -> ${downloads["audio"]?.result}, Subtitle -> ${downloads["subtitle"]?.result}",
+                )
+            }
             return@coroutineScope PlayOnDlnaVideoInput(
-                videoFile = downloads["video"]!!.result,
+                videoFile = downloads["video"]?.result,
                 audioFile = downloads["audio"]?.result,
                 subtitle = if (downloads.containsKey("subtitle")) Subtitle(downloads["subtitle"]!!.result) else null,
             )

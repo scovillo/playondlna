@@ -18,11 +18,10 @@
 
 package io.github.scovillo.playondlna.preparation
 
-import android.net.Uri
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -31,6 +30,7 @@ import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.download.HttpStatusException
 import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
+import io.github.scovillo.playondlna.download.okHttpClient
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.persistence.LibraryItem
@@ -54,16 +54,21 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.Page
-import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
+import org.schabi.newpipe.extractor.playlist.PlaylistInfo
+import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
+import java.io.IOException
+import java.net.URI
 import java.util.Collections
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -73,6 +78,8 @@ import kotlin.time.Duration.Companion.milliseconds
 enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
 
 data class PlaylistPosition(val current: Int, val total: Int)
+
+data class PlaylistImportSummary(val addedEntries: Int, val skippedEntries: Int)
 
 private class DownloadFailedException(cause: Throwable) : Exception(cause)
 
@@ -97,6 +104,7 @@ fun StreamExtractor.subtitle(): SubtitlesStream? {
 }
 
 class VideoJobModel(
+    context: Context,
     settingsRepository: SettingsRepository,
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
@@ -109,6 +117,7 @@ class VideoJobModel(
     private var _currentSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
     private val _playlistPosition = mutableStateOf<PlaylistPosition?>(null)
+    private val _playlistImportSummary = mutableStateOf<PlaylistImportSummary?>(null)
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     private val _completedSessions = MutableSharedFlow<Long>()
     private val _playbackStarted = MutableSharedFlow<Unit>()
@@ -149,6 +158,7 @@ class VideoJobModel(
     val currentSession: State<Session?> get() = _currentSession
     val title: State<String> get() = _title
     val playlistPosition: State<PlaylistPosition?> get() = _playlistPosition
+    val playlistImportSummary: State<PlaylistImportSummary?> get() = _playlistImportSummary
     val progress: State<Float> get() = state.progress
     val status: State<VideoJobStatus> get() = state.status
     val toastEvents = _toastEvents.asSharedFlow()
@@ -170,7 +180,13 @@ class VideoJobModel(
                     _currentThumbnailFile.value = null
                     _currentSession.value = null
                     _title.value = normalizedUrl
-                    if (isYoutubePlaylistUrl(normalizedUrl)) prepareYoutubePlaylist(normalizedUrl) else prepareSingleVideo(normalizedUrl)
+                    val resolvedUrl = resolveSoundCloudShortUrl(normalizedUrl)
+                    val service = NewPipe.getServiceByUrl(resolvedUrl)
+                    if (service.getLinkTypeByUrl(resolvedUrl) == StreamingService.LinkType.PLAYLIST) {
+                        prepareRemotePlaylist(service, resolvedUrl)
+                    } else {
+                        prepareSingleVideo(resolvedUrl)
+                    }
                     if (state.status.value != VideoJobStatus.ERROR) {
                         _title.value = "idle"
                         state.idle()
@@ -212,37 +228,63 @@ class VideoJobModel(
         runningJobs.add(job)
     }
 
-    private suspend fun prepareYoutubePlaylist(url: String) {
-        val playlistUrl = "https://www.youtube.com/playlist?list=${Uri.encode(url.toUri().getQueryParameter("list"))}"
-        val playlistInfo = org.schabi.newpipe.extractor.playlist.PlaylistInfo.getInfo(ServiceList.YouTube, playlistUrl)
+    private suspend fun prepareRemotePlaylist(
+        service: StreamingService,
+        playlistUrl: String,
+    ) {
+        val playlistInfo = PlaylistInfo.getInfo(service, playlistUrl)
         val entries = playlistInfo.relatedItems.toMutableList()
         var nextPage: Page? = playlistInfo.nextPage
-        while (nextPage != null) {
+        while (Page.isValid(nextPage)) {
             val page: ListExtractor.InfoItemsPage<org.schabi.newpipe.extractor.stream.StreamInfoItem> =
-                org.schabi.newpipe.extractor.playlist.PlaylistInfo.getMoreItems(ServiceList.YouTube, playlistUrl, nextPage)
+                PlaylistInfo.getMoreItems(service, playlistUrl, nextPage!!)
             entries += page.items
             nextPage = page.nextPage
         }
         val playlist =
             playlistManager.createPlaylist(playlistInfo.name)
                 ?: throw IllegalStateException("Could not create playlist")
+        var addedEntries = 0
+        var skippedEntries = 0
         try {
             entries.forEachIndexed { index, entry ->
                 _playlistPosition.value = PlaylistPosition(index + 1, entries.size)
                 try {
-                    playlistManager.addVideo(playlist.id, prepareSingleVideo(entry.url))
+                    check(playlistManager.addVideo(playlist.id, prepareSingleVideo(entry.url))) {
+                        "Could not add playlist entry"
+                    }
+                    addedEntries++
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: DownloadFailedException) {
                     Log.e("VideoJobModel", "Download failed for playlist entry ${entry.url}", error)
-                    _toastEvents.emit(ToastEvent.Show(R.string.download_failed))
+                    skippedEntries++
                 } catch (error: Exception) {
                     Log.e("VideoJobModel", "Could not prepare playlist entry ${entry.url}", error)
-                    _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
+                    skippedEntries++
                 }
             }
         } finally {
             _playlistPosition.value = null
+        }
+        _playlistImportSummary.value = PlaylistImportSummary(addedEntries, skippedEntries)
+    }
+
+    fun dismissPlaylistImportSummary() {
+        _playlistImportSummary.value = null
+    }
+
+    private fun resolveSoundCloudShortUrl(url: String): String {
+        if (runCatching { URI(url).host }.getOrNull() != "on.soundcloud.com") return url
+        return try {
+            okHttpClient.newCall(Request.Builder().url(url).head().build()).execute().use { response ->
+                response.request.url.toString().also { resolvedUrl ->
+                    Log.i("VideoJobModel", "Resolved SoundCloud share URL to $resolvedUrl")
+                }
+            }
+        } catch (error: IOException) {
+            Log.w("VideoJobModel", "Could not resolve SoundCloud share URL, using original URL", error)
+            url
         }
     }
 
@@ -250,7 +292,12 @@ class VideoJobModel(
         val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
         extractor.fetchPage()
         _title.value = extractor.name
-        val cachedFile = cacheDir.listFiles()?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("final") }
+        val expectedExtension = if ((extractor.videoStreams + extractor.videoOnlyStreams).isEmpty()) "m4a" else "mp4"
+        val cachedFile =
+            cacheDir.listFiles()?.find {
+                it.exists() && it.name.contains(extractor.id) && it.name.contains("final") &&
+                    it.extension.equals(expectedExtension, ignoreCase = true)
+            }
         if (cachedFile != null) {
             return publishCachedVideo(extractor, cachedFile)
         } else {
@@ -259,15 +306,26 @@ class VideoJobModel(
         return extractor.id
     }
 
-    private fun publishCachedVideo(
+    private suspend fun publishCachedVideo(
         extractor: StreamExtractor,
         cachedFile: File,
     ): String {
+        val isAudioOnly = cachedFile.extension.equals("m4a", ignoreCase = true)
+        val thumbnailFile = if (isAudioOnly) ensureThumbnail(extractor) else null
         val subtitleFile = cacheDir.listFiles()?.find { it.exists() && it.name.contains(extractor.id) && it.name.contains("subtitle") }
-        videoHttpServer.allFiles[extractor.id] = VideoFile(extractor, cachedFile, videoQuality.value, subtitleFile?.let(::Subtitle))
+        videoHttpServer.allFiles[extractor.id] =
+            VideoFile(
+                extractor,
+                cachedFile,
+                videoQuality.value,
+                if (isAudioOnly) null else subtitleFile?.let(::Subtitle),
+                dlnaProfile = if (isAudioOnly) "AAC_ISO_320" else videoQuality.value.dlnaProfile,
+                isAudioOnly = isAudioOnly,
+                cover = thumbnailFile,
+            )
         _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
         state.ready()
-        saveToLibrary(extractor, "${videoQuality.value.height}p")
+        saveToLibrary(extractor, if (isAudioOnly) "Audio" else "${videoQuality.value.height}p", isAudioOnly)
         return extractor.id
     }
 
@@ -294,6 +352,9 @@ class VideoJobModel(
                     value = item.videoFile,
                     videoQuality = videoQuality.value,
                     subtitle = null,
+                    dlnaProfile = if (item.metadata.isAudioOnly) "AAC_ISO_320" else videoQuality.value.dlnaProfile,
+                    isAudioOnly = item.metadata.isAudioOnly,
+                    cover = if (item.metadata.isAudioOnly) item.thumbnailFile else null,
                 )
 
             videoHttpServer.allFiles[item.metadata.id] = videoFile
@@ -315,6 +376,9 @@ class VideoJobModel(
                         value = item.videoFile,
                         videoQuality = videoQuality.value,
                         subtitle = null,
+                        dlnaProfile = if (item.metadata.isAudioOnly) "AAC_ISO_320" else videoQuality.value.dlnaProfile,
+                        isAudioOnly = item.metadata.isAudioOnly,
+                        cover = if (item.metadata.isAudioOnly) item.thumbnailFile else null,
                     )
                 videoHttpServer.allFiles[item.metadata.id] = videoFile
                 videoFile
@@ -336,20 +400,22 @@ class VideoJobModel(
             VideoStreamSelection(
                 extractor.videoStreams + extractor.videoOnlyStreams,
                 videoQuality.value,
-            ).best()
+            ).bestOrNull()
         val bestAudio = AudioStreamSelection(extractor.audioStreams).best()
+        check(bestVideo != null || bestAudio != null) { "No playable video or audio stream found" }
         val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
         val download =
             PlayOnDlnaStreamDownload(
                 extractor.id,
-                bestVideo.content,
+                bestVideo?.content,
                 cacheDir,
                 state,
             )
-        if (bestAudio != null) {
+        val remoteAudioUrl = bestAudio?.takeUnless { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }?.content
+        if (bestAudio?.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP) {
             download.withAudioStream(bestAudio.content)
         }
-        if (subtitle != null) {
+        if (bestVideo != null && subtitle != null) {
             download.withSubtitle(subtitle)
         }
         val streamFiles =
@@ -362,14 +428,16 @@ class VideoJobModel(
             }
         val muxFile =
             withContext(Dispatchers.IO) {
-                File.createTempFile("${extractor.id}_muxed_final_", ".mp4", cacheDir)
+                File.createTempFile("${extractor.id}_muxed_final_", if (bestVideo == null) ".m4a" else ".mp4", cacheDir)
             }
+        val audioCover = if (bestVideo == null) ensureThumbnail(extractor) else null
         val ffmpegCmd =
             PlayOnDlnaFfmpegCommand(
                 streamFiles,
                 bestAudio?.hasBestCompatibility ?: true,
                 muxFile,
                 isInternalSubtitleEnabled.value,
+                remoteAudioUrl = remoteAudioUrl,
             )
 
         Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.value()}")
@@ -386,12 +454,24 @@ class VideoJobModel(
                                     VideoFile(
                                         extractor,
                                         muxFile,
-                                        videoQuality.value,
-                                        streamFiles.subtitle,
+                                        if (bestVideo == null) VideoQuality.P1080 else videoQuality.value,
+                                        if (bestVideo == null) null else streamFiles.subtitle,
+                                        dlnaProfile =
+                                            if (bestVideo == null) {
+                                                "AAC_ISO_320"
+                                            } else {
+                                                videoQuality.value.dlnaProfile
+                                            },
+                                        isAudioOnly = bestVideo == null,
+                                        cover = audioCover,
                                     )
                                 _currentVideoFile.value = videoHttpServer.allFiles[extractor.id]
                                 state.ready()
-                                saveToLibrary(extractor, "${bestVideo.height}p")
+                                saveToLibrary(
+                                    extractor,
+                                    if (bestVideo == null) "Audio" else "${bestVideo.height}p",
+                                    bestVideo == null,
+                                )
                                 if (continuation.isActive) continuation.resume(Unit)
                             } else if (continuation.isActive) {
                                 continuation.resumeWithException(CancellationException("Superseded FFmpeg session"))
@@ -420,6 +500,7 @@ class VideoJobModel(
     private fun saveToLibrary(
         extractor: StreamExtractor,
         qualityName: String,
+        isAudioOnly: Boolean = false,
     ) {
         val metadata =
             LibraryMetadata(
@@ -427,14 +508,21 @@ class VideoJobModel(
                 title = extractor.name,
                 uploader = extractor.uploaderName,
                 durationInSeconds = extractor.length,
-                thumbnailUri = extractor.thumbnails.firstOrNull()?.url,
+                thumbnailUri = extractor.thumbnails.bestThumbnailUrl(),
                 qualityName = qualityName,
+                isAudioOnly = isAudioOnly,
             )
         libraryManager.saveMetadata(metadata)
         metadata.thumbnailUri?.let { thumbUrl ->
-            viewModelScope.launch { libraryManager.downloadThumbnail(extractor.id, thumbUrl) }
+            if (libraryManager.thumbnailFile(extractor.id) == null) {
+                viewModelScope.launch { libraryManager.downloadThumbnail(extractor.id, thumbUrl) }
+            }
         }
     }
+
+    private suspend fun ensureThumbnail(extractor: StreamExtractor): File? =
+        extractor.thumbnails.bestThumbnailUrl()?.let { libraryManager.downloadThumbnail(extractor.id, it) }
+            ?: libraryManager.thumbnailFile(extractor.id)
 
     private fun resetDownloadPanel() {
         _title.value = "idle"
@@ -459,5 +547,3 @@ class VideoJobModel(
         }
     }
 }
-
-private fun isYoutubePlaylistUrl(url: String): Boolean = url.toUri().getQueryParameter("list") != null

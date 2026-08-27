@@ -29,7 +29,8 @@ val AudioStream.isOriginal: Boolean
     }
 val AudioStream.hasBestCompatibility: Boolean
     get() {
-        return format?.mimeType?.startsWith("audio/mp4") == true && codec?.startsWith("mp4a") == true
+        val isAac = codec?.startsWith("mp4a") == true || id.startsWith("aac")
+        return format?.mimeType?.startsWith("audio/mp4") == true && isAac
     }
 
 fun List<AudioStream>.originals(): List<AudioStream> = filter { it.isOriginal }
@@ -45,8 +46,8 @@ fun List<AudioStream>.preferringLocale(locale: Locale): AudioStream =
 
 val AudioStream.info: String
     get() {
-        return "audioTrackName=$audioTrackName, audioTrackType=$audioTrackType, mimeType=${format?.mimeType}, " +
-            "codec=$codec, averageBitrate=$averageBitrate, audioLocale=$audioLocale"
+        return "id=$id, deliveryMethod=$deliveryMethod, audioTrackName=$audioTrackName, audioTrackType=$audioTrackType, " +
+            "mimeType=${format?.mimeType}, codec=$codec, averageBitrate=$averageBitrate, audioLocale=$audioLocale"
     }
 
 class AudioStreamSelection(

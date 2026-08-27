@@ -92,6 +92,9 @@
     <string name="playlist_video_count">Відео: %1$d</string>
     <string name="no_playlist_videos">У цьому плейлисті немає доступних відео</string>
     <string name="playlist_missing_videos">%1$d відео більше немає в бібліотеці</string>
+    <string name="playlist_import_summary">Плейлист імпортовано: додано — %1$d, пропущено — %2$d.</string>
+    <string name="playlist_import_summary_title">Імпорт плейлиста завершено</string>
+    <string name="all_clear">Зрозуміло</string>
     <string name="add_to_playlist">Додати до плейлиста</string>
     <string name="remove_from_playlist">Видалити з плейлиста</string>
     <string name="play_playlist">Відтворити плейлист</string>

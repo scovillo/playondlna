@@ -10,7 +10,7 @@ class OkHttpDownloadClientTest {
         val client = createExtractorHttpClient()
 
         assertEquals(
-            TimeUnit.SECONDS.toMillis(120),
+            TimeUnit.SECONDS.toMillis(30),
             client.readTimeoutMillis.toLong(),
         )
     }
@@ -19,11 +19,11 @@ class OkHttpDownloadClientTest {
     fun `recognizes media ccc conference details`() {
         assertEquals(
             true,
-            isMediaCccConferenceUrl("https://api.media.ccc.de/public/conferences/jh26"),
+            "https://api.media.ccc.de/public/conferences/jh26".isMediaCccConferenceUrl(),
         )
         assertEquals(
             false,
-            isMediaCccConferenceUrl("https://api.media.ccc.de/public/events/jh26berlin-sifa"),
+            "https://api.media.ccc.de/public/events/jh26berlin-sifa".isMediaCccConferenceUrl(),
         )
     }
 }

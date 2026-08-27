@@ -8,7 +8,7 @@ class VideoStreamSelection(
     private val videoStreams: List<VideoStream>,
     private val quality: VideoQuality,
 ) {
-    fun best(): VideoStream {
+    fun bestOrNull(): VideoStream? {
         Log.d(
             "VideoStreams",
             videoStreams.joinToString(System.lineSeparator()) {
@@ -49,7 +49,7 @@ class VideoStreamSelection(
             )
             return chosen
         }
-        val fallback = videoStreams.maxBy { it.height }
+        val fallback = videoStreams.maxByOrNull { it.height } ?: return null
         Log.d(
             "VideoStream",
             "Fallback: ${fallback.format?.mimeType}, ${fallback.codec}, ${fallback.width}x${fallback.height}, ${fallback.quality}, " +

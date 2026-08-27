@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +35,7 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,9 +105,34 @@ private fun downloadPanel(videoJobModel: VideoJobModel) {
     LaunchedEffect(Unit) {
         videoJobModel.toastEvents.collect { event ->
             when (event) {
-                is ToastEvent.Show -> Toast.makeText(context, context.getString(event.messageResId), Toast.LENGTH_LONG).show()
+                is ToastEvent.Show ->
+                    Toast.makeText(
+                        context,
+                        context.getString(event.messageResId),
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
         }
+    }
+    videoJobModel.playlistImportSummary.value?.let { summary ->
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.playlist_import_summary_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.playlist_import_summary,
+                        summary.addedEntries,
+                        summary.skippedEntries,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = videoJobModel::dismissPlaylistImportSummary) {
+                    Text(stringResource(R.string.all_clear))
+                }
+            },
+        )
     }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
         val isDownloadActive = title != "idle" && status != VideoJobStatus.ERROR

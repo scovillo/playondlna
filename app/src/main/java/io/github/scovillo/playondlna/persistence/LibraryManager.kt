@@ -45,6 +45,8 @@ class LibraryManager(private val cacheDir: File) {
             null
         }
 
+    fun thumbnailFile(id: String): File? = File(cacheDir, "$id.thumb.jpg").takeIf { it.exists() && it.length() > 0 }
+
     fun getLibraryItems(): List<LibraryItem> {
         val items = mutableListOf<LibraryItem>()
         val files = cacheDir.listFiles() ?: return emptyList()
@@ -53,9 +55,13 @@ class LibraryManager(private val cacheDir: File) {
         for (metaFile in metaFiles) {
             try {
                 val metadata = LibraryMetadata.fromJson(metaFile.readText())
-                val videoFile = files.find { it.name.contains(metadata.id) && it.name.contains("final") && it.name.endsWith(".mp4") }
+                val videoFile =
+                    files.find {
+                        it.name.contains(metadata.id) && it.name.contains("final") &&
+                            (it.name.endsWith(".mp4") || it.name.endsWith(".m4a"))
+                    }
                 if (videoFile != null) {
-                    val thumbFile = File(cacheDir, "${metadata.id}.thumb.jpg").takeIf { it.exists() }
+                    val thumbFile = thumbnailFile(metadata.id)
                     items.add(LibraryItem(metadata, videoFile, thumbFile, videoFile.length()))
                 }
             } catch (e: Exception) {

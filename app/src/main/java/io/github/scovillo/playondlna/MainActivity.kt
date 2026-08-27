@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
         val playlistViewModel = PlaylistViewModel(playlistManager)
         videoJobModel =
             VideoJobModel(
+                this,
                 settingsRepository,
                 WifiConnectionState(
                     getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager,

@@ -37,6 +37,28 @@ class PlaylistM3uTest {
         assertTrue(m3u.content.contains("/two/video.mp4"))
     }
 
+    @Test
+    fun usesAudioUrlForAudioOnlyEntries() {
+        val playlist = Playlist("list", "Audio", listOf("track"))
+        val metadata = LibraryMetadata("track", "Track", "Uploader", 10, isAudioOnly = true)
+        val item = LibraryItem(metadata, File("track.m4a"), null, 1)
+
+        val m3u = createPlaylistM3u(playlist, listOf(item), "http://server")!!
+
+        assertTrue(m3u.content.contains("/track/audio.m4a"))
+    }
+
+    @Test
+    fun includesLibraryThumbnailAsPlaylistLogo() {
+        val playlist = Playlist("list", "Audio", listOf("track"))
+        val metadata = LibraryMetadata("track", "Track", "Uploader", 10, isAudioOnly = true)
+        val item = LibraryItem(metadata, File("track.m4a"), File("track.thumb.jpg"), 1)
+
+        val m3u = createPlaylistM3u(playlist, listOf(item), "http://server")!!
+
+        assertTrue(m3u.content.contains("tvg-logo=\"http://server/track/cover.jpg\""))
+    }
+
     private fun item(
         id: String,
         title: String,

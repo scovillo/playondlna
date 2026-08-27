@@ -92,6 +92,9 @@ Beispiele:\n
     <string name="playlist_video_count">%1$d Videos</string>
     <string name="no_playlist_videos">Keine verfügbaren Videos in dieser Playlist</string>
     <string name="playlist_missing_videos">%1$d Videos sind nicht mehr in der Bibliothek verfügbar</string>
+    <string name="playlist_import_summary">Playlist importiert: %1$d übernommen, %2$d übersprungen.</string>
+    <string name="playlist_import_summary_title">Playlist-Import abgeschlossen</string>
+    <string name="all_clear">Alles klar</string>
     <string name="add_to_playlist">Zu Playlist hinzufügen</string>
     <string name="remove_from_playlist">Aus Playlist entfernen</string>
     <string name="play_playlist">Playlist abspielen</string>

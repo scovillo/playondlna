@@ -22,8 +22,11 @@ fun createPlaylistM3u(
         buildString {
             appendLine("#EXTM3U")
             entries.forEach { item ->
-                appendLine("#EXTINF:-1,${item.metadata.title.m3uSafeTitle()}")
-                appendLine("$baseUrl/${item.metadata.id}/video.mp4")
+                val coverAttribute =
+                    if (item.thumbnailFile != null) " tvg-logo=\"$baseUrl/${item.metadata.id}/cover.jpg\"" else ""
+                appendLine("#EXTINF:-1$coverAttribute,${item.metadata.title.m3uSafeTitle()}")
+                val fileName = if (item.metadata.isAudioOnly) "audio.m4a" else "video.mp4"
+                appendLine("$baseUrl/${item.metadata.id}/$fileName")
             }
         }
     return PlaylistM3u(playlist.name, content)

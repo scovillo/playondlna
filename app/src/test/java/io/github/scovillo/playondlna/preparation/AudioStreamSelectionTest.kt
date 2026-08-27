@@ -172,4 +172,17 @@ class AudioStreamSelectionTest {
 
         Assert.assertEquals("Test de 1", classUnderTest.best()?.id)
     }
+
+    @Test
+    fun `recognizes SoundCloud AAC preset without codec metadata`() {
+        val soundCloudAac =
+            AudioStream.Builder()
+                .setId("aac_160k")
+                .setAverageBitrate(160)
+                .setContent("https://example.com/playlist.m3u8", true)
+                .setMediaFormat(MediaFormat.M4A)
+                .build()
+
+        Assert.assertTrue(soundCloudAac.hasBestCompatibility)
+    }
 }

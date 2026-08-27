@@ -97,6 +97,13 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
         }
         val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
 
+        if (session.uri.endsWith("/cover.jpg", ignoreCase = true)) {
+            val cover =
+                allFiles[id]?.cover
+                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
+            return newFixedLengthResponse(Response.Status.OK, "image/jpeg", FileInputStream(cover), cover.length())
+        }
+
         val isSubtitle = session.uri.endsWith(".srt", ignoreCase = true)
         if (isSubtitle) {
             val subtitle =
@@ -125,6 +132,7 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                     "Video with id $id not found!",
                 )
         val fileLength = file.length()
+        val mimeType = if (allFiles[id]?.isAudioOnly == true) "audio/mp4" else "video/mp4"
         val rangeHeader = session.headers["range"]
         try {
             val (start, end) =
@@ -148,17 +156,17 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                 if (rangeHeader != null) {
                     newFixedLengthResponse(
                         Response.Status.PARTIAL_CONTENT,
-                        "video/mp4",
+                        mimeType,
                         fis,
                         contentLength,
                     ).apply {
                         addHeader("Content-Range", "bytes $start-$end/$fileLength")
                     }
                 } else {
-                    newFixedLengthResponse(Response.Status.OK, "video/mp4", fis, contentLength).apply {
+                    newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength).apply {
                         addHeader(
                             "contentFeatures.dlna.org",
-                            "DLNA.ORG_PN=${allFiles[id]!!.videoQuality.dlnaProfile}.;DLNA.ORG_OP=11;" +
+                            "DLNA.ORG_PN=${allFiles[id]!!.dlnaProfile}.;DLNA.ORG_OP=11;" +
                                 "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000",
                         )
                         addHeader("transferMode.dlna.org", "Streaming")
