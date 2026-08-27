@@ -25,12 +25,12 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
-import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
-import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
-import io.github.scovillo.playondlna.upnpdlna.DlnaRemoteControl
-import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
-import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
-import io.github.scovillo.playondlna.upnpdlna.TransportCommand
+import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.FavoriteDevices
+import io.github.scovillo.playondlna.dlna.DeviceDiscoveryModel
+import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
+import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +43,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 class DlnaDevicesListScreenModel(
-    private val ssdpDevices: SsdpDevices,
+    private val deviceDiscoveryModel: DeviceDiscoveryModel,
     val favoriteDevices: FavoriteDevices,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -66,7 +66,7 @@ class DlnaDevicesListScreenModel(
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
-    val toastEvents = merge(_toastEvents.asSharedFlow(), ssdpDevices.toastEvents)
+    val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
 
     fun discoverDevices() {
         viewModelScope.launch {
@@ -75,7 +75,7 @@ class DlnaDevicesListScreenModel(
             val jobs =
                 listOf(
                     launch(Dispatchers.IO) {
-                        val ssdp = ssdpDevices.discover()
+                        val ssdp = deviceDiscoveryModel.discover()
                         _devices.update { it + ssdp }
                     },
                     launch(Dispatchers.IO) {
@@ -104,7 +104,7 @@ class DlnaDevicesListScreenModel(
         videoFiles: List<VideoFile>,
     ) = remote.playPlaylist(device, nativePlaylist, videoFiles)
 
-    fun remoteCommand(command: TransportCommand) {
+    fun remoteCommand(command: PlaybackCommand) {
         _selectedDevice.value?.let { remote.command(it, command) }
     }
 

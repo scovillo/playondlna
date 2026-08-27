@@ -56,16 +56,15 @@ import io.github.scovillo.playondlna.server.createPlaylistM3u
 import io.github.scovillo.playondlna.server.getLocalIpAddress
 import io.github.scovillo.playondlna.server.serverPort
 import io.github.scovillo.playondlna.server.videoHttpServer
-import io.github.scovillo.playondlna.ui.dlnaListScreen
+import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.libraryScreen
 import io.github.scovillo.playondlna.ui.mainScreen
 import io.github.scovillo.playondlna.ui.playOnDlnaTheme
 import io.github.scovillo.playondlna.ui.playlistsScreen
-import io.github.scovillo.playondlna.ui.settingsScreen
-import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
-import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
-import io.github.scovillo.playondlna.upnpdlna.SsdpDevices
-import io.github.scovillo.playondlna.upnpdlna.playlistMedia
+import io.github.scovillo.playondlna.ui.SettingsScreen
+import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.FavoriteDevices
+import io.github.scovillo.playondlna.dlna.DeviceDiscoveryModel
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -112,7 +111,7 @@ class MainActivity : ComponentActivity() {
                 libraryManager,
                 playlistManager,
             )
-        videoHttpServer.playlistProvider = playlistProvider@{ id, baseUrl, startIndex ->
+        videoHttpServer.playlistProvider = playlistProvider@{ id, baseUrl ->
             val playlist = playlistManager.getPlaylists().find { it.id == id } ?: return@playlistProvider null
             val items = libraryManager.getLibraryItems()
             createPlaylistM3u(playlist, items, baseUrl).also {
@@ -137,7 +136,7 @@ class MainActivity : ComponentActivity() {
         val favoriteDevices = FavoriteDevices(settingsRepository)
         val dlnaDevicesListScreenModel =
             DlnaDevicesListScreenModel(
-                ViewModelProvider(this)[SsdpDevices::class.java],
+                ViewModelProvider(this)[DeviceDiscoveryModel::class.java],
                 favoriteDevices,
                 settingsRepository,
             )
@@ -147,7 +146,7 @@ class MainActivity : ComponentActivity() {
                 var selectedPlaylistMedia by remember { mutableStateOf<DlnaMedia?>(null) }
                 mainScreen(
                     playScreen = {
-                        dlnaListScreen(
+                        DlnaListScreen(
                             videoJobModel,
                             dlnaDevicesListScreenModel,
                             playlistVideoFiles = selectedPlaylistVideoFiles,
@@ -165,7 +164,7 @@ class MainActivity : ComponentActivity() {
                             selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
                             val isAudioOnlyPlaylist = items.isNotEmpty() && items.all { it.metadata.isAudioOnly }
                             selectedPlaylistMedia =
-                                playlistMedia(
+                                DlnaMedia.from(
                                     playlist.id,
                                     playlist.name,
                                     "http://${getLocalIpAddress()}:$serverPort",
@@ -179,7 +178,7 @@ class MainActivity : ComponentActivity() {
                             selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
                             val isAudioOnlyPlaylist = items.isNotEmpty() && items.all { it.metadata.isAudioOnly }
                             selectedPlaylistMedia =
-                                playlistMedia(
+                                DlnaMedia.from(
                                     playlist.id,
                                     playlist.name,
                                     "http://${getLocalIpAddress()}:$serverPort",
@@ -189,7 +188,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     settingsScreen = {
-                        settingsScreen(
+                        SettingsScreen(
                             videoSettingsState,
                             favoriteDevices,
                             cacheControl,

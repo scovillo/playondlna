@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.upnpdlna
+package io.github.scovillo.playondlna.dlna
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,6 +6,7 @@ import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.ui.ToastEvent
+import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,8 @@ import java.net.URL
 
 class FavoriteDevices(private val settingsRepository: SettingsRepository) : ViewModel() {
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
+    private val deviceClient = SsdpDeviceClient()
+
     val toastEvents = _toastEvents.asSharedFlow()
 
     val locations: StateFlow<Set<String>> =
@@ -35,7 +38,7 @@ class FavoriteDevices(private val settingsRepository: SettingsRepository) : View
             val location = url.toString()
             try {
                 val device =
-                    fetchDeviceDescription(
+                    deviceClient.fetch(
                         usn = "manual-$location",
                         st = "manual",
                         location = location,
@@ -77,7 +80,7 @@ class FavoriteDevices(private val settingsRepository: SettingsRepository) : View
         val locations = locations.first()
         return locations.mapNotNull { location ->
             try {
-                fetchDeviceDescription(
+                deviceClient.fetch(
                     usn = "manual-$location",
                     st = "manual",
                     location = location,

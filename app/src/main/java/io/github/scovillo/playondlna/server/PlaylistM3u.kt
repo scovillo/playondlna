@@ -17,7 +17,7 @@ fun createPlaylistM3u(
     val itemsById = libraryItems.associateBy { it.metadata.id }
     val allEntries = playlist.videoIds.mapNotNull(itemsById::get)
     if (allEntries.isEmpty()) return null
-    val mimeType = if (allEntries.all { it.metadata.isAudioOnly }) "audio/x-mpegurl; charset=utf-8" else "video/mpegurl; charset=utf-8"
+    val mimeType = if (allEntries.all { it.metadata.isAudioOnly }) "video/x-mpegurl; charset=utf-8" else "audio/mpegurl; charset=utf-8"
     val content =
         buildString {
             appendLine("#EXTM3U")

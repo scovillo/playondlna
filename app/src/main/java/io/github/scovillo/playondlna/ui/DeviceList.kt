@@ -63,11 +63,11 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 import io.github.scovillo.playondlna.server.VideoFile
-import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
-import io.github.scovillo.playondlna.upnpdlna.TransportCommand
+import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 
 @Composable
-fun dlnaListScreen(
+fun DlnaListScreen(
     videoJobModel: VideoJobModel,
     dlnaModel: DlnaDevicesListScreenModel,
     playlistVideoFiles: List<VideoFile> = emptyList(),
@@ -115,7 +115,7 @@ fun dlnaListScreen(
             Column {
                 val currentVideo = videoJobModel.currentVideoFile.value
                 val currentThumbnail = videoJobModel.currentThumbnailFile.value
-                dlnaRemoteControl(
+                DlnaRemoteControl(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
                     playlistMedia = playlistMedia,
@@ -127,7 +127,7 @@ fun dlnaListScreen(
                         } else if (currentVideo != null) {
                             dlnaModel.playVideoOnDevice(device, currentVideo)
                         } else {
-                            dlnaModel.remoteCommand(TransportCommand.PLAY)
+                            dlnaModel.remoteCommand(PlaybackCommand.PLAY)
                         }
                     },
                 )

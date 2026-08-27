@@ -43,18 +43,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.server.VideoFile
-import io.github.scovillo.playondlna.upnpdlna.DlnaDevice
-import io.github.scovillo.playondlna.upnpdlna.DlnaMedia
-import io.github.scovillo.playondlna.upnpdlna.TransportCommand
+import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import java.io.File
 
 @Composable
-fun dlnaRemoteControl(
+fun DlnaRemoteControl(
     currentVideo: VideoFile?,
     currentThumbnail: File?,
     playlistMedia: DlnaMedia?,
     selectedDevice: DlnaDevice?,
-    onCommand: (TransportCommand) -> Unit,
+    onCommand: (PlaybackCommand) -> Unit,
     onPlay: (DlnaDevice) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
@@ -80,27 +80,27 @@ fun dlnaRemoteControl(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
         ) {
-            remoteButton(Icons.Default.SkipPrevious, R.string.previous) {
-                onCommand(TransportCommand.PREVIOUS)
+            RemoteButton(Icons.Default.SkipPrevious, R.string.previous) {
+                onCommand(PlaybackCommand.PREVIOUS)
             }
-            remoteButton(Icons.Default.PlayArrow, R.string.play) {
-                selectedDevice?.let(onPlay) ?: onCommand(TransportCommand.PLAY)
+            RemoteButton(Icons.Default.PlayArrow, R.string.play) {
+                selectedDevice?.let(onPlay) ?: onCommand(PlaybackCommand.PLAY)
             }
-            remoteButton(Icons.Default.Pause, R.string.pause) {
-                onCommand(TransportCommand.PAUSE)
+            RemoteButton(Icons.Default.Pause, R.string.pause) {
+                onCommand(PlaybackCommand.PAUSE)
             }
-            remoteButton(Icons.Default.Stop, R.string.stop) {
-                onCommand(TransportCommand.STOP)
+            RemoteButton(Icons.Default.Stop, R.string.stop) {
+                onCommand(PlaybackCommand.STOP)
             }
-            remoteButton(Icons.Default.SkipNext, R.string.next) {
-                onCommand(TransportCommand.NEXT)
+            RemoteButton(Icons.Default.SkipNext, R.string.next) {
+                onCommand(PlaybackCommand.NEXT)
             }
         }
     }
 }
 
 @Composable
-private fun remoteButton(
+private fun RemoteButton(
     icon: ImageVector,
     label: Int,
     onClick: () -> Unit,

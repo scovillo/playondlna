@@ -81,7 +81,7 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.model.VideoSettingsState
-import io.github.scovillo.playondlna.upnpdlna.FavoriteDevices
+import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import kotlinx.coroutines.flow.merge
 import java.net.URL
 
@@ -91,7 +91,7 @@ private val RelatedContentSpacing = 12.dp
 private val ButtonSpacing = 16.dp
 
 @Composable
-fun settingsScreen(
+fun SettingsScreen(
     videoSettingsState: VideoSettingsState,
     favoriteDevices: FavoriteDevices,
     cacheControl: CacheControl,
@@ -119,33 +119,33 @@ fun settingsScreen(
                 .fillMaxSize()
                 .padding(20.dp),
     ) {
-        item { supportPlayOnDlna() }
+        item { SupportPlayOnDlna() }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { videoQuality(videoSettingsState) }
+        item { VideoQuality(videoSettingsState) }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { subtitles(videoSettingsState) }
+        item { Subtitles(videoSettingsState) }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { wlanProtection(videoSettingsState) }
+        item { WlanProtection(videoSettingsState) }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { customFavoriteDevices(favoriteDevices) }
+        item { CustomFavoriteDevices(favoriteDevices) }
         items(
             items = deviceLocations.toList(),
             key = { it },
         ) { device ->
-            deviceItem(
+            DeviceItem(
                 device = device,
                 onDelete = { favoriteDevices.removeLocation(device) },
             )
         }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { clearCache(cacheControl) }
+        item { ClearCache(cacheControl) }
         item { Spacer(Modifier.height(SectionSpacing)) }
         item { info(context) }
     }
 }
 
 @Composable
-fun supportPlayOnDlna() {
+fun SupportPlayOnDlna() {
     val context = LocalContext.current
     Column {
         Text(
@@ -248,7 +248,7 @@ fun supportPlayOnDlna() {
 }
 
 @Composable
-fun videoQuality(videoSettingsState: VideoSettingsState) {
+fun VideoQuality(videoSettingsState: VideoSettingsState) {
     var expanded by remember { mutableStateOf(false) }
     return Column {
         Text(stringResource(R.string.video_quality_title), style = MaterialTheme.typography.titleLarge)
@@ -283,7 +283,7 @@ fun videoQuality(videoSettingsState: VideoSettingsState) {
 }
 
 @Composable
-fun subtitles(videoSettingsState: VideoSettingsState) {
+fun Subtitles(videoSettingsState: VideoSettingsState) {
     val isSubtitleEnabled by videoSettingsState.isSubtitleEnabled
     val isInternalSubtitleEnabled by videoSettingsState.isInternalSubtitleEnabled
     Column {
@@ -336,7 +336,7 @@ fun subtitles(videoSettingsState: VideoSettingsState) {
 }
 
 @Composable
-fun wlanProtection(videoSettingsState: VideoSettingsState) {
+fun WlanProtection(videoSettingsState: VideoSettingsState) {
     val isEnabled by videoSettingsState.isWlanProtectionEnabled
     Column {
         Text(stringResource(R.string.wlan_protection_title), style = MaterialTheme.typography.titleLarge)
@@ -363,7 +363,7 @@ fun wlanProtection(videoSettingsState: VideoSettingsState) {
 }
 
 @Composable
-fun deviceItem(
+fun DeviceItem(
     device: String,
     onDelete: () -> Unit,
 ) {
@@ -419,7 +419,7 @@ fun deviceItem(
 }
 
 @Composable
-fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
+fun CustomFavoriteDevices(favoriteDevices: FavoriteDevices) {
     var urlInput by remember { mutableStateOf("") }
     val isValidUrl =
         remember(urlInput) {
@@ -461,7 +461,7 @@ fun customFavoriteDevices(favoriteDevices: FavoriteDevices) {
 }
 
 @Composable
-fun clearCache(cacheControl: CacheControl) {
+fun ClearCache(cacheControl: CacheControl) {
     val sizeInGb by cacheControl.sizeInGb.collectAsState()
     var showClearLibraryDialog by remember { mutableStateOf(false) }
 

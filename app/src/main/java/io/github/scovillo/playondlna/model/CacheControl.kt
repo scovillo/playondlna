@@ -60,7 +60,7 @@ class CacheControl(
             val currentSession = currentSession.value
             runningSessions.forEach {
                 if (currentSession == null || it.sessionId != currentSession.sessionId) {
-                    Log.i("clearCache", "Cancel FFmpegKit with id ${it.sessionId}")
+                    Log.i("ClearCache", "Cancel FFmpegKit with id ${it.sessionId}")
                     FFmpegKit.cancel(it.sessionId)
                 }
             }
