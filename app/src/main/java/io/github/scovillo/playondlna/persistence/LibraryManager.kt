@@ -58,7 +58,7 @@ class LibraryManager(private val cacheDir: File) {
                 val videoFile =
                     files.find {
                         it.name.contains(metadata.id) && it.name.contains("final") &&
-                            (it.name.endsWith(".mp4") || it.name.endsWith(".m4a"))
+                            (it.name.endsWith(".mp4") || it.name.endsWith(".m4a") || it.name.endsWith(".mp3"))
                     }
                 if (videoFile != null) {
                     val thumbFile = thumbnailFile(metadata.id)

@@ -21,6 +21,7 @@ package io.github.scovillo.playondlna.preparation
 import io.github.scovillo.playondlna.AppLog
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.AudioTrackType
+import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import java.util.Locale
 
 val AudioStream.isOriginal: Boolean
@@ -32,6 +33,9 @@ val AudioStream.hasBestCompatibility: Boolean
         val isAac = codec?.startsWith("mp4a") == true || id.startsWith("aac")
         return format?.mimeType?.startsWith("audio/mp4") == true && isAac
     }
+
+val AudioStream.canBeServedAsMp3: Boolean
+    get() = format?.mimeType == "audio/mpeg" && deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP
 
 fun List<AudioStream>.originals(): List<AudioStream> = filter { it.isOriginal }
 

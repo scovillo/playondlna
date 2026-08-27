@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
         videoHttpServer.playlistProvider = playlistProvider@{ id, baseUrl, startIndex ->
             val playlist = playlistManager.getPlaylists().find { it.id == id } ?: return@playlistProvider null
             val items = libraryManager.getLibraryItems()
-            createPlaylistM3u(playlist, items, baseUrl, startIndex).also {
+            createPlaylistM3u(playlist, items, baseUrl).also {
                 if (it != null) videoJobModel.preparePlaylist(items.filter { item -> item.metadata.id in playlist.videoIds })
             }
         }
@@ -163,11 +163,13 @@ class MainActivity : ComponentActivity() {
                             }
                         }) { playlist, items ->
                             selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
+                            val isAudioOnlyPlaylist = items.isNotEmpty() && items.all { it.metadata.isAudioOnly }
                             selectedPlaylistMedia =
                                 playlistMedia(
                                     playlist.id,
                                     playlist.name,
                                     "http://${getLocalIpAddress()}:$serverPort",
+                                    isAudioOnlyPlaylist,
                                 )
                             navController.navigate("play") { launchSingleTop = true }
                         }
@@ -175,7 +177,14 @@ class MainActivity : ComponentActivity() {
                     playlistsScreen = { navController ->
                         playlistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController) { playlist, items ->
                             selectedPlaylistVideoFiles = videoJobModel.preparePlaylist(items)
-                            selectedPlaylistMedia = playlistMedia(playlist.id, playlist.name, "http://${getLocalIpAddress()}:$serverPort")
+                            val isAudioOnlyPlaylist = items.isNotEmpty() && items.all { it.metadata.isAudioOnly }
+                            selectedPlaylistMedia =
+                                playlistMedia(
+                                    playlist.id,
+                                    playlist.name,
+                                    "http://${getLocalIpAddress()}:$serverPort",
+                                    isAudioOnlyPlaylist,
+                                )
                             navController.navigate("play") { launchSingleTop = true }
                         }
                     },

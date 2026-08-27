@@ -12,4 +12,12 @@ class PlaylistPlaybackTest {
         assertTrue(payload.contains("<CurrentURI>http://192.168.1.2:8080/playlists/id/playlist.m3u</CurrentURI>"))
         assertTrue(payload.contains("audio/mpegurl"))
     }
+
+    @Test
+    fun usesVideoPlaylistProtocolInfoForAudioOnlyPlaylists() {
+        val media = playlistMedia("id", "List", "http://192.168.1.2:8080", true)
+        val payload = avTransportUriPayload(media)
+
+        assertTrue(payload.contains("video/x-mpegurl"))
+    }
 }

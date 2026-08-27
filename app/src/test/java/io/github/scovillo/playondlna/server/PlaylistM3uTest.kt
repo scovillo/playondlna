@@ -4,7 +4,6 @@ import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.persistence.LibraryItem
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,11 +28,11 @@ class PlaylistM3uTest {
     }
 
     @Test
-    fun startsAtRequestedEntry() {
+    fun ignoresStartIndexToKeepTheFullPlaylistVisible() {
         val playlist = Playlist("list", "My list", listOf("one", "two"))
-        val m3u = createPlaylistM3u(playlist, listOf(item("one", "First"), item("two", "Second")), "http://server", 1)!!
+        val m3u = createPlaylistM3u(playlist, listOf(item("one", "First"), item("two", "Second")), "http://server")!!
 
-        assertFalse(m3u.content.contains("/one/video.mp4"))
+        assertTrue(m3u.content.contains("/one/video.mp4"))
         assertTrue(m3u.content.contains("/two/video.mp4"))
     }
 
@@ -46,6 +45,19 @@ class PlaylistM3uTest {
         val m3u = createPlaylistM3u(playlist, listOf(item), "http://server")!!
 
         assertTrue(m3u.content.contains("/track/audio.m4a"))
+        assertEquals("video/x-mpegurl; charset=utf-8", m3u.mimeType)
+    }
+
+    @Test
+    fun usesMp3UrlForNativeMp3Entries() {
+        val playlist = Playlist("list", "Audio", listOf("track"))
+        val metadata = LibraryMetadata("track", "Track", "Uploader", 10, isAudioOnly = true)
+        val item = LibraryItem(metadata, File("track.mp3"), null, 1)
+
+        val m3u = createPlaylistM3u(playlist, listOf(item), "http://server")!!
+
+        assertTrue(m3u.content.contains("/track/audio.mp3"))
+        assertEquals("video/x-mpegurl; charset=utf-8", m3u.mimeType)
     }
 
     @Test

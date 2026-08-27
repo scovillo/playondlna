@@ -84,7 +84,8 @@ class OkHttpDownloadClient : Downloader() {
             val body = response.body?.string()
             Log.i(
                 "OkHttpDownloadClient",
-                "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | $body",
+                "${request.httpMethod()} | ${request.url()} | $requestBody - ${response.code} | " +
+                    "contentType=${response.header("Content-Type")}, bodyLength=${body?.length ?: 0}",
             )
             requireSuccessfulHttpStatus(
                 response.code,

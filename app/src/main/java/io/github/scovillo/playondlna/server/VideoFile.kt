@@ -51,6 +51,17 @@ class VideoFile(
     val isAudioOnly: Boolean = false,
     val cover: File? = null,
 ) {
+    val mimeType: String
+        get() =
+            when {
+                !isAudioOnly -> "video/mp4"
+                value.extension.equals("mp3", ignoreCase = true) -> "audio/mpeg"
+                else -> "audio/mp4"
+            }
+
+    val rendererFileName: String
+        get() = if (isAudioOnly) "audio.${value.extension.lowercase()}" else "video.mp4"
+
     constructor(
         extractor: StreamExtractor,
         value: File,
@@ -86,10 +97,7 @@ class VideoFile(
         }
 
     val url: String
-        get() {
-            val fileName = if (isAudioOnly) "audio.m4a" else "video.mp4"
-            return "http://${getLocalIpAddress()}:$serverPort/${this.id}/$fileName"
-        }
+        get() = "http://${getLocalIpAddress()}:$serverPort/${this.id}/$rendererFileName"
 
     val coverUrl: String
         get() = "http://${getLocalIpAddress()}:$serverPort/${this.id}/cover.jpg"
@@ -102,7 +110,6 @@ class VideoFile(
     val metaData: String
         get() {
             val mediaClass = if (isAudioOnly) "object.item.audioItem.musicTrack" else "object.item.videoItem.movie"
-            val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
             val albumArt =
                 if (isAudioOnly && cover != null) {
                     "<upnp:albumArtURI dlna:profileID=\"JPEG_LRG\">${coverUrl.escapeXml()}</upnp:albumArtURI>"

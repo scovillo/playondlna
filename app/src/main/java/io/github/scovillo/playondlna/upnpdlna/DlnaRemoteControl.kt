@@ -132,7 +132,8 @@ class DlnaRemoteControl(
                     return@launch
                 }
                 try {
-                    if (nativePlaylistSupport(device.usn) != false) {
+                    val requiresNativePlaylist = device.isKodiRenderer()
+                    if (requiresNativePlaylist || nativePlaylistSupport(device.usn) != false) {
                         try {
                             transport.play(device, nativePlaylist)
                             saveNativePlaylistSupport(device.usn, true)
@@ -140,7 +141,7 @@ class DlnaRemoteControl(
                             startNativePlaylistSync(device)
                             return@launch
                         } catch (exception: Exception) {
-                            if (!isUnsupportedPlaylistError(exception)) throw exception
+                            if (requiresNativePlaylist || !isUnsupportedPlaylistError(exception)) throw exception
                             saveNativePlaylistSupport(device.usn, false)
                         }
                     }
@@ -343,6 +344,8 @@ class DlnaRemoteControl(
 }
 
 private fun DlnaDevice.requireAvTransportUrl(): String = requireNotNull(avTransportUrl) { "No AVTransport URL for $friendlyName" }
+
+internal fun DlnaDevice.isKodiRenderer(): Boolean = sequenceOf(friendlyName, manufacturer, modelName).any { it.contains("kodi", ignoreCase = true) }
 
 enum class PlaybackMode { NATIVE_PLAYLIST, APP_MANAGED }
 

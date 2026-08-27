@@ -93,7 +93,7 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                     session.parameters["startIndex"]?.firstOrNull()?.toIntOrNull() ?: 0,
                 )
                     ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found or empty")
-            return newFixedLengthResponse(Response.Status.OK, "audio/mpegurl; charset=utf-8", playlist.content)
+            return newFixedLengthResponse(Response.Status.OK, playlist.mimeType, playlist.content)
         }
         val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
 
@@ -132,7 +132,7 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                     "Video with id $id not found!",
                 )
         val fileLength = file.length()
-        val mimeType = if (allFiles[id]?.isAudioOnly == true) "audio/mp4" else "video/mp4"
+        val mimeType = allFiles[id]!!.mimeType
         val rangeHeader = session.headers["range"]
         try {
             val (start, end) =
