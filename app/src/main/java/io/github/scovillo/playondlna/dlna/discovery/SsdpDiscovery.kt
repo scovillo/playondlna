@@ -40,13 +40,25 @@ class SsdpDiscovery(
     private val wifiManager: WifiManager,
     private val detailsClient: SsdpDeviceClient,
 ) {
+    companion object {
+        private const val SSDP_GROUP = "239.255.255.250"
+        private const val SSDP_PORT = 1900
+        private const val RECEIVE_SOCKET_TIMEOUT_MS = 250
+        private const val SEND_ROUNDS = 2
+        private const val SEND_ROUND_DELAY_MS = 120L
+        private const val QUIET_PERIOD_AFTER_RESPONSE_MS = 900L
+    }
+
     /**
      * Discover DLNA MediaRenderer devices on the network.
      *
      * @param timeoutMs Maximum time to wait for discovery responses
      * @return List of discovered DLNA devices
      */
-    suspend fun discoverLocalNetworkMediaRenderers(timeoutMs: Long = 5000): List<DlnaDevice> =
+    suspend fun discoverLocalNetworkMediaRenderers(
+        timeoutMs: Long = 5000,
+        onDeviceDiscovered: (DlnaDevice) -> Unit = {},
+    ): List<DlnaDevice> =
         coroutineScope {
             val lock =
                 wifiManager.createMulticastLock("PlayOnDlna:ssdp").apply {
@@ -54,7 +66,7 @@ class SsdpDiscovery(
                     acquire()
                 }
             try {
-                ssdpMediaRenderersDiscovery(timeoutMs)
+                ssdpMediaRenderersDiscovery(timeoutMs, onDeviceDiscovered)
             } finally {
                 if (lock.isHeld) {
                     lock.release()
@@ -62,41 +74,45 @@ class SsdpDiscovery(
             }
         }
 
-    private suspend fun ssdpMediaRenderersDiscovery(timeoutMs: Long): List<DlnaDevice> =
+    private suspend fun ssdpMediaRenderersDiscovery(
+        timeoutMs: Long,
+        onDeviceDiscovered: (DlnaDevice) -> Unit,
+    ): List<DlnaDevice> =
         coroutineScope {
-            val multicastAddress = InetAddress.getByName("239.255.255.250")
+            val multicastAddress = InetAddress.getByName(SSDP_GROUP)
             val searchTargets =
                 listOf(
-                    "ssdp:all",
-                    "upnp:rootdevice",
                     "urn:schemas-upnp-org:device:MediaRenderer:1",
-                    "urn:schemas-upnp-org:device:MediaServer:1",
                     "urn:schemas-upnp-org:service:AVTransport:1",
+                    "ssdp:all",
                 )
 
             val socket =
                 DatagramSocket(0).apply {
-                    soTimeout = 1000
+                    soTimeout = RECEIVE_SOCKET_TIMEOUT_MS
                 }
 
             val seenLocations = mutableSetOf<String>()
-            val fetchJobs = mutableListOf<Deferred<DlnaDevice?>>()
+            val fetchJobs = mutableListOf<Deferred<Unit>>()
+            val discoveredDevices = mutableMapOf<String, DlnaDevice>()
 
             for (target in searchTargets) {
                 val requestBytes = createSsdpRequest(target)
-                val packet = DatagramPacket(requestBytes, requestBytes.size, multicastAddress, 1900)
-                repeat(3) {
+                val packet = DatagramPacket(requestBytes, requestBytes.size, multicastAddress, SSDP_PORT)
+                repeat(SEND_ROUNDS) {
                     socket.send(packet)
-                    delay(300)
+                    delay(SEND_ROUND_DELAY_MS)
                 }
             }
 
             val startTime = System.currentTimeMillis()
+            var lastResponseAt = startTime
             while (System.currentTimeMillis() - startTime < timeoutMs) {
                 try {
                     val buf = ByteArray(2048)
                     val packet = DatagramPacket(buf, buf.size)
                     socket.receive(packet)
+                    lastResponseAt = System.currentTimeMillis()
 
                     val response = buf.decodeToString(0, packet.length)
                     val headers = parseSsdpHeaders(response)
@@ -111,21 +127,33 @@ class SsdpDiscovery(
                             seenLocations += location
                             val job =
                                 async {
-                                    detailsClient.fetch(usn, st, location)
+                                    val device = detailsClient.fetch(usn, st, location)
+                                    if (device != null && device.deviceType.contains("MediaRenderer")) {
+                                        synchronized(discoveredDevices) {
+                                            val isNew = discoveredDevices.putIfAbsent(device.location, device) == null
+                                            if (isNew) {
+                                                onDeviceDiscovered(device)
+                                            }
+                                        }
+                                    }
                                 }
                             fetchJobs += job
                         }
                     }
                 } catch (_: SocketTimeoutException) {
-                    // No packet, continue waiting
+                    if (
+                        seenLocations.isNotEmpty() &&
+                        System.currentTimeMillis() - lastResponseAt >= QUIET_PERIOD_AFTER_RESPONSE_MS
+                    ) {
+                        break
+                    }
                 }
             }
             socket.close()
 
-            val result =
-                fetchJobs.awaitAll()
-                    .filterNotNull()
-                    .filter { it.deviceType.contains("MediaRenderer") }
+            fetchJobs.awaitAll()
+
+            val result = synchronized(discoveredDevices) { discoveredDevices.values.toList() }
 
             result.forEach {
                 Log.d(
@@ -140,9 +168,9 @@ class SsdpDiscovery(
         val request =
             """
             M-SEARCH * HTTP/1.1
-            HOST: 239.255.255.250:1900
+            HOST: $SSDP_GROUP:$SSDP_PORT
             MAN: "ssdp:discover"
-            MX: 5
+            MX: 2
             ST: $st
 
             """.trimIndent().replace("\n", "\r\n") + "\r\n"

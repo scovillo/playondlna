@@ -15,7 +15,7 @@ class DeviceDiscoveryModel(application: Application) : AndroidViewModel(applicat
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = _toastEvents.asSharedFlow()
 
-    suspend fun discover(): List<DlnaDevice> {
+    suspend fun discover(onDeviceDiscovered: (DlnaDevice) -> Unit = {}): List<DlnaDevice> {
         return try {
             val context = getApplication<Application>().applicationContext
             val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -23,20 +23,7 @@ class DeviceDiscoveryModel(application: Application) : AndroidViewModel(applicat
             val deviceClient = SsdpDeviceClient()
             val discovery = SsdpDiscovery(wifiManager, deviceClient)
 
-            discovery.discoverLocalNetworkMediaRenderers()
-                .map { ssdpDevice ->
-                    DlnaDevice(
-                        usn = ssdpDevice.usn,
-                        st = ssdpDevice.st,
-                        location = ssdpDevice.location,
-                        friendlyName = ssdpDevice.friendlyName,
-                        manufacturer = ssdpDevice.manufacturer,
-                        modelName = ssdpDevice.modelName,
-                        deviceType = ssdpDevice.deviceType,
-                        avTransportUrl = ssdpDevice.avTransportUrl,
-                        renderingControlUrl = ssdpDevice.renderingControlUrl,
-                    )
-                }
+            discovery.discoverLocalNetworkMediaRenderers(onDeviceDiscovered = onDeviceDiscovered)
         } catch (e: Exception) {
             _toastEvents.emit(ToastEvent.Show(R.string.multicast_disabled))
             e.printStackTrace()

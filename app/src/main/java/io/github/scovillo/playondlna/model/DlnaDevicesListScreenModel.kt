@@ -22,15 +22,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.server.VideoFile
-import io.github.scovillo.playondlna.ui.ToastEvent
+import io.github.scovillo.playondlna.dlna.DeviceDiscoveryModel
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.DlnaMedia
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
-import io.github.scovillo.playondlna.dlna.DeviceDiscoveryModel
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.persistence.SettingsRepository
+import io.github.scovillo.playondlna.server.VideoFile
+import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +68,14 @@ class DlnaDevicesListScreenModel(
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
 
+    init {
+        viewModelScope.launch {
+            favoriteDevices.locations.collect { favorites ->
+                _devices.update { current -> sortDevices(current, favorites) }
+            }
+        }
+    }
+
     fun discoverDevices() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -75,18 +83,39 @@ class DlnaDevicesListScreenModel(
             val jobs =
                 listOf(
                     launch(Dispatchers.IO) {
-                        val ssdp = deviceDiscoveryModel.discover()
-                        _devices.update { it + ssdp }
+                        val ssdp = deviceDiscoveryModel.discover(onDeviceDiscovered = ::addDevice)
+                        ssdp.forEach(::addDevice)
                     },
                     launch(Dispatchers.IO) {
                         val manual = favoriteDevices.discover()
-                        _devices.update { it + manual }
+                        manual.forEach(::addDevice)
                     },
                 )
             jobs.joinAll()
-            _devices.update { it.distinctBy { device -> device.location } }
             _isLoading.value = false
         }
+    }
+
+    private fun addDevice(device: DlnaDevice) {
+        val favorites = favoriteDevices.locations.value
+        _devices.update { current ->
+            if (current.any { it.location == device.location }) {
+                current
+            } else {
+                sortDevices(current + device, favorites)
+            }
+        }
+    }
+
+    private fun sortDevices(
+        devices: List<DlnaDevice>,
+        favorites: Set<String>,
+    ): List<DlnaDevice> {
+        return devices.sortedWith(
+            compareByDescending<DlnaDevice> { it.location in favorites }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.friendlyName }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.location },
+        )
     }
 
     fun selectDevice(device: DlnaDevice) {
