@@ -4,7 +4,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.scovillo.playondlna.persistence.LibraryItem
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,7 +21,7 @@ class LibraryViewModel(private val libraryManager: LibraryManager) : ViewModel()
             _isLoading.value = true
             val result =
                 withContext(Dispatchers.IO) {
-                    libraryManager.getLibraryItems()
+                    libraryManager.fetchAllItems()
                 }
             _items.value = result
             _isLoading.value = false

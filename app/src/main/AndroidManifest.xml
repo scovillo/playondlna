@@ -19,14 +19,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.PlayOnDlna"
-        tools:targetApi="31"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
         <activity
             android:name="io.github.scovillo.playondlna.MainActivity"
-            android:launchMode="singleTask"
             android:exported="true"
-            android:theme="@style/Theme.PlayOnDlna"
-            android:screenOrientation="portrait">
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PlayOnDlna">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -38,7 +38,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name="io.github.scovillo.playondlna.server.WebServerService"
+            android:name="io.github.scovillo.playondlna.server.MediaFileServerService"
             android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

@@ -1,14 +1,15 @@
-package io.github.scovillo.playondlna.preparation
+package io.github.scovillo.playondlna.preparation.selection
 
 import android.util.Log
 import io.github.scovillo.playondlna.model.VideoQuality
+import io.github.scovillo.playondlna.preparation.hasBestCompatibility
 import org.schabi.newpipe.extractor.stream.VideoStream
 
 class VideoStreamSelection(
     private val videoStreams: List<VideoStream>,
     private val quality: VideoQuality,
 ) {
-    fun bestOrNull(): VideoStream? {
+    fun best(): VideoStream? {
         Log.d(
             "VideoStreams",
             videoStreams.joinToString(System.lineSeparator()) {

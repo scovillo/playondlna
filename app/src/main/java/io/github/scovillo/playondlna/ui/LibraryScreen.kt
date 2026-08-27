@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -58,43 +58,44 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.PlaylistViewModel
+import io.github.scovillo.playondlna.preparation.MediaFileJobStatus
 import io.github.scovillo.playondlna.preparation.VideoJobModel
-import io.github.scovillo.playondlna.preparation.VideoJobStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
 @Composable
-fun libraryScreen(
+fun LibraryScreen(
     libraryViewModel: LibraryViewModel,
     playlistViewModel: PlaylistViewModel,
     videoJobModel: VideoJobModel,
     navController: NavHostController,
     onVideoSelected: () -> Unit,
-    onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<io.github.scovillo.playondlna.persistence.LibraryItem>) -> Unit,
+    onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<LibraryItem>) -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
-        downloadPanel(videoJobModel)
+        DownloadPanel(videoJobModel)
         TabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.library_videos)) })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.library_playlists)) })
         }
         Box(modifier = Modifier.weight(1f)) {
             if (selectedTab == 0) {
-                libraryVideosScreen(libraryViewModel, playlistViewModel, videoJobModel, onVideoSelected)
+                LibraryVideosScreen(libraryViewModel, playlistViewModel, videoJobModel, onVideoSelected)
             } else {
-                playlistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController, onPlayPlaylist)
+                PlaylistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController, onPlayPlaylist)
             }
         }
     }
 }
 
 @Composable
-private fun downloadPanel(videoJobModel: VideoJobModel) {
+private fun DownloadPanel(videoJobModel: VideoJobModel) {
     val progress by videoJobModel.progress
     val title by videoJobModel.title
     val playlistPosition by videoJobModel.playlistPosition
@@ -134,8 +135,12 @@ private fun downloadPanel(videoJobModel: VideoJobModel) {
             },
         )
     }
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
-        val isDownloadActive = title != "idle" && status != VideoJobStatus.ERROR
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        val isDownloadActive = title != "idle" && status != MediaFileJobStatus.ERROR
         Text(
             text = if (title == "idle") stringResource(R.string.src_link) else title,
             modifier = Modifier.fillMaxWidth(),
@@ -145,7 +150,9 @@ private fun downloadPanel(videoJobModel: VideoJobModel) {
         )
         if (!isDownloadActive) {
             Text(
-                modifier = Modifier.fillMaxWidth().padding(all = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(all = 4.dp),
                 text = stringResource(R.string.or),
                 textAlign = TextAlign.Center,
             )
@@ -178,7 +185,10 @@ private fun downloadPanel(videoJobModel: VideoJobModel) {
             }
             LinearProgressIndicator(
                 progress = { progress / 100f },
-                modifier = Modifier.fillMaxWidth().height(50.dp).padding(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .padding(14.dp),
                 trackColor = ProgressIndicatorDefaults.linearTrackColor,
             )
         }
@@ -186,7 +196,7 @@ private fun downloadPanel(videoJobModel: VideoJobModel) {
 }
 
 @Composable
-private fun libraryVideosScreen(
+private fun LibraryVideosScreen(
     libraryViewModel: LibraryViewModel,
     playlistViewModel: PlaylistViewModel,
     videoJobModel: VideoJobModel,
@@ -202,7 +212,7 @@ private fun libraryVideosScreen(
         libraryViewModel.loadLibrary()
         playlistViewModel.loadPlaylists()
     }
-    LaunchedEffect(completedVideo?.id) {
+    LaunchedEffect(completedVideo?.metadata?.id) {
         if (completedVideo != null) libraryViewModel.loadLibrary()
     }
 
@@ -224,7 +234,7 @@ private fun libraryVideosScreen(
                                 .fillMaxWidth()
                                 .padding(8.dp)
                                 .clickable {
-                                    videoJobModel.loadFromLibrary(item)
+                                    videoJobModel.selectMediaItem(item)
                                     onVideoSelected()
                                 },
                     ) {
@@ -235,8 +245,8 @@ private fun libraryVideosScreen(
                                     .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            asyncThumbnailImage(
-                                file = item.thumbnailFile,
+                            ThumbnailImage(
+                                file = item.thumbnail,
                                 modifier =
                                     Modifier
                                         .size(100.dp, 70.dp)
@@ -257,7 +267,7 @@ private fun libraryVideosScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row {
-                                    item.metadata.qualityName?.let { quality ->
+                                    item.metadata.qualityName.let { quality ->
                                         Text(
                                             text = quality,
                                             fontSize = 12.sp,
@@ -280,7 +290,7 @@ private fun libraryVideosScreen(
                             }
                             IconButton(onClick = { videoToAdd = item.metadata.id }) {
                                 Icon(
-                                    Icons.Default.PlaylistAdd,
+                                    Icons.AutoMirrored.Filled.PlaylistAdd,
                                     contentDescription = stringResource(R.string.add_to_playlist),
                                 )
                             }
@@ -291,7 +301,7 @@ private fun libraryVideosScreen(
         }
     }
     videoToAdd?.let { videoId ->
-        addToPlaylistDialog(
+        AddToPlaylistDialog(
             playlists = playlists,
             onDismiss = { videoToAdd = null },
             onPlaylistSelected = {
@@ -303,7 +313,7 @@ private fun libraryVideosScreen(
 }
 
 @Composable
-fun asyncThumbnailImage(
+fun ThumbnailImage(
     file: File?,
     modifier: Modifier = Modifier,
 ) {

@@ -19,12 +19,13 @@
 package io.github.scovillo.playondlna.dlna.control
 
 import io.github.scovillo.playondlna.AppLog
-import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaMedia
-import io.github.scovillo.playondlna.dlna.TransportState
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.soap.SoapPlaybackTransportFactory
 import io.github.scovillo.playondlna.dlna.soap.UpnpActionException
+import io.github.scovillo.playondlna.model.LibraryItem
+import io.github.scovillo.playondlna.model.LibraryMetadata
+import io.github.scovillo.playondlna.ui.DlnaRemoteControl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,15 +34,21 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Transport boundary used by [DlnaRemoteControl] - provides legacy compatibility layer */
 interface DlnaTransport {
-    fun play(
+    fun playFile(
         device: DlnaDevice,
-        media: DlnaMedia,
+        item: LibraryItem,
+    )
+
+    fun playPlaylist(
+        device: DlnaDevice,
+        playlist: DlnaPlaylist,
     )
 
     fun command(
@@ -52,11 +59,6 @@ interface DlnaTransport {
     fun transportState(device: DlnaDevice): TransportState
 
     fun currentTrackUri(device: DlnaDevice): String?
-
-    fun seekToTrack(
-        device: DlnaDevice,
-        trackNumber: Int,
-    )
 }
 
 /**
@@ -68,11 +70,18 @@ class SoapDlnaTransport : DlnaTransport {
 
     private fun transportFor(device: DlnaDevice): PlaybackTransport = transportFactory.create(device.requireAvTransportUrl())
 
-    override fun play(
+    override fun playFile(
         device: DlnaDevice,
-        media: DlnaMedia,
+        item: LibraryItem,
     ) {
-        transportFor(device).play(media)
+        transportFor(device).play(item.url, item.metaDataDidlLite)
+    }
+
+    override fun playPlaylist(
+        device: DlnaDevice,
+        playlist: DlnaPlaylist,
+    ) {
+        transportFor(device).play(playlist.url, playlist.metadataDidlLite())
     }
 
     override fun command(
@@ -82,21 +91,13 @@ class SoapDlnaTransport : DlnaTransport {
         transportFor(device).command(command)
     }
 
-    override fun transportState(device: DlnaDevice): TransportState =
-        transportFor(device).transportState()
+    override fun transportState(device: DlnaDevice): TransportState = transportFor(device).transportState()
 
     override fun currentTrackUri(device: DlnaDevice): String? = transportFor(device).currentTrackUri()
-
-    override fun seekToTrack(
-        device: DlnaDevice,
-        trackNumber: Int,
-    ) {
-        transportFor(device).seekToTrack(trackNumber)
-    }
 }
 
 /**
- * Controls a single DLNA playback session without any dependency on Android UI or persistence.
+ * Controls independent DLNA playback sessions without any dependency on Android UI or persistence.
  *
  * The host supplies persistence and user-feedback callbacks, while the transport can be replaced
  * in tests or by another UPnP implementation.
@@ -104,66 +105,45 @@ class SoapDlnaTransport : DlnaTransport {
 class DlnaRemoteControl(
     private val scope: CoroutineScope,
     private val transport: DlnaTransport = SoapDlnaTransport(),
-    private val nativePlaylistSupport: suspend (String) -> Boolean? = { null },
-    private val saveNativePlaylistSupport: suspend (String, Boolean) -> Unit = { _, _ -> },
     private val onIncompatibleDevice: suspend (DlnaDevice) -> Unit = {},
     private val onPlaybackFailure: suspend (Throwable) -> Unit = {},
 ) {
-    private var playbackJob: Job? = null
-    private var nativeSyncJob: Job? = null
-    private val playbackSession = MutableStateFlow<PlaybackSession?>(null)
+    private val playbackJobs = ConcurrentHashMap<String, Job>()
+    private val playbackSessions = MutableStateFlow<Map<String, PlaybackSession>>(emptyMap())
 
     fun playVideo(
         device: DlnaDevice,
-        videoFile: VideoFile,
-    ) = playMedia(
-        device,
-        DlnaMedia(
-            videoFile.url,
-            videoFile.metaData,
-        ),
-    )
-
-    fun playMedia(
-        device: DlnaDevice,
-        media: DlnaMedia,
+        item: LibraryItem,
     ) {
-        cancelPlayback()
+        cancelPlayback(device)
         scope.launch(Dispatchers.IO) {
             if (device.avTransportUrl == null) {
                 onIncompatibleDevice(device)
                 return@launch
             }
-            runCatching { transport.play(device, media) }.onFailure { onPlaybackFailure(it) }
+            runCatching { transport.playFile(device, item) }.onFailure { onPlaybackFailure(it) }
         }
     }
 
     fun playPlaylist(
         device: DlnaDevice,
-        nativePlaylist: DlnaMedia,
-        videoFiles: List<VideoFile>,
+        nativePlaylist: DlnaPlaylist,
+        items: List<LibraryItem>,
     ) {
-        cancelPlayback()
-        playbackJob =
+        cancelPlayback(device)
+        val deviceKey = device.location
+        val playbackJob =
             scope.launch(Dispatchers.IO) {
                 if (device.avTransportUrl == null) {
                     onIncompatibleDevice(device)
                     return@launch
                 }
                 try {
-                    if (nativePlaylistSupport(device.usn) != false) {
+                    if (!isMixedPlaylist(items)) {
                         try {
-                            transport.play(device, nativePlaylist)
-                            saveNativePlaylistSupport(device.usn, true)
-                            playbackSession.value =
-                                PlaybackSession(
-                                    device,
-                                    PlaybackMode.NATIVE_PLAYLIST,
-                                    videoFiles,
-                                    0,
-                                    nativePlaylist,
-                                )
-                            startNativePlaylistSync(device)
+                            AppLog.i("DlnaRemoteControl", "Trying native playlist for device: ${device.friendlyName}")
+                            transport.playPlaylist(device, nativePlaylist)
+                            AppLog.i("DlnaRemoteControl", "Native playlist playback success on device: ${device.friendlyName}")
                             return@launch
                         } catch (exception: Exception) {
                             if (
@@ -173,55 +153,64 @@ class DlnaRemoteControl(
                             ) {
                                 throw exception
                             }
-                            saveNativePlaylistSupport(device.usn, false)
+                            AppLog.i("DlnaRemoteControl", "Native playlist playback failed on device: ${device.friendlyName}")
                         }
+                    } else {
+                        AppLog.i("DlnaRemoteControl", "Using app managed playback for mixed playlist")
                     }
-                    playbackSession.value =
+                    currentCoroutineContext().ensureActive()
+                    setPlaybackSession(
                         PlaybackSession(
                             device,
-                            PlaybackMode.APP_MANAGED,
-                            videoFiles,
+                            items,
                             0,
-                            nativePlaylist,
-                        )
-                    playAppPlaylistFrom(0)
+                        ),
+                    )
+                    playAppPlaylistFrom(deviceKey, 0)
+                    AppLog.i("DlnaRemoteControl", "App managed playlist playback started on device: ${device.friendlyName}")
                 } catch (_: CancellationException) {
                     // A newer command superseded this playback session.
                 } catch (exception: Exception) {
                     onPlaybackFailure(exception)
                 }
             }
+        registerPlaybackJob(deviceKey, playbackJob)
     }
 
     fun command(
         device: DlnaDevice,
         command: PlaybackCommand,
     ) {
-        if (playbackSession.value?.device?.location != device.location) {
+        val deviceKey = device.location
+        val playbackSession = playbackSessions.value[deviceKey]
+        if (playbackSession == null) {
             sendCommand(device, command)
             return
         }
-        val previousPlaybackJob = playbackJob
-        AppLog.i("AppManagedPlaylist", "Manual $command requested at index ${playbackSession.value?.currentIndex}")
+        val previousPlaybackJob = playbackJobs[deviceKey]
+        AppLog.i("AppManagedPlaylist", "Manual $command requested at index ${playbackSession.currentIndex}")
         previousPlaybackJob?.cancel()
-        playbackJob =
+        val playbackJob =
             scope.launch(Dispatchers.IO) {
                 try {
                     previousPlaybackJob?.join()
-                    val currentSession = playbackSession.value?.takeIf { it.device.location == device.location } ?: return@launch
+                    val currentSession = playbackSessions.value[deviceKey] ?: return@launch
                     AppLog.i("AppManagedPlaylist", "Manual $command runs at index ${currentSession.currentIndex}")
                     when {
                         command == PlaybackCommand.NEXT ||
                             command == PlaybackCommand.PREVIOUS -> {
                             changeTrack(currentSession, command)
                         }
+
                         command == PlaybackCommand.PLAY &&
                             currentSession.transportState == TransportState.STOPPED -> {
                             resumeStoppedSession(currentSession)
                         }
+
                         command == PlaybackCommand.PLAY -> {
                             resumeSession(currentSession)
                         }
+
                         command == PlaybackCommand.PAUSE ||
                             command == PlaybackCommand.STOP -> {
                             pauseOrStop(currentSession, command)
@@ -237,11 +226,12 @@ class DlnaRemoteControl(
                             exception,
                         )
                     ) {
-                        markUnsupported(command)
+                        markUnsupported(deviceKey, command)
                     }
                     onPlaybackFailure(exception)
                 }
             }
+        registerPlaybackJob(deviceKey, playbackJob)
     }
 
     private fun sendCommand(
@@ -261,56 +251,31 @@ class DlnaRemoteControl(
         session: PlaybackSession,
         command: PlaybackCommand,
     ) {
-        val index = playlistIndexForCommand(session.currentIndex, session.videoFiles.lastIndex, command) ?: return
-        when {
-            session.transportState == TransportState.STOPPED -> {
-                playbackSession.value = session.copy(currentIndex = index)
-            }
-            session.mode == PlaybackMode.APP_MANAGED -> {
-                playAppPlaylistFrom(index)
-            }
-            else -> {
-                transport.command(session.device, command)
-                playbackSession.value = session.copy(currentIndex = index)
-            }
+        val index = playlistIndexForCommand(session.currentIndex, session.items.lastIndex, command) ?: return
+        if (session.transportState == TransportState.STOPPED) {
+            setPlaybackSession(session.copy(currentIndex = index))
+        } else {
+            playAppPlaylistFrom(session.device.location, index)
         }
     }
 
     private suspend fun resumeStoppedSession(session: PlaybackSession) {
-        if (session.mode == PlaybackMode.NATIVE_PLAYLIST) {
-            try {
-                transport.seekToTrack(session.device, session.currentIndex + 1)
-                transport.command(session.device, PlaybackCommand.PLAY)
-            } catch (exception: Exception) {
-                if (
-                    !UpnpActionException.isUnsupportedTrackSeek(
-                        exception,
-                    )
-                ) {
-                    throw exception
-                }
-                transport.play(session.device, session.nativePlaylist.startingAt(session.currentIndex))
-            }
-            playbackSession.value =
-                session.copy(
-                    transportState = TransportState.PLAYING,
-                )
-        } else {
-            playbackSession.value =
-                session.copy(
-                    transportState = TransportState.PLAYING,
-                )
-            playAppPlaylistFrom(session.currentIndex)
-        }
+        setPlaybackSession(
+            session.copy(
+                transportState = TransportState.PLAYING,
+            ),
+        )
+        playAppPlaylistFrom(session.device.location, session.currentIndex)
     }
 
     private suspend fun resumeSession(session: PlaybackSession) {
         transport.command(session.device, PlaybackCommand.PLAY)
-        playbackSession.value =
+        setPlaybackSession(
             session.copy(
                 transportState = TransportState.PLAYING,
-            )
-        if (session.mode == PlaybackMode.APP_MANAGED) continueAppPlaylist(session)
+            ),
+        )
+        continueAppPlaylist(session)
     }
 
     private fun pauseOrStop(
@@ -318,7 +283,7 @@ class DlnaRemoteControl(
         command: PlaybackCommand,
     ) {
         transport.command(session.device, command)
-        playbackSession.value =
+        setPlaybackSession(
             session.copy(
                 transportState =
                     if (command == PlaybackCommand.STOP) {
@@ -326,30 +291,34 @@ class DlnaRemoteControl(
                     } else {
                         TransportState.PAUSED_PLAYBACK
                     },
-            )
+            ),
+        )
     }
 
-    private fun markUnsupported(command: PlaybackCommand) {
-        playbackSession.value = playbackSession.value?.let { it.copy(unsupportedCommands = it.unsupportedCommands + command) }
+    private fun markUnsupported(
+        deviceKey: String,
+        command: PlaybackCommand,
+    ) {
+        playbackSessions.update { sessions ->
+            val session = sessions[deviceKey] ?: return@update sessions
+            sessions + (deviceKey to session.copy(unsupportedCommands = session.unsupportedCommands + command))
+        }
     }
 
-    private suspend fun playAppPlaylistFrom(startIndex: Int) {
-        var session = playbackSession.value ?: return
-        AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.videoFiles.size}")
-        for (index in startIndex..session.videoFiles.lastIndex) {
+    private suspend fun playAppPlaylistFrom(
+        deviceKey: String,
+        startIndex: Int,
+    ) {
+        var session = playbackSessions.value[deviceKey] ?: return
+        AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.items.size}")
+        for (index in startIndex..session.items.lastIndex) {
             currentCoroutineContext().ensureActive()
             session = session.copy(currentIndex = index)
-            playbackSession.value = session
-            val videoFile = session.videoFiles[index]
-            AppLog.i("AppManagedPlaylist", "Start ${index + 1}/${session.videoFiles.size}: ${videoFile.id}")
+            setPlaybackSession(session)
+            val item = session.items[index]
+            AppLog.i("AppManagedPlaylist", "Start ${index + 1}/${session.items.size}: ${item.metadata.id}")
             try {
-                transport.play(
-                    session.device,
-                    DlnaMedia(
-                        videoFile.url,
-                        videoFile.metaData,
-                    ),
-                )
+                transport.playFile(session.device, item)
             } catch (exception: Exception) {
                 if (
                     !UpnpActionException.isTransitionInProgress(
@@ -358,17 +327,17 @@ class DlnaRemoteControl(
                 ) {
                     throw exception
                 }
-                AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.videoFiles.size}")
+                AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.items.size}")
             }
             currentCoroutineContext().ensureActive()
-            if (index < session.videoFiles.lastIndex) awaitPlaybackEnd(session.device, videoFile.url)
+            if (index < session.items.lastIndex) awaitPlaybackEnd(session.device, item.url)
         }
     }
 
     private suspend fun continueAppPlaylist(session: PlaybackSession) {
-        if (session.currentIndex >= session.videoFiles.lastIndex) return
-        awaitPlaybackEnd(session.device, session.videoFiles[session.currentIndex].url)
-        playAppPlaylistFrom(session.currentIndex + 1)
+        if (session.currentIndex >= session.items.lastIndex) return
+        awaitPlaybackEnd(session.device, session.items[session.currentIndex].url)
+        playAppPlaylistFrom(session.device.location, session.currentIndex + 1)
     }
 
     private suspend fun awaitPlaybackEnd(
@@ -414,43 +383,29 @@ class DlnaRemoteControl(
         throw lastError ?: IllegalStateException("GetTransportInfo failed")
     }
 
-    private fun startNativePlaylistSync(device: DlnaDevice) {
-        nativeSyncJob?.cancel()
-        nativeSyncJob =
-            scope.launch(Dispatchers.IO) {
-                while (isActive) {
-                    delay(2000.milliseconds)
-                    val trackUri = runCatching { transport.currentTrackUri(device) }.getOrNull() ?: continue
-                    val session =
-                        playbackSession.value
-                            ?.takeIf { it.mode == PlaybackMode.NATIVE_PLAYLIST }
-                            ?: return@launch
-                    val index = session.videoFiles.indexOfFirst { it.url == trackUri }
-                    if (index >= 0 && index != session.currentIndex) {
-                        playbackSession.value = session.copy(currentIndex = index)
-                    }
-                }
-            }
+    private fun registerPlaybackJob(
+        deviceKey: String,
+        playbackJob: Job,
+    ) {
+        playbackJobs[deviceKey] = playbackJob
+        playbackJob.invokeOnCompletion { playbackJobs.remove(deviceKey, playbackJob) }
     }
 
-    private fun cancelPlayback() {
-        playbackJob?.cancel()
-        nativeSyncJob?.cancel()
-        playbackSession.value = null
+    private fun setPlaybackSession(session: PlaybackSession) {
+        playbackSessions.update { it + (session.device.location to session) }
     }
-}
 
-enum class PlaybackMode {
-    NATIVE_PLAYLIST,
-    APP_MANAGED,
+    private fun cancelPlayback(device: DlnaDevice) {
+        val deviceKey = device.location
+        playbackJobs.remove(deviceKey)?.cancel()
+        playbackSessions.update { it - deviceKey }
+    }
 }
 
 data class PlaybackSession(
     val device: DlnaDevice,
-    val mode: PlaybackMode,
-    val videoFiles: List<VideoFile>,
+    val items: List<LibraryItem>,
     val currentIndex: Int,
-    val nativePlaylist: DlnaMedia,
     val unsupportedCommands: Set<PlaybackCommand> = emptySet(),
     val transportState: TransportState = TransportState.PLAYING,
 )
@@ -465,3 +420,8 @@ fun playlistIndexForCommand(
         PlaybackCommand.PREVIOUS -> (currentIndex - 1).takeIf { it >= 0 }
         else -> null
     }
+
+fun isMixedPlaylist(videoFiles: List<LibraryItem>): Boolean {
+    val metadata = videoFiles.map { it.metadata }
+    return metadata.any(LibraryMetadata::isAudioOnly) && metadata.any { !it.isAudioOnly }
+}

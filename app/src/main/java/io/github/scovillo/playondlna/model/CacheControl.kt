@@ -8,7 +8,6 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +20,7 @@ import java.io.File
 
 class CacheControl(
     private val cacheDir: File,
-    private val currentVideoFile: State<VideoFile?>,
+    private val currentVideoFile: State<LibraryItem?>,
     private val currentSession: State<Session?>,
     private val sizeCalculationTrigger: Flow<Any>,
 ) : ViewModel() {
@@ -64,14 +63,14 @@ class CacheControl(
                     FFmpegKit.cancel(it.sessionId)
                 }
             }
-            val currentVideoFile = currentVideoFile.value
+            val currentItem = currentVideoFile.value
             cacheDir.listFiles()?.forEach { file ->
                 if (file.exists() && (
-                        currentVideoFile == null ||
+                        currentItem == null ||
                             !file.name.contains(
-                                currentVideoFile.id,
+                                currentItem.metadata.id,
                             )
-                    )
+                        )
                 ) {
                     file.delete()
                 }

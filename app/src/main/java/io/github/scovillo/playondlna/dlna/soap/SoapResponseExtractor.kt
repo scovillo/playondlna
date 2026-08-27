@@ -18,7 +18,7 @@
 
 package io.github.scovillo.playondlna.dlna.soap
 
-import io.github.scovillo.playondlna.dlna.TransportState
+import io.github.scovillo.playondlna.dlna.control.TransportState
 
 /**
  * Parses SOAP response XML strings from UPnP devices.

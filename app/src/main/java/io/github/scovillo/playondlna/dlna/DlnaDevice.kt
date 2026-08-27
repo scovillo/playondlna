@@ -32,6 +32,5 @@ data class DlnaDevice(
     val avTransportUrl: String?,
     val renderingControlUrl: String?,
 ) {
-    fun requireAvTransportUrl(): String =
-        requireNotNull(avTransportUrl) { "No AVTransport URL for $friendlyName" }
+    fun requireAvTransportUrl(): String = requireNotNull(avTransportUrl) { "No AVTransport URL for $friendlyName" }
 }

@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.ui.ToastEvent
-import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted

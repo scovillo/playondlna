@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.preparation
+package io.github.scovillo.playondlna.preparation.selection
 
 import org.schabi.newpipe.extractor.Image
 

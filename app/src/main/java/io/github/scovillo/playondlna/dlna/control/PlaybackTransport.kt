@@ -1,8 +1,5 @@
 package io.github.scovillo.playondlna.dlna.control
 
-import io.github.scovillo.playondlna.dlna.DlnaMedia
-import io.github.scovillo.playondlna.dlna.TransportState
-
 /**
  * Abstraction for playback-related transport operations.
  * Can be replaced with mock implementations for testing.
@@ -10,9 +7,12 @@ import io.github.scovillo.playondlna.dlna.TransportState
  */
 interface PlaybackTransport {
     /**
-     * Play media at the given URI with metadata.
+     * Set the transport URI and its DIDL-Lite metadata, then start playback.
      */
-    fun play(media: DlnaMedia)
+    fun play(
+        url: String,
+        metadata: String,
+    )
 
     /**
      * Send a playback command (pause, stop, next, previous, etc).
@@ -28,9 +28,4 @@ interface PlaybackTransport {
      * Get the URI of the currently playing track.
      */
     fun currentTrackUri(): String?
-
-    /**
-     * Seek to a specific track (track-based seeking).
-     */
-    fun seekToTrack(trackNumber: Int)
 }

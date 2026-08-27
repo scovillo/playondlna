@@ -20,8 +20,8 @@ package io.github.scovillo.playondlna.download
 
 import android.util.Log
 import io.github.scovillo.playondlna.AppLog
-import io.github.scovillo.playondlna.preparation.VideoJobState
-import io.github.scovillo.playondlna.server.Subtitle
+import io.github.scovillo.playondlna.model.Subtitle
+import io.github.scovillo.playondlna.preparation.MediaFileJobState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -196,7 +196,7 @@ class PlayOnDlnaStreamDownload(
     private val id: String,
     videoUrl: String?,
     private val cacheDir: File,
-    private val state: VideoJobState,
+    private val state: MediaFileJobState,
     val logTimeInMillis: Int = 3000,
     val userAgent: String = YoutubeParsingHelper.getAndroidUserAgent(null),
 ) {
@@ -231,7 +231,7 @@ class PlayOnDlnaStreamDownload(
     }
 
     fun withSubtitle(subtitleStream: SubtitlesStream) {
-        downloads["subtitle"] =
+        downloads["fetchSubtitle"] =
             PlayOnDlnaFileDownload(
                 "${id}_subtitle_",
                 ".${subtitleStream.locale.language}.srt",
@@ -297,13 +297,13 @@ class PlayOnDlnaStreamDownload(
                 Log.d(
                     "Download",
                     "Download in ${(System.currentTimeMillis() - startTime) / 1000}s completed: Video -> ${downloads["video"]?.result}," +
-                        " Audio -> ${downloads["audio"]?.result}, Subtitle -> ${downloads["subtitle"]?.result}",
+                        " Audio -> ${downloads["audio"]?.result}, Subtitle -> ${downloads["fetchSubtitle"]?.result}",
                 )
             }
             return@coroutineScope PlayOnDlnaVideoInput(
                 videoFile = downloads["video"]?.result,
                 audioFile = downloads["audio"]?.result,
-                subtitle = if (downloads.containsKey("subtitle")) Subtitle(downloads["subtitle"]!!.result) else null,
+                subtitle = if (downloads.containsKey("fetchSubtitle")) Subtitle(downloads["fetchSubtitle"]!!.result) else null,
             )
         }
 }

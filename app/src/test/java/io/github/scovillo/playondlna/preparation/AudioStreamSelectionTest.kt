@@ -2,6 +2,8 @@ package io.github.scovillo.playondlna.preparation
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
+import io.github.scovillo.playondlna.preparation.selection.AudioStreamSelection
+import io.github.scovillo.playondlna.preparation.selection.hasBestCompatibility
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test

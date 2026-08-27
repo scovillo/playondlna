@@ -22,14 +22,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.DeviceDiscoveryModel
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -45,7 +42,6 @@ import kotlinx.coroutines.launch
 class DlnaDevicesListScreenModel(
     private val deviceDiscoveryModel: DeviceDiscoveryModel,
     val favoriteDevices: FavoriteDevices,
-    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
@@ -56,8 +52,6 @@ class DlnaDevicesListScreenModel(
     private val remote =
         DlnaRemoteControl(
             scope = viewModelScope,
-            nativePlaylistSupport = settingsRepository::nativePlaylistSupport,
-            saveNativePlaylistSupport = settingsRepository::saveNativePlaylistSupport,
             onIncompatibleDevice = ::incompatibleDevice,
             onPlaybackFailure = { _toastEvents.emit(ToastEvent.Show(R.string.playback_failed)) },
         )
@@ -124,13 +118,13 @@ class DlnaDevicesListScreenModel(
 
     fun playVideoOnDevice(
         device: DlnaDevice,
-        videoFile: VideoFile,
+        videoFile: LibraryItem,
     ) = remote.playVideo(device, videoFile)
 
     fun playPlaylistOnDevice(
         device: DlnaDevice,
-        nativePlaylist: DlnaMedia,
-        videoFiles: List<VideoFile>,
+        nativePlaylist: DlnaPlaylist,
+        videoFiles: List<LibraryItem>,
     ) = remote.playPlaylist(device, nativePlaylist, videoFiles)
 
     fun remoteCommand(command: PlaybackCommand) {

@@ -172,36 +172,6 @@ class PreviousCommand(override val serviceUrl: String) : SoapCommand {
 }
 
 /**
- * Seek to a specific track in a playlist (track-based seeking).
- */
-class SeekCommand(
-    override val serviceUrl: String,
-    val trackNumber: Int,
-) : SoapCommand {
-    init {
-        require(trackNumber > 0) { "Track number must be > 0" }
-    }
-
-    override val actionName = "Seek"
-    override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Seek"
-
-    override fun createPayload(): String =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
-                    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-          <s:Body>
-            <u:Seek xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-              <InstanceID>0</InstanceID>
-              <Unit>TRACK_NR</Unit>
-              <Target>$trackNumber</Target>
-            </u:Seek>
-          </s:Body>
-        </s:Envelope>
-        """.trimIndent()
-}
-
-/**
  * Query transport state (playing, paused, stopped, etc.).
  */
 class GetTransportInfoCommand(override val serviceUrl: String) : SoapCommand {

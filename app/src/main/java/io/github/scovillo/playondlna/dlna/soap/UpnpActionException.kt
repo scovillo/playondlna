@@ -35,11 +35,6 @@ class UpnpActionException(
 
         fun isUnsupportedAction(exception: Throwable): Boolean = exception is UpnpActionException && exception.upnpErrorCode == 401
 
-        fun isUnsupportedTrackSeek(exception: Throwable): Boolean =
-            exception is UpnpActionException &&
-                exception.action == "Seek" &&
-                exception.upnpErrorCode in setOf(401, 501)
-
         fun isTransitionInProgress(exception: Throwable): Boolean = exception is UpnpActionException && exception.action == "Play" && exception.upnpErrorCode == 701
 
         private fun extractUpnpErrorCode(responseBody: String): Int? =

@@ -29,57 +29,20 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import fi.iki.elonen.NanoHTTPD
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
+import io.github.scovillo.playondlna.model.LibraryItem
+import java.io.ByteArrayInputStream
 import java.io.FileInputStream
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
-import java.net.ServerSocket
-import java.net.SocketException
-import java.util.Enumeration
 
-fun getRandomFreePort(): Int {
-    try {
-        ServerSocket(0).use { socket ->
-            socket.setReuseAddress(true)
-            return socket.getLocalPort()
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        return 63791
-    }
-}
-
-val serverPort = getRandomFreePort()
-
-fun getLocalIpAddress(): String? {
-    try {
-        val interfaces: Enumeration<NetworkInterface?> = NetworkInterface.getNetworkInterfaces()
-        while (interfaces.hasMoreElements()) {
-            val networkInterface: NetworkInterface? = interfaces.nextElement()
-            if (!networkInterface!!.isUp() || networkInterface.isLoopback) {
-                continue
-            }
-            val addresses: Enumeration<InetAddress?> = networkInterface.getInetAddresses()
-            while (addresses.hasMoreElements()) {
-                val inetAddress: InetAddress? = addresses.nextElement()
-                if (!inetAddress!!.isLoopbackAddress && inetAddress is Inet4Address) {
-                    return inetAddress.hostAddress
-                }
-            }
-        }
-    } catch (e: SocketException) {
-        e.printStackTrace()
-    }
-    return null
-}
-
-class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
-    val allFiles = mutableMapOf<String, VideoFile>()
-    var playlistProvider: ((String, String) -> PlaylistM3u?)? = null
+class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
+    val allFiles = mutableMapOf<String, LibraryItem>()
+    var playlistProvider: ((String, String) -> DlnaPlaylist.Payload?)? = null
+    var playlistCoverProvider: ((String) -> ByteArray?)? = null
+    var audioCoverProvider: (() -> ByteArray?)? = null
 
     override fun serve(session: IHTTPSession): Response {
-        Log.i("VideoHttpServer", "-> ${session.uri}")
+        Log.i("MediaFileHttpServer", "-> ${session.uri}")
         Log.d(
             "RequestHeaders",
             session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator()),
@@ -89,18 +52,36 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
             val playlist =
                 playlistProvider?.invoke(
                     uriParts[2],
-                    "http://${getLocalIpAddress()}:$serverPort"
+                    "http://${localIpAddress.value()}:$serverPort",
                 )
                     ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found or empty")
-            return newFixedLengthResponse(Response.Status.OK, playlist.mimeType, playlist.content)
+            return newFixedLengthResponse(Response.Status.OK, "${playlist.mimeType}; charset=UTF-8", playlist.content)
+        }
+        if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "cover.jpg") {
+            val cover =
+                playlistCoverProvider?.invoke(uriParts[2])
+                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist cover not found")
+            return newFixedLengthResponse(
+                Response.Status.OK,
+                "image/jpeg",
+                ByteArrayInputStream(cover),
+                cover.size.toLong(),
+            )
         }
         val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
 
         if (session.uri.endsWith("/cover.jpg", ignoreCase = true)) {
+            allFiles[id] ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
             val cover =
-                allFiles[id]?.cover
+                audioCoverProvider?.invoke()
                     ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
-            return newFixedLengthResponse(Response.Status.OK, "image/jpeg", FileInputStream(cover), cover.length())
+            return newFixedLengthResponse(
+                Response.Status.OK,
+                "image/jpeg",
+                ByteArrayInputStream(cover),
+                cover.size.toLong(),
+            )
+
         }
 
         val isSubtitle = session.uri.endsWith(".srt", ignoreCase = true)
@@ -124,11 +105,11 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
         }
 
         val file =
-            allFiles[id]?.value
+            allFiles[id]?.mediaFile
                 ?: return newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
                     MIME_PLAINTEXT,
-                    "Video with id $id not found!",
+                    "Media file with id $id not found!",
                 )
         val fileLength = file.length()
         val mimeType = allFiles[id]!!.mimeType
@@ -173,7 +154,7 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                 }
             response.addHeader("Accept-Ranges", "bytes")
             response.addHeader("Connection", "keep-alive")
-            Log.i("VideoHttpServer", "<- ${session.uri}")
+            Log.i("MediaFileHttpServer", "<- ${session.uri}")
             return response
         } catch (e: Exception) {
             e.printStackTrace()
@@ -186,22 +167,22 @@ class VideoHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
     }
 }
 
-val videoHttpServer = VideoHttpServer(serverPort)
+val mediaFileHttpServer = MediaFileHttpServer(serverPort)
 
 const val ACTION_STOP_SERVER = "io.github.scovillo.playondlna.server.ACTION_STOP_SERVER"
 
-class WebServerService : Service() {
+class MediaFileServerService : Service() {
     override fun onCreate() {
         super.onCreate()
         try {
-            videoHttpServer.start()
-            Log.i("WebServerService", "Http Server started!")
+            mediaFileHttpServer.start()
+            Log.i("MediaFileServerService", "Http Server started!")
         } catch (e: IOException) {
             e.printStackTrace()
         }
 
         val stopIntent =
-            Intent(this, WebServerService::class.java).apply {
+            Intent(this, MediaFileServerService::class.java).apply {
                 action = ACTION_STOP_SERVER
             }
         val stopPendingIntent =
@@ -215,7 +196,7 @@ class WebServerService : Service() {
         val notification: Notification =
             NotificationCompat.Builder(this, "http_channel")
                 .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text, getLocalIpAddress(), serverPort))
+                .setContentText(getString(R.string.notification_text, localIpAddress.value(), serverPort))
                 .setSmallIcon(R.drawable.playondlna_icon)
                 .setOngoing(true)
                 .addAction(
@@ -245,7 +226,7 @@ class WebServerService : Service() {
     }
 
     override fun onDestroy() {
-        videoHttpServer.stop()
+        mediaFileHttpServer.stop()
         super.onDestroy()
     }
 

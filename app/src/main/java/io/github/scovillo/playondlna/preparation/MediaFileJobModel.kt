@@ -18,7 +18,6 @@
 
 package io.github.scovillo.playondlna.preparation
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -30,16 +29,20 @@ import com.arthenica.ffmpegkit.Session
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.download.HttpStatusException
 import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
+import io.github.scovillo.playondlna.download.PlayOnDlnaVideoInput
 import io.github.scovillo.playondlna.download.okHttpClient
+import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.VideoQuality
-import io.github.scovillo.playondlna.persistence.LibraryItem
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.server.Subtitle
-import io.github.scovillo.playondlna.server.VideoFile
-import io.github.scovillo.playondlna.server.videoHttpServer
+import io.github.scovillo.playondlna.preparation.selection.AudioStreamSelection
+import io.github.scovillo.playondlna.preparation.selection.VideoStreamSelection
+import io.github.scovillo.playondlna.preparation.selection.bestThumbnailUrl
+import io.github.scovillo.playondlna.preparation.selection.hasBestCompatibility
+import io.github.scovillo.playondlna.preparation.selection.isMp3Ready
+import io.github.scovillo.playondlna.server.mediaFileHttpServer
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +79,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class VideoJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
+enum class MediaFileJobStatus { IDLE, PREPARING, FINALIZING, READY, ERROR }
 
 data class PlaylistPosition(val current: Int, val total: Int)
 
@@ -90,6 +93,12 @@ val VideoStream.hasBestCompatibility: Boolean
             "avc",
         ) == true
     }
+
+fun StreamExtractor.safeId(): String {
+    if (id.matches(Regex("[A-Za-z0-9._-]+"))) return id
+    val digest = MessageDigest.getInstance("SHA-256").digest(id.toByteArray())
+    return "media_" + digest.take(16).joinToString("") { "%02x".format(it) }
+}
 
 fun StreamExtractor.subtitle(): SubtitlesStream? {
     val locale = Locale.getDefault()
@@ -105,24 +114,23 @@ fun StreamExtractor.subtitle(): SubtitlesStream? {
 }
 
 class VideoJobModel(
-    context: Context,
     settingsRepository: SettingsRepository,
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
     private val libraryManager: LibraryManager,
     private val playlistManager: PlaylistManager,
 ) : ViewModel() {
-    private val youtubeUrlNormalizer = YoutubeUrlNormalizer()
-    private var _currentVideoFile = mutableStateOf<VideoFile?>(null)
+    private val youtubeUrl = YoutubeUrl()
+    private var _currentVideoFile = mutableStateOf<LibraryItem?>(null)
     private var _currentThumbnailFile = mutableStateOf<File?>(null)
-    private var _currentSession = mutableStateOf<Session?>(null)
+    private var _currentFfmpegSession = mutableStateOf<Session?>(null)
     private val _title = mutableStateOf("idle")
     private val _playlistPosition = mutableStateOf<PlaylistPosition?>(null)
     private val _playlistImportSummary = mutableStateOf<PlaylistImportSummary?>(null)
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     private val _completedSessions = MutableSharedFlow<Long>()
     private val _playbackStarted = MutableSharedFlow<Unit>()
-    private val state = VideoJobState()
+    private val state = MediaFileJobState()
 
     private val videoQuality: StateFlow<VideoQuality> =
         settingsRepository.videoQualityFlow
@@ -154,14 +162,14 @@ class VideoJobModel(
             )
     private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
-    val currentVideoFile: State<VideoFile?> get() = _currentVideoFile
+    val currentVideoFile: State<LibraryItem?> get() = _currentVideoFile
     val currentThumbnailFile: State<File?> get() = _currentThumbnailFile
-    val currentSession: State<Session?> get() = _currentSession
+    val currentFfmpegSession: State<Session?> get() = _currentFfmpegSession
     val title: State<String> get() = _title
     val playlistPosition: State<PlaylistPosition?> get() = _playlistPosition
     val playlistImportSummary: State<PlaylistImportSummary?> get() = _playlistImportSummary
     val progress: State<Float> get() = state.progress
-    val status: State<VideoJobStatus> get() = state.status
+    val status: State<MediaFileJobStatus> get() = state.status
     val toastEvents = _toastEvents.asSharedFlow()
     val completedSessions = _completedSessions.asSharedFlow()
     val playbackStarted = _playbackStarted.asSharedFlow()
@@ -170,8 +178,39 @@ class VideoJobModel(
         this.monitorWifiConnection()
     }
 
+    fun dismissPlaylistImportSummary() {
+        _playlistImportSummary.value = null
+    }
+
+    fun selectMediaItem(mediaId: String) {
+        val item = libraryManager.fetchOneItem(mediaId)
+        selectMediaItem(item)
+    }
+
+    fun selectMediaItem(item: LibraryItem) {
+        mediaFileHttpServer.allFiles[item.metadata.id] = item
+        _currentVideoFile.value = item
+        state.ready()
+    }
+
+    fun selectPlaylist(items: List<LibraryItem>) {
+        _currentThumbnailFile.value = items.firstOrNull()?.thumbnail
+        items.forEach { item ->
+            mediaFileHttpServer.allFiles[item.metadata.id] = item
+        }
+        viewModelScope.launch {
+            _playbackStarted.emit(Unit)
+        }
+    }
+
+    fun cancelJobs() {
+        Log.w("VideoJobModel", "Cancelling ${runningJobs.size} running jobs")
+        runningJobs.forEach { it.cancel() }
+        runningJobs.clear()
+    }
+
     fun prepareVideo(url: String) {
-        val normalizedUrl = youtubeUrlNormalizer.normalize(url)
+        val normalizedUrl = youtubeUrl.normalize(url)
         val job =
             viewModelScope.launch(Dispatchers.IO) {
                 try {
@@ -179,7 +218,7 @@ class VideoJobModel(
                     Log.i("VideoJobModel", "Requesting: $normalizedUrl")
                     _currentVideoFile.value = null
                     _currentThumbnailFile.value = null
-                    _currentSession.value = null
+                    _currentFfmpegSession.value = null
                     _title.value = normalizedUrl
                     val resolvedUrl = resolveSoundCloudShortUrl(normalizedUrl)
                     val service = NewPipe.getServiceByUrl(resolvedUrl)
@@ -188,7 +227,7 @@ class VideoJobModel(
                     } else {
                         prepareSingleVideo(resolvedUrl)
                     }
-                    if (state.status.value != VideoJobStatus.ERROR) {
+                    if (state.status.value != MediaFileJobStatus.ERROR) {
                         _title.value = "idle"
                         state.idle()
                     }
@@ -272,134 +311,6 @@ class VideoJobModel(
         _playlistImportSummary.value = PlaylistImportSummary(addedEntries, skippedEntries)
     }
 
-    fun dismissPlaylistImportSummary() {
-        _playlistImportSummary.value = null
-    }
-
-    private fun resolveSoundCloudShortUrl(url: String): String {
-        if (runCatching { URI(url).host }.getOrNull() != "on.soundcloud.com") return url
-        return try {
-            okHttpClient.newCall(Request.Builder().url(url).head().build()).execute().use { response ->
-                response.request.url.toString().also { resolvedUrl ->
-                    Log.i("VideoJobModel", "Resolved SoundCloud share URL to $resolvedUrl")
-                }
-            }
-        } catch (error: IOException) {
-            Log.w("VideoJobModel", "Could not resolve SoundCloud share URL, using original URL", error)
-            url
-        }
-    }
-
-    private suspend fun prepareSingleVideo(url: String): String {
-        val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
-        extractor.fetchPage()
-        val mediaId = safeMediaId(extractor.id)
-        _title.value = extractor.name
-        val isAudioOnlyExtraction = (extractor.videoStreams + extractor.videoOnlyStreams).isEmpty()
-        val cachedFile =
-            cacheDir.listFiles()?.find {
-                it.exists() && it.name.contains(mediaId) && it.name.contains("final") &&
-                    if (isAudioOnlyExtraction) {
-                        it.extension.equals("m4a", ignoreCase = true) || it.extension.equals("mp3", ignoreCase = true)
-                    } else {
-                        it.extension.equals("mp4", ignoreCase = true)
-                    }
-            }
-        if (cachedFile != null) {
-            return publishCachedVideo(extractor, mediaId, cachedFile)
-        } else {
-            mux(extractor, mediaId)
-        }
-        return mediaId
-    }
-
-    private suspend fun publishCachedVideo(
-        extractor: StreamExtractor,
-        mediaId: String,
-        cachedFile: File,
-    ): String {
-        val isAudioOnly = !cachedFile.extension.equals("mp4", ignoreCase = true)
-        val thumbnailFile = if (isAudioOnly) ensureThumbnail(extractor, mediaId) else null
-        val subtitleFile = cacheDir.listFiles()?.find { it.exists() && it.name.contains(mediaId) && it.name.contains("subtitle") }
-        videoHttpServer.allFiles[mediaId] =
-            VideoFile(
-                id = mediaId,
-                title = extractor.name,
-                uploader = extractor.uploaderName,
-                durationInSeconds = extractor.length,
-                value = cachedFile,
-                videoQuality = videoQuality.value,
-                subtitle = if (isAudioOnly) null else subtitleFile?.let(::Subtitle),
-                dlnaProfile = if (isAudioOnly) audioDlnaProfile(cachedFile) else videoQuality.value.dlnaProfile,
-                isAudioOnly = isAudioOnly,
-                cover = thumbnailFile,
-            )
-        _currentVideoFile.value = videoHttpServer.allFiles[mediaId]
-        state.ready()
-        saveToLibrary(extractor, mediaId, if (isAudioOnly) "Audio" else "${videoQuality.value.height}p", isAudioOnly)
-        return mediaId
-    }
-
-    fun cancelJobs() {
-        Log.w("VideoJobModel", "Cancelling ${runningJobs.size} running jobs")
-        runningJobs.forEach { it.cancel() }
-        runningJobs.clear()
-    }
-
-    fun loadFromLibrary(item: LibraryItem) {
-        viewModelScope.launch {
-            _playbackStarted.emit(Unit)
-            _currentVideoFile.value = null
-            _currentThumbnailFile.value = item.thumbnailFile
-            _currentSession.value = null
-            _title.value = item.metadata.title
-
-            val videoFile =
-                VideoFile(
-                    id = item.metadata.id,
-                    title = item.metadata.title,
-                    uploader = item.metadata.uploader,
-                    durationInSeconds = item.metadata.durationInSeconds,
-                    value = item.videoFile,
-                    videoQuality = videoQuality.value,
-                    subtitle = null,
-                    dlnaProfile = if (item.metadata.isAudioOnly) audioDlnaProfile(item.videoFile) else videoQuality.value.dlnaProfile,
-                    isAudioOnly = item.metadata.isAudioOnly,
-                    cover = if (item.metadata.isAudioOnly) item.thumbnailFile else null,
-                )
-
-            videoHttpServer.allFiles[item.metadata.id] = videoFile
-            _currentVideoFile.value = videoFile
-            state.ready()
-        }
-    }
-
-    fun preparePlaylist(items: List<LibraryItem>): List<VideoFile> {
-        _currentThumbnailFile.value = items.firstOrNull()?.thumbnailFile
-        val videoFiles =
-            items.map { item ->
-                val videoFile =
-                    VideoFile(
-                        id = item.metadata.id,
-                        title = item.metadata.title,
-                        uploader = item.metadata.uploader,
-                        durationInSeconds = item.metadata.durationInSeconds,
-                        value = item.videoFile,
-                        videoQuality = videoQuality.value,
-                        subtitle = null,
-                        dlnaProfile = if (item.metadata.isAudioOnly) audioDlnaProfile(item.videoFile) else videoQuality.value.dlnaProfile,
-                        isAudioOnly = item.metadata.isAudioOnly,
-                        cover = if (item.metadata.isAudioOnly) item.thumbnailFile else null,
-                    )
-                videoHttpServer.allFiles[item.metadata.id] = videoFile
-                videoFile
-            }
-        viewModelScope.launch {
-            _playbackStarted.emit(Unit)
-        }
-        return videoFiles
-    }
-
     private suspend fun mux(
         extractor: StreamExtractor,
         mediaId: String,
@@ -414,7 +325,7 @@ class VideoJobModel(
             VideoStreamSelection(
                 extractor.videoStreams + extractor.videoOnlyStreams,
                 videoQuality.value,
-            ).bestOrNull()
+            ).best()
         val bestAudio = AudioStreamSelection(extractor.audioStreams).best()
         check(bestVideo != null || bestAudio != null) { "No playable video or audio stream found" }
         val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
@@ -440,60 +351,54 @@ class VideoJobModel(
             } catch (error: Exception) {
                 throw DownloadFailedException(error)
             }
-        if (bestVideo == null && bestAudio?.canBeServedAsMp3 == true && streamFiles.audioFile != null) {
-            publishNativeMp3(extractor, mediaId, streamFiles)
+        if (bestVideo == null && bestAudio?.isMp3Ready == true && streamFiles.audioFile != null) {
+            val libraryItem = createMp3LibraryItem(extractor, mediaId, streamFiles)
+            mediaFileHttpServer.allFiles[mediaId] = libraryItem
+            _currentVideoFile.value = libraryItem
+            state.ready()
             return
         }
-        val muxFile =
-            withContext(Dispatchers.IO) {
-                File.createTempFile("${mediaId}_muxed_final_", if (bestVideo == null) ".m4a" else ".mp4", cacheDir)
-            }
-        val audioCover = if (bestVideo == null) ensureThumbnail(extractor, mediaId) else null
+        val mediaFile = withContext(Dispatchers.IO) {
+            val file = File(cacheDir, "${mediaId}_muxed_final${if (bestVideo == null) ".m4a" else ".mp4"}")
+            file.createNewFile()
+            file
+        }
+        val mediaCover = extractor.thumbnails.bestThumbnailUrl()?.let { libraryManager.downloadThumbnail(mediaId, it) }
         val ffmpegCmd =
             PlayOnDlnaFfmpegCommand(
                 streamFiles,
                 bestAudio?.hasBestCompatibility ?: true,
-                muxFile,
+                mediaFile,
                 isInternalSubtitleEnabled.value,
                 remoteAudioUrl = remoteAudioUrl,
             )
-
         Log.i("VideoJobModel", "Final FFMPEGKit command: ${ffmpegCmd.value()}")
         state.finalizing()
         suspendCancellableCoroutine { continuation ->
-            _currentSession.value =
+            _currentFfmpegSession.value =
                 FFmpegKit.executeAsync(
                     ffmpegCmd.value(),
                     { session ->
                         if (ReturnCode.isSuccess(session.returnCode)) {
                             Log.d("Mux", "Muxing completed successfully")
-                            if (_currentSession.value?.sessionId == session.sessionId) {
-                                videoHttpServer.allFiles[mediaId] =
-                                    VideoFile(
-                                        id = mediaId,
-                                        title = extractor.name,
-                                        uploader = extractor.uploaderName,
-                                        durationInSeconds = extractor.length,
-                                        value = muxFile,
-                                        videoQuality = if (bestVideo == null) VideoQuality.P1080 else videoQuality.value,
-                                        subtitle = if (bestVideo == null) null else streamFiles.subtitle,
-                                        dlnaProfile =
-                                            if (bestVideo == null) {
-                                                "AAC_ISO_320"
-                                            } else {
-                                                videoQuality.value.dlnaProfile
-                                            },
-                                        isAudioOnly = bestVideo == null,
-                                        cover = audioCover,
-                                    )
-                                _currentVideoFile.value = videoHttpServer.allFiles[mediaId]
+                            val libraryItem = LibraryItem(
+                                LibraryMetadata(
+                                    id = mediaId,
+                                    title = extractor.name,
+                                    uploader = extractor.uploaderName,
+                                    durationInSeconds = extractor.length,
+                                    qualityName = if (bestVideo == null) "Audio" else "${bestVideo.height}p",
+                                    isAudioOnly = bestVideo == null,
+                                ),
+                                mediaFile,
+                                mediaCover,
+                                if (bestVideo == null) null else streamFiles.subtitle,
+                            )
+                            libraryManager.save(libraryItem.metadata)
+                            if (_currentFfmpegSession.value?.sessionId == session.sessionId) {
+                                mediaFileHttpServer.allFiles[mediaId] = libraryItem
+                                _currentVideoFile.value = libraryItem
                                 state.ready()
-                                saveToLibrary(
-                                    extractor,
-                                    mediaId,
-                                    if (bestVideo == null) "Audio" else "${bestVideo.height}p",
-                                    bestVideo == null,
-                                )
                                 if (continuation.isActive) continuation.resume(Unit)
                             } else if (continuation.isActive) {
                                 continuation.resumeWithException(CancellationException("Superseded FFmpeg session"))
@@ -501,7 +406,7 @@ class VideoJobModel(
                         } else {
                             Log.e("Mux", "Muxing failed!")
                             state.error()
-                            muxFile.delete()
+                            mediaFile.delete()
                             if (continuation.isActive) continuation.resumeWithException(IllegalStateException("Muxing failed"))
                         }
                         streamFiles.delete()
@@ -519,78 +424,63 @@ class VideoJobModel(
         }
     }
 
-    private suspend fun publishNativeMp3(
+    private suspend fun createMp3LibraryItem(
         extractor: StreamExtractor,
         mediaId: String,
-        streamFiles: io.github.scovillo.playondlna.download.PlayOnDlnaVideoInput,
-    ) {
+        streamFiles: PlayOnDlnaVideoInput,
+    ): LibraryItem {
         state.finalizing()
         val source = requireNotNull(streamFiles.audioFile)
-        var finalFile: File? = null
-        try {
-            val publishedFile =
-                withContext(Dispatchers.IO) {
-                    File.createTempFile("${mediaId}_audio_final_", ".mp3", cacheDir).also { output ->
-                        source.copyTo(output, overwrite = true)
-                    }
-                }
-            finalFile = publishedFile
-            val cover = ensureThumbnail(extractor, mediaId)
-            videoHttpServer.allFiles[mediaId] =
-                VideoFile(
-                    id = mediaId,
-                    title = extractor.name,
-                    uploader = extractor.uploaderName,
-                    durationInSeconds = extractor.length,
-                    value = publishedFile,
-                    videoQuality = VideoQuality.P1080,
-                    subtitle = null,
-                    dlnaProfile = "MP3",
-                    isAudioOnly = true,
-                    cover = cover,
-                )
-            _currentSession.value = null
-            _currentVideoFile.value = videoHttpServer.allFiles[mediaId]
-            state.ready()
-            saveToLibrary(extractor, mediaId, "Audio", true)
-        } catch (error: Exception) {
-            finalFile?.delete()
-            throw error
-        } finally {
-            streamFiles.delete()
-        }
-    }
-
-    private fun saveToLibrary(
-        extractor: StreamExtractor,
-        mediaId: String,
-        qualityName: String,
-        isAudioOnly: Boolean = false,
-    ) {
-        val metadata =
+        val mediaFile =
+            withContext(Dispatchers.IO) {
+                val output = File(cacheDir, "${mediaId}_audio_final_.mp3")
+                output.createNewFile()
+                source.copyTo(output, overwrite = true)
+            }
+        val cover = extractor.thumbnails.bestThumbnailUrl()?.let { libraryManager.downloadThumbnail(mediaId, it) }
+        val libraryItem = LibraryItem(
             LibraryMetadata(
                 id = mediaId,
                 title = extractor.name,
                 uploader = extractor.uploaderName,
                 durationInSeconds = extractor.length,
-                thumbnailUri = extractor.thumbnails.bestThumbnailUrl(),
-                qualityName = qualityName,
-                isAudioOnly = isAudioOnly,
-            )
-        libraryManager.saveMetadata(metadata)
-        metadata.thumbnailUri?.let { thumbUrl ->
-            if (libraryManager.thumbnailFile(mediaId) == null) {
-                viewModelScope.launch { libraryManager.downloadThumbnail(mediaId, thumbUrl) }
+                qualityName = "Audio",
+                isAudioOnly = true,
+            ),
+            mediaFile,
+            cover,
+            null
+        )
+        libraryManager.save(libraryItem.metadata)
+        return libraryItem
+    }
+
+    private fun resolveSoundCloudShortUrl(url: String): String {
+        if (runCatching { URI(url).host }.getOrNull() != "on.soundcloud.com") return url
+        return try {
+            okHttpClient.newCall(Request.Builder().url(url).head().build()).execute().use { response ->
+                response.request.url.toString().also { resolvedUrl ->
+                    Log.i("VideoJobModel", "Resolved SoundCloud share URL to $resolvedUrl")
+                }
             }
+        } catch (error: IOException) {
+            Log.w("VideoJobModel", "Could not resolve SoundCloud share URL, using original URL", error)
+            url
         }
     }
 
-    private suspend fun ensureThumbnail(
-        extractor: StreamExtractor,
-        mediaId: String,
-    ): File? =
-        extractor.thumbnails.bestThumbnailUrl()?.let { libraryManager.downloadThumbnail(mediaId, it) }
-            ?: libraryManager.thumbnailFile(mediaId)
+    private suspend fun prepareSingleVideo(url: String): String {
+        val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
+        extractor.fetchPage()
+        val mediaId = extractor.safeId()
+        _title.value = extractor.name
+        if (libraryManager.isExisting(mediaId)) {
+            selectMediaItem(mediaId)
+        } else {
+            mux(extractor, mediaId)
+        }
+        return mediaId
+    }
 
     private fun resetDownloadPanel() {
         _title.value = "idle"
@@ -617,11 +507,3 @@ class VideoJobModel(
 }
 
 internal fun normalizePlaylistEntryUrl(url: String): String = url.replace(Regex("(?<!:)/{2,}"), "/")
-
-internal fun safeMediaId(rawId: String): String {
-    if (rawId.matches(Regex("[A-Za-z0-9._-]+"))) return rawId
-    val digest = MessageDigest.getInstance("SHA-256").digest(rawId.toByteArray())
-    return "media_" + digest.take(16).joinToString("") { "%02x".format(it) }
-}
-
-private fun audioDlnaProfile(file: File): String = if (file.extension.equals("mp3", ignoreCase = true)) "MP3" else "AAC_ISO_320"

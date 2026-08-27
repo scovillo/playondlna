@@ -60,18 +60,18 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
-import io.github.scovillo.playondlna.preparation.VideoJobModel
-import io.github.scovillo.playondlna.server.VideoFile
-import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
+import io.github.scovillo.playondlna.model.LibraryItem
+import io.github.scovillo.playondlna.preparation.VideoJobModel
 
 @Composable
 fun DlnaListScreen(
     videoJobModel: VideoJobModel,
     dlnaModel: DlnaDevicesListScreenModel,
-    playlistVideoFiles: List<VideoFile> = emptyList(),
-    playlistMedia: DlnaMedia? = null,
+    playlistVideoFiles: List<LibraryItem> = emptyList(),
+    playlist: DlnaPlaylist? = null,
 ) {
     val devices by dlnaModel.devices.collectAsState()
     val isLoading by dlnaModel.isLoading.collectAsState()
@@ -118,12 +118,12 @@ fun DlnaListScreen(
                 DlnaRemoteControl(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
-                    playlistMedia = playlistMedia,
+                    playlist = playlist,
                     selectedDevice = selectedDevice,
                     onCommand = dlnaModel::remoteCommand,
                     onPlay = { device ->
-                        if (playlistVideoFiles.isNotEmpty() && playlistMedia != null) {
-                            dlnaModel.playPlaylistOnDevice(device, playlistMedia, playlistVideoFiles)
+                        if (playlistVideoFiles.isNotEmpty() && playlist != null) {
+                            dlnaModel.playPlaylistOnDevice(device, playlist, playlistVideoFiles)
                         } else if (currentVideo != null) {
                             dlnaModel.playVideoOnDevice(device, currentVideo)
                         } else {
@@ -132,7 +132,9 @@ fun DlnaListScreen(
                     },
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(

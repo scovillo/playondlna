@@ -1,13 +1,14 @@
-package io.github.scovillo.playondlna.dlna
+package io.github.scovillo.playondlna.model
 
 import android.app.Application
 import android.content.Context
 import android.net.wifi.WifiManager
 import androidx.lifecycle.AndroidViewModel
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.ui.ToastEvent
+import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import io.github.scovillo.playondlna.dlna.discovery.SsdpDiscovery
+import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 

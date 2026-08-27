@@ -29,15 +29,25 @@ import kotlinx.coroutines.launch
 
 enum class VideoQuality(
     val titleRes: Int,
+    val qualityName: String,
     val height: Int,
     val dlnaProfile: String,
 ) {
-    P360(R.string.q_360p, 360, "AVC_MP4_BL_CIF25_AAC"),
-    P480(R.string.q_480p, 480, "AVC_MP4_BL_SD_25_AAC"),
-    P720(R.string.q_720p, 720, "AVC_MP4_BL_HD_720p_AAC"),
-    P1080(R.string.q_1080p, 1080, "AVC_MP4_HP_1080p_AAC"),
-    P1440(R.string.q_1440p, 1440, "AVC_MP4_HP_1440p_AAC"),
-    P2160(R.string.q_2160p, 2160, "AVC_MP4_HP_2160p_AAC"),
+    P360(R.string.q_360p, "360p", 360, "AVC_MP4_BL_CIF25_AAC"),
+    P480(R.string.q_480p, "480p", 480, "AVC_MP4_BL_SD_25_AAC"),
+    P720(R.string.q_720p, "720p", 720, "AVC_MP4_BL_HD_720p_AAC"),
+    P1080(R.string.q_1080p, "1080p", 1080, "AVC_MP4_HP_1080p_AAC"),
+    P1440(R.string.q_1440p, "1440p", 1440, "AVC_MP4_HP_1440p_AAC"),
+    P2160(R.string.q_2160p, "2160p", 2160, "AVC_MP4_HP_2160p_AAC");
+
+    companion object {
+        val default: VideoQuality
+            get() = P720
+
+        fun byQualityName(name: String): VideoQuality {
+            return VideoQuality.entries.find { it.qualityName == name } ?: default
+        }
+    }
 }
 
 class VideoSettingsState(private val repository: SettingsRepository) : ViewModel() {

@@ -18,10 +18,9 @@
 
 package io.github.scovillo.playondlna.dlna.soap
 
-import io.github.scovillo.playondlna.dlna.DlnaMedia
-import io.github.scovillo.playondlna.dlna.TransportState
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.dlna.control.PlaybackTransport
+import io.github.scovillo.playondlna.dlna.control.TransportState
 import okhttp3.OkHttpClient
 
 class SoapPlaybackTransport(
@@ -29,8 +28,11 @@ class SoapPlaybackTransport(
     private val soapClient: SoapClient,
     private val extractor: SoapResponseExtractor = SoapResponseExtractor(),
 ) : PlaybackTransport {
-    override fun play(media: DlnaMedia) {
-        soapClient.execute(SetAVTransportUriCommand(serviceUrl, media.url, media.metaData))
+    override fun play(
+        url: String,
+        metadata: String,
+    ) {
+        soapClient.execute(SetAVTransportUriCommand(serviceUrl, url, metadata))
         soapClient.execute(PlayCommand(serviceUrl))
     }
 
@@ -47,10 +49,6 @@ class SoapPlaybackTransport(
     override fun transportState(): TransportState = extractor.parseTransportState(soapClient.execute(GetTransportInfoCommand(serviceUrl)))
 
     override fun currentTrackUri(): String? = extractor.parseCurrentTrackUri(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
-
-    override fun seekToTrack(trackNumber: Int) {
-        soapClient.execute(SeekCommand(serviceUrl, trackNumber))
-    }
 }
 
 class SoapPlaybackTransportFactory(

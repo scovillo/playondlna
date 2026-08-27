@@ -42,33 +42,41 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.server.VideoFile
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaMedia
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.model.LibraryItem
 import java.io.File
 
 @Composable
 fun DlnaRemoteControl(
-    currentVideo: VideoFile?,
+    currentVideo: LibraryItem?,
     currentThumbnail: File?,
-    playlistMedia: DlnaMedia?,
+    playlist: DlnaPlaylist?,
     selectedDevice: DlnaDevice?,
     onCommand: (PlaybackCommand) -> Unit,
     onPlay: (DlnaDevice) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            asyncThumbnailImage(
+            ThumbnailImage(
                 file = currentThumbnail,
                 modifier = Modifier.size(96.dp, 64.dp),
             )
-            Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f)
+            ) {
                 Text(
-                    text = playlistMedia?.title ?: currentVideo?.title ?: stringResource(R.string.no_media_selected),
+                    text = playlist?.title ?: currentVideo?.metadata?.title ?: stringResource(R.string.no_media_selected),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 selectedDevice?.let {

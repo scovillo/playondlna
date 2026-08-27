@@ -6,62 +6,62 @@ import org.junit.Test
 class VideoJobStateTest {
     @Test
     fun preparing() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         classUnderTest.updateProgress(25f)
 
         classUnderTest.preparing()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.PREPARING)
+        Assert.assertEquals(classUnderTest.status.value, MediaFileJobStatus.PREPARING)
         Assert.assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
     @Test
     fun finalizing() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         classUnderTest.updateProgress(25f)
 
         classUnderTest.finalizing()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.FINALIZING)
+        Assert.assertEquals(classUnderTest.status.value, MediaFileJobStatus.FINALIZING)
         Assert.assertEquals(classUnderTest.progress.value, 50.0f)
     }
 
     @Test
     fun ready() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         classUnderTest.updateProgress(25f)
 
         classUnderTest.ready()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.READY)
+        Assert.assertEquals(classUnderTest.status.value, MediaFileJobStatus.READY)
         Assert.assertEquals(classUnderTest.progress.value, 100.0f)
     }
 
     @Test
     fun idleResetsProgress() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         classUnderTest.updateProgress(100f)
 
         classUnderTest.idle()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.IDLE)
+        Assert.assertEquals(classUnderTest.status.value, MediaFileJobStatus.IDLE)
         Assert.assertEquals(classUnderTest.progress.value, 0.0f)
     }
 
     @Test
     fun error() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         classUnderTest.updateProgress(25f)
 
         classUnderTest.error()
 
-        Assert.assertEquals(classUnderTest.status.value, VideoJobStatus.ERROR)
+        Assert.assertEquals(classUnderTest.status.value, MediaFileJobStatus.ERROR)
         Assert.assertEquals(classUnderTest.progress.value, 25.0f)
     }
 
     @Test
     fun updateProgress() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
         Assert.assertEquals(classUnderTest.progress.value, 0.0f)
 
         classUnderTest.updateProgress(25f)
@@ -71,7 +71,7 @@ class VideoJobStateTest {
 
     @Test
     fun mapsDownloadAndFinalizingProgressToHalves() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
 
         classUnderTest.updateDownloadProgress(100f)
         Assert.assertEquals(classUnderTest.progress.value, 50.0f)
@@ -82,7 +82,7 @@ class VideoJobStateTest {
 
     @Test
     fun progressCanNotBeNegative() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
 
         classUnderTest.updateProgress(-1f)
 
@@ -91,7 +91,7 @@ class VideoJobStateTest {
 
     @Test
     fun progressCanNotBeGreaterThan100() {
-        val classUnderTest = VideoJobState()
+        val classUnderTest = MediaFileJobState()
 
         classUnderTest.updateProgress(101f)
 

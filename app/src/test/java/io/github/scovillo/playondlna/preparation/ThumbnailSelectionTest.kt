@@ -1,5 +1,6 @@
 package io.github.scovillo.playondlna.preparation
 
+import io.github.scovillo.playondlna.preparation.selection.bestThumbnailUrl
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.schabi.newpipe.extractor.Image

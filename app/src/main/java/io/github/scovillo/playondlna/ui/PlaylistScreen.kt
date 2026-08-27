@@ -34,14 +34,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.PlaylistViewModel
-import io.github.scovillo.playondlna.persistence.LibraryItem
 import io.github.scovillo.playondlna.preparation.VideoJobModel
 
 @Composable
-fun playlistsScreen(
+fun PlaylistsScreen(
     playlistViewModel: PlaylistViewModel,
     libraryViewModel: LibraryViewModel,
     videoJobModel: VideoJobModel,
@@ -61,7 +61,7 @@ fun playlistsScreen(
     }
     val playlist = playlists.find { it.id == playlistId }
     if (playlistId != null && playlist != null) {
-        playlistDetails(
+        PlaylistDetails(
             playlist = playlist,
             libraryViewModel = libraryViewModel,
             videoJobModel = videoJobModel,
@@ -69,19 +69,35 @@ fun playlistsScreen(
             onPlay = onPlayPlaylist,
         )
     } else {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
             Button(onClick = { creating = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Icon(Icons.Default.Add, null)
                 Text(stringResource(R.string.create_playlist), modifier = Modifier.padding(start = 8.dp))
             }
             if (playlists.isEmpty()) {
-                Text(stringResource(R.string.no_playlists), modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 32.dp))
+                Text(
+                    stringResource(R.string.no_playlists), modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 32.dp)
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(playlists, key = { it.id }) { item ->
                         val playableItems = item.videoIds.mapNotNull { videoId -> libraryItems.find { it.metadata.id == videoId } }
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { navController.navigate("playlist/${item.id}") }) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                                .clickable { navController.navigate("playlist/${item.id}") }) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp), verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium)
                                     Text(stringResource(R.string.playlist_video_count, item.videoIds.size), style = MaterialTheme.typography.bodySmall)
@@ -102,13 +118,13 @@ fun playlistsScreen(
         }
     }
     if (creating) {
-        playlistNameDialog(R.string.create_playlist, "", { creating = false }) {
+        PlaylistNameDialog(R.string.create_playlist, "", { creating = false }) {
             playlistViewModel.createPlaylist(it)
             creating = false
         }
     }
     renaming?.let { target ->
-        playlistNameDialog(R.string.rename_playlist, target.name, { renaming = null }) {
+        PlaylistNameDialog(R.string.rename_playlist, target.name, { renaming = null }) {
             playlistViewModel.renamePlaylist(target.id, it)
             renaming = null
         }
@@ -130,7 +146,7 @@ fun playlistsScreen(
 }
 
 @Composable
-private fun playlistDetails(
+private fun PlaylistDetails(
     playlist: Playlist,
     libraryViewModel: LibraryViewModel,
     videoJobModel: VideoJobModel,
@@ -142,7 +158,11 @@ private fun playlistDetails(
     val validItems = playlist.videoIds.mapNotNull(itemById::get)
     var startError by remember(playlist.id) { mutableStateOf(false) }
     var isStarting by remember(playlist.id) { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(playlist.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = {
@@ -164,8 +184,16 @@ private fun playlistDetails(
             LazyColumn {
                 items(validItems, key = { it.metadata.id }) { item ->
                     val videoId = item.metadata.id
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { videoJobModel.loadFromLibrary(item) }) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .clickable { videoJobModel.selectMediaItem(item) }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp), verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.metadata.title)
                                 Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall)
@@ -180,7 +208,7 @@ private fun playlistDetails(
 }
 
 @Composable
-private fun playlistNameDialog(
+private fun PlaylistNameDialog(
     title: Int,
     initialValue: String,
     onDismiss: () -> Unit,
@@ -203,7 +231,7 @@ private fun playlistNameDialog(
 }
 
 @Composable
-fun addToPlaylistDialog(
+fun AddToPlaylistDialog(
     playlists: List<Playlist>,
     onDismiss: () -> Unit,
     onPlaylistSelected: (String) -> Unit,
@@ -213,8 +241,7 @@ fun addToPlaylistDialog(
             Text(stringResource(R.string.no_playlists_to_add))
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                playlists.forEach {
-                        playlist ->
+                playlists.forEach { playlist ->
                     Button(onClick = { onPlaylistSelected(playlist.id) }, modifier = Modifier.fillMaxWidth()) { Text(playlist.name) }
                 }
             }

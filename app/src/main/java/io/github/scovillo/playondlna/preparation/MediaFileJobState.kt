@@ -4,35 +4,35 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 
-class VideoJobState {
+class MediaFileJobState {
     private val _progress = mutableFloatStateOf(0f)
-    private val _status = mutableStateOf(VideoJobStatus.IDLE)
+    private val _status = mutableStateOf(MediaFileJobStatus.IDLE)
 
     val progress: State<Float> get() = _progress
-    val status: State<VideoJobStatus> get() = _status
+    val status: State<MediaFileJobStatus> get() = _status
 
     fun preparing() {
-        _status.value = VideoJobStatus.PREPARING
+        _status.value = MediaFileJobStatus.PREPARING
         updateProgress(0f)
     }
 
     fun finalizing() {
         updateProgress(50f)
-        _status.value = VideoJobStatus.FINALIZING
+        _status.value = MediaFileJobStatus.FINALIZING
     }
 
     fun ready() {
         updateProgress(100.0f)
-        _status.value = VideoJobStatus.READY
+        _status.value = MediaFileJobStatus.READY
     }
 
     fun idle() {
         updateProgress(0f)
-        _status.value = VideoJobStatus.IDLE
+        _status.value = MediaFileJobStatus.IDLE
     }
 
     fun error() {
-        _status.value = VideoJobStatus.ERROR
+        _status.value = MediaFileJobStatus.ERROR
     }
 
     fun updateProgress(value: Float) {

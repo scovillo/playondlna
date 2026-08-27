@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.preparation
+package io.github.scovillo.playondlna.preparation.selection
 
 import io.github.scovillo.playondlna.AppLog
 import org.schabi.newpipe.extractor.stream.AudioStream
@@ -34,7 +34,7 @@ val AudioStream.hasBestCompatibility: Boolean
         return format?.mimeType?.startsWith("audio/mp4") == true && isAac
     }
 
-val AudioStream.canBeServedAsMp3: Boolean
+val AudioStream.isMp3Ready: Boolean
     get() = format?.mimeType == "audio/mpeg" && deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP
 
 fun List<AudioStream>.originals(): List<AudioStream> = filter { it.isOriginal }
@@ -46,7 +46,7 @@ fun List<AudioStream>.preferringLocale(locale: Locale): AudioStream =
         filter { it.audioLocale?.language?.startsWith(locale.language) == true }
             .maxByOrNull { it.averageBitrate }
             ?: maxBy { it.averageBitrate }
-    )
+        )
 
 val AudioStream.info: String
     get() {

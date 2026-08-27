@@ -20,7 +20,7 @@ package io.github.scovillo.playondlna.preparation
 
 import java.net.URI
 
-internal class YoutubeUrlNormalizer {
+internal class YoutubeUrl {
     fun normalize(sharedText: String): String {
         val url =
             Regex("https?://[^\\s)\\]]+")

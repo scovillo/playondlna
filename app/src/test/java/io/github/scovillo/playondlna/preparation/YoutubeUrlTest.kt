@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class YoutubeUrlTest {
-    private val normalizer = YoutubeUrlNormalizer()
+    private val normalizer = YoutubeUrl()
 
     @Test
     fun extractsUrlFromMarkdownShareText() {

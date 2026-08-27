@@ -78,10 +78,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.scovillo.playondlna.R
+import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.model.VideoSettingsState
-import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import kotlinx.coroutines.flow.merge
 import java.net.URL
 
@@ -140,7 +140,7 @@ fun SettingsScreen(
         item { Spacer(Modifier.height(SectionSpacing)) }
         item { ClearCache(cacheControl) }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { info(context) }
+        item { Info(context) }
     }
 }
 
@@ -513,7 +513,7 @@ fun ClearCache(cacheControl: CacheControl) {
 }
 
 @Composable
-fun info(context: Context) {
+fun Info(context: Context) {
     return Column {
         Text(stringResource(R.string.info_title), style = MaterialTheme.typography.titleLarge)
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
