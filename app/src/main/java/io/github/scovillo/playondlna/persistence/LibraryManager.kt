@@ -53,12 +53,13 @@ class LibraryManager(private val cacheDir: File) {
     fun fetchThumbnail(id: String): File? = File(cacheDir, "$id.thumb.jpg").takeIf { it.exists() && it.length() > 0 }
 
     fun fetchSubtitle(id: String): Subtitle? {
-        val file = cacheDir.listFiles()?.find {
-            it.exists()
-                && it.name.contains(id)
-                && it.name.contains("fetchSubtitle")
-                && it.name.endsWith(".srt")
-        }
+        val file =
+            cacheDir.listFiles()?.find {
+                it.exists() &&
+                    it.name.contains(id) &&
+                    it.name.contains("fetchSubtitle") &&
+                    it.name.endsWith(".srt")
+            }
         return if (file != null) Subtitle(file) else null
     }
 
@@ -86,13 +87,17 @@ class LibraryManager(private val cacheDir: File) {
         return results.sortedByDescending { it.mediaFile.lastModified() }
     }
 
-    private fun buildOneItem(metadataFile: File, cacheFiles: Array<File>): LibraryItem {
+    private fun buildOneItem(
+        metadataFile: File,
+        cacheFiles: Array<File>,
+    ): LibraryItem {
         val metadata = LibraryMetadata.fromJson(metadataFile.readText())
-        val mediaFile = cacheFiles
-            .find {
-                it.name.contains(metadata.id) && it.name.contains("final") &&
-                    (it.name.endsWith(".mp4") || it.name.endsWith(".m4a") || it.name.endsWith(".mp3"))
-            }
+        val mediaFile =
+            cacheFiles
+                .find {
+                    it.name.contains(metadata.id) && it.name.contains("final") &&
+                        (it.name.endsWith(".mp4") || it.name.endsWith(".m4a") || it.name.endsWith(".mp3"))
+                }
         if (mediaFile == null) {
             throw FileNotFoundException("Error loading media file for id ${metadata.id}")
         }
@@ -101,4 +106,3 @@ class LibraryManager(private val cacheDir: File) {
         return LibraryItem(metadata, mediaFile, thumbnail, subtitle)
     }
 }
-

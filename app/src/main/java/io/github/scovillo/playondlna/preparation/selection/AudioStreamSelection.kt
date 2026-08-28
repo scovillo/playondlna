@@ -46,7 +46,7 @@ fun List<AudioStream>.preferringLocale(locale: Locale): AudioStream =
         filter { it.audioLocale?.language?.startsWith(locale.language) == true }
             .maxByOrNull { it.averageBitrate }
             ?: maxBy { it.averageBitrate }
-        )
+    )
 
 val AudioStream.info: String
     get() {

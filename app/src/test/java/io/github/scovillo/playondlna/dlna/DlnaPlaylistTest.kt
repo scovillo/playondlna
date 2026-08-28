@@ -123,21 +123,37 @@ class DlnaPlaylistTest {
         id: String,
         title: String,
         thumbnail: File?,
-    ): LibraryItem = LibraryItem(
-        LibraryMetadata(
-            id, title, "Uploader", 10, isAudioOnly = true,
-            qualityName = "Audio"
-        ), File("$id.mp3"), thumbnail, null
-    )
+    ): LibraryItem =
+        LibraryItem(
+            LibraryMetadata(
+                id,
+                title,
+                "Uploader",
+                10,
+                isAudioOnly = true,
+                qualityName = "Audio",
+            ),
+            File("$id.mp3"),
+            thumbnail,
+            null,
+        )
 
     private fun videoItem(
         id: String,
         title: String,
         thumbnail: File?,
-    ): LibraryItem = LibraryItem(
-        LibraryMetadata(
-            id, title, "Uploader", 10, isAudioOnly = false,
-            qualityName = VideoQuality.default.qualityName
-        ), File("$id.mp4"), thumbnail, null
-    )
+    ): LibraryItem =
+        LibraryItem(
+            LibraryMetadata(
+                id,
+                title,
+                "Uploader",
+                10,
+                isAudioOnly = false,
+                qualityName = VideoQuality.default.qualityName,
+            ),
+            File("$id.mp4"),
+            thumbnail,
+            null,
+        )
 }

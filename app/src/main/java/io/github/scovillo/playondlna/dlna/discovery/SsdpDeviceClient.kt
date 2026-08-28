@@ -25,7 +25,7 @@ import java.net.URL
 /**
  * Fetches and parses UPnP device descriptions from device description URLs.
  */
-class SsdpDeviceClient() {
+class SsdpDeviceClient {
     /**
      * Fetch device description XML from location URL and parse it.
      *

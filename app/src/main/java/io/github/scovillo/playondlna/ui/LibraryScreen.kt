@@ -62,7 +62,7 @@ import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.preparation.MediaFileJobStatus
-import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.MediaModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -72,39 +72,39 @@ import java.util.Locale
 fun LibraryScreen(
     libraryViewModel: LibraryViewModel,
     playlistViewModel: PlaylistViewModel,
-    videoJobModel: VideoJobModel,
+    mediaModel: MediaModel,
     navController: NavHostController,
     onVideoSelected: () -> Unit,
     onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<LibraryItem>) -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
-        DownloadPanel(videoJobModel)
+        DownloadPanel(mediaModel)
         TabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.library_videos)) })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.library_playlists)) })
         }
         Box(modifier = Modifier.weight(1f)) {
             if (selectedTab == 0) {
-                LibraryVideosScreen(libraryViewModel, playlistViewModel, videoJobModel, onVideoSelected)
+                LibraryVideosScreen(libraryViewModel, playlistViewModel, mediaModel, onVideoSelected)
             } else {
-                PlaylistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController, onPlayPlaylist)
+                PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController, onPlayPlaylist)
             }
         }
     }
 }
 
 @Composable
-private fun DownloadPanel(videoJobModel: VideoJobModel) {
-    val progress by videoJobModel.progress
-    val title by videoJobModel.title
-    val playlistPosition by videoJobModel.playlistPosition
-    val status by videoJobModel.status
+private fun DownloadPanel(mediaModel: MediaModel) {
+    val progress by mediaModel.progress
+    val title by mediaModel.title
+    val playlistPosition by mediaModel.playlistPosition
+    val status by mediaModel.status
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(ClipboardManager::class.java)
     var lastPasteAt by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
-        videoJobModel.toastEvents.collect { event ->
+        mediaModel.toastEvents.collect { event ->
             when (event) {
                 is ToastEvent.Show ->
                     Toast.makeText(
@@ -115,7 +115,7 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
             }
         }
     }
-    videoJobModel.playlistImportSummary.value?.let { summary ->
+    mediaModel.playlistImportSummary.value?.let { summary ->
         AlertDialog(
             onDismissRequest = {},
             title = { Text(stringResource(R.string.playlist_import_summary_title)) },
@@ -129,16 +129,17 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
                 )
             },
             confirmButton = {
-                TextButton(onClick = videoJobModel::dismissPlaylistImportSummary) {
+                TextButton(onClick = mediaModel::dismissPlaylistImportSummary) {
                     Text(stringResource(R.string.all_clear))
                 }
             },
         )
     }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         val isDownloadActive = title != "idle" && status != MediaFileJobStatus.ERROR
         Text(
@@ -150,9 +151,10 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
         )
         if (!isDownloadActive) {
             Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(all = 4.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(all = 4.dp),
                 text = stringResource(R.string.or),
                 textAlign = TextAlign.Center,
             )
@@ -165,7 +167,7 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
                                 ?.coerceToText(context)?.toString()?.trim()
                         if (url?.startsWith("http://") == true || url?.startsWith("https://") == true) {
                             lastPasteAt = now
-                            videoJobModel.prepareVideo(url)
+                            mediaModel.import(url)
                         }
                     }
                 },
@@ -185,10 +187,11 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
             }
             LinearProgressIndicator(
                 progress = { progress / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .padding(14.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .padding(14.dp),
                 trackColor = ProgressIndicatorDefaults.linearTrackColor,
             )
         }
@@ -199,21 +202,20 @@ private fun DownloadPanel(videoJobModel: VideoJobModel) {
 private fun LibraryVideosScreen(
     libraryViewModel: LibraryViewModel,
     playlistViewModel: PlaylistViewModel,
-    videoJobModel: VideoJobModel,
+    mediaModel: MediaModel,
     onVideoSelected: () -> Unit,
 ) {
     val items by libraryViewModel.items
     val isLoading by libraryViewModel.isLoading
     val playlists by playlistViewModel.playlists
-    val completedVideo by videoJobModel.currentVideoFile
     var videoToAdd by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         libraryViewModel.loadLibrary()
         playlistViewModel.loadPlaylists()
-    }
-    LaunchedEffect(completedVideo?.metadata?.id) {
-        if (completedVideo != null) libraryViewModel.loadLibrary()
+        mediaModel.onLibraryChange.collect {
+            libraryViewModel.loadLibrary()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -234,7 +236,7 @@ private fun LibraryVideosScreen(
                                 .fillMaxWidth()
                                 .padding(8.dp)
                                 .clickable {
-                                    videoJobModel.selectMediaItem(item)
+                                    mediaModel.selectMediaItem(item)
                                     onVideoSelected()
                                 },
                     ) {

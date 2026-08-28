@@ -23,19 +23,18 @@ class VideoFileAudioFormatTest {
         assertEquals("audio.m4a", media.rendererFileName)
     }
 
-    private fun audioFile(
-        file: File,
-    ) = LibraryItem(
-        LibraryMetadata(
-            id = "id",
-            title = "title",
-            uploader = "uploader",
-            durationInSeconds = 10,
-            isAudioOnly = true,
-            qualityName = "Audio"
-        ),
-        file,
-        null,
-        null,
-    )
+    private fun audioFile(file: File) =
+        LibraryItem(
+            LibraryMetadata(
+                id = "id",
+                title = "title",
+                uploader = "uploader",
+                durationInSeconds = 10,
+                isAudioOnly = true,
+                qualityName = "Audio",
+            ),
+            file,
+            null,
+            null,
+        )
 }

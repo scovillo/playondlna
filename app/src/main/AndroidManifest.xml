@@ -38,7 +38,8 @@
             </intent-filter>
         </activity>
         <service
-            android:name="io.github.scovillo.playondlna.server.MediaFileServerService"
+            android:name="io.github.scovillo.playondlna.server.MediaServerService"
+            android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

@@ -58,9 +58,10 @@ fun DlnaRemoteControl(
     onPlay: (DlnaDevice) -> Unit,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -71,9 +72,10 @@ fun DlnaRemoteControl(
                 modifier = Modifier.size(96.dp, 64.dp),
             )
             Column(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .weight(1f)
+                modifier =
+                    Modifier
+                        .padding(start = 16.dp)
+                        .weight(1f),
             ) {
                 Text(
                     text = playlist?.title ?: currentVideo?.metadata?.title ?: stringResource(R.string.no_media_selected),

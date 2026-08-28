@@ -19,8 +19,6 @@
 package io.github.scovillo.playondlna
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -52,11 +50,10 @@ import io.github.scovillo.playondlna.model.VideoSettingsState
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.MediaModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
-import io.github.scovillo.playondlna.server.MediaFileServerService
+import io.github.scovillo.playondlna.server.MediaServerService
 import io.github.scovillo.playondlna.server.localIpAddress
-import io.github.scovillo.playondlna.server.mediaFileHttpServer
 import io.github.scovillo.playondlna.server.serverPort
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.LibraryScreen
@@ -68,12 +65,15 @@ import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
-    private lateinit var videoJobModel: VideoJobModel
+    private lateinit var mediaModel: MediaModel
+    private var isPermissionRequestInProgress = false
 
     private val requestPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission(),
-        ) { _ ->
+        ) {
+            AppLog.i("MediaServerService", "Notification permission granted: $it")
+            isPermissionRequestInProgress = false
             startWebServerService()
         }
 
@@ -81,26 +81,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         installSplashScreen()
         NewPipe.init(OkHttpDownloadClient())
-        createNotificationChannel()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-        startWebServerService()
 
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
         val playlistManager = PlaylistManager(cacheDir)
         val playlistViewModel = PlaylistViewModel(playlistManager)
-        videoJobModel =
-            VideoJobModel(
+        mediaModel =
+            MediaModel(
                 settingsRepository,
                 WifiConnectionState(
                     getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager,
@@ -109,20 +97,11 @@ class MainActivity : ComponentActivity() {
                 libraryManager,
                 playlistManager,
             )
-        mediaFileHttpServer.playlistProvider = playlistProvider@{ id, baseUrl ->
-            val playlist = playlistManager.getPlaylists().find { it.id == id } ?: return@playlistProvider null
-            val items = libraryManager.fetchAllItems()
-            DlnaPlaylist(playlist, items, baseUrl).toPayload().also {
-                if (it != null) videoJobModel.selectPlaylist(items.filter { item -> item.metadata.id in playlist.videoIds })
-            }
-        }
-        val playOnDlnaCover = resources.openRawResource(R.raw.playlist_album_cover).use { it.readBytes() }
-        mediaFileHttpServer.audioCoverProvider = { playOnDlnaCover }
-        mediaFileHttpServer.playlistCoverProvider = playlistCoverProvider@{ playOnDlnaCover }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                videoJobModel.playbackStarted.collect {
-                    startWebServerService()
+                mediaModel.requestMediaServerEvents.collect {
+                    AppLog.i("MediaServerService", "Media serving requested, ensuring server is running...")
+                    startWebServerServiceWithNotificationPermission()
                 }
             }
         }
@@ -130,9 +109,9 @@ class MainActivity : ComponentActivity() {
         val cacheControl =
             CacheControl(
                 cacheDir,
-                videoJobModel.currentVideoFile,
-                videoJobModel.currentFfmpegSession,
-                videoJobModel.completedSessions,
+                mediaModel.currentVideoFile,
+                mediaModel.currentFfmpegSession,
+                mediaModel.onLibraryChange,
             )
         val favoriteDevices = FavoriteDevices(settingsRepository)
         val dlnaDevicesListScreenModel =
@@ -147,21 +126,21 @@ class MainActivity : ComponentActivity() {
                 mainScreen(
                     playScreen = {
                         DlnaListScreen(
-                            videoJobModel,
+                            mediaModel,
                             dlnaDevicesListScreenModel,
                             playlistVideoFiles = selectedPlaylistVideoFiles,
                             playlist = selectedPlaylist,
                         )
                     },
                     libraryScreen = { navController ->
-                        LibraryScreen(libraryViewModel, playlistViewModel, videoJobModel, navController, {
+                        LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, {
                             selectedPlaylistVideoFiles = emptyList()
                             selectedPlaylist = null
                             navController.navigate("play") {
                                 launchSingleTop = true
                             }
                         }) { playlist, items ->
-                            selectedPlaylistVideoFiles = videoJobModel.selectPlaylist(items).let { items }
+                            selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
                             selectedPlaylist =
                                 DlnaPlaylist(
                                     playlist,
@@ -172,8 +151,8 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     playlistsScreen = { navController ->
-                        PlaylistsScreen(playlistViewModel, libraryViewModel, videoJobModel, navController) { playlist, items ->
-                            selectedPlaylistVideoFiles = videoJobModel.selectPlaylist(items).let { items }
+                        PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController) { playlist, items ->
+                            selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
                             selectedPlaylist =
                                 DlnaPlaylist(
                                     playlist,
@@ -202,33 +181,35 @@ class MainActivity : ComponentActivity() {
         handleShareIntent(intent)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-    }
-
     private fun handleShareIntent(intent: Intent?) {
+        AppLog.i("ShareIntent", "Received new ShareIntent: $intent")
         if (intent?.action == Intent.ACTION_SEND) {
             if (intent.type == "text/plain") {
                 val url = intent.extras?.getString("android.intent.extra.TEXT")
                 if (url != null) {
-                    this.videoJobModel.prepareVideo(url)
+                    this.mediaModel.import(url)
                 }
             }
         }
     }
 
-    private fun createNotificationChannel() {
-        getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(
-                NotificationChannel(
-                    "http_channel",
-                    getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ),
-            )
+    private fun startWebServerService() {
+        ContextCompat.startForegroundService(this, Intent(this, MediaServerService::class.java))
     }
 
-    private fun startWebServerService() {
-        ContextCompat.startForegroundService(this, Intent(this, MediaFileServerService::class.java))
+    private fun startWebServerServiceWithNotificationPermission() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (isPermissionRequestInProgress) return
+            isPermissionRequestInProgress = true
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        startWebServerService()
     }
 }

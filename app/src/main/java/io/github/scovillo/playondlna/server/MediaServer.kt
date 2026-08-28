@@ -19,75 +19,77 @@
 package io.github.scovillo.playondlna.server
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import fi.iki.elonen.NanoHTTPD
+import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaPlaylist
-import io.github.scovillo.playondlna.model.LibraryItem
+import io.github.scovillo.playondlna.persistence.LibraryManager
+import io.github.scovillo.playondlna.persistence.PlaylistManager
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
-import java.io.IOException
 
-class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
-    val allFiles = mutableMapOf<String, LibraryItem>()
-    var playlistProvider: ((String, String) -> DlnaPlaylist.Payload?)? = null
-    var playlistCoverProvider: ((String) -> ByteArray?)? = null
-    var audioCoverProvider: (() -> ByteArray?)? = null
-
+class MediaHttpServer(
+    private val serverPort: Int,
+    private val libraryManager: LibraryManager,
+    private val playlistManager: PlaylistManager,
+    private val defaultCover: ByteArray,
+) : NanoHTTPD(serverPort) {
     override fun serve(session: IHTTPSession): Response {
-        Log.i("MediaFileHttpServer", "-> ${session.uri}")
+        Log.i("MediaHttpServer", "-> ${session.uri}")
         Log.d(
             "RequestHeaders",
             session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator()),
         )
         val uriParts = session.uri.split("/")
         if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "playlist.m3u") {
+            val id = uriParts[2]
+            AppLog.i("MediaHttpServer", "Playlist request for $id")
             val playlist =
-                playlistProvider?.invoke(
-                    uriParts[2],
+                playlistManager.getPlaylists().find { it.id == id }
+                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found")
+            val payload =
+                DlnaPlaylist(
+                    playlist,
+                    libraryManager.fetchAllItems(),
                     "http://${localIpAddress.value()}:$serverPort",
-                )
-                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found or empty")
-            return newFixedLengthResponse(Response.Status.OK, "${playlist.mimeType}; charset=UTF-8", playlist.content)
+                ).toPayload()
+                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist is empty")
+            return newFixedLengthResponse(Response.Status.OK, "${payload.mimeType}; charset=UTF-8", payload.content)
         }
         if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "cover.jpg") {
-            val cover =
-                playlistCoverProvider?.invoke(uriParts[2])
-                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist cover not found")
+            AppLog.i("MediaHttpServer", "Cover request for playlists")
             return newFixedLengthResponse(
                 Response.Status.OK,
                 "image/jpeg",
-                ByteArrayInputStream(cover),
-                cover.size.toLong(),
+                ByteArrayInputStream(defaultCover),
+                defaultCover.size.toLong(),
             )
         }
         val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
+        val item = runCatching { libraryManager.fetchOneItem(id) }.getOrNull()
 
         if (session.uri.endsWith("/cover.jpg", ignoreCase = true)) {
-            allFiles[id] ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
-            val cover =
-                audioCoverProvider?.invoke()
-                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
+            AppLog.i("MediaHttpServer", "Cover request for $id")
+            item ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Cover not found")
             return newFixedLengthResponse(
                 Response.Status.OK,
                 "image/jpeg",
-                ByteArrayInputStream(cover),
-                cover.size.toLong(),
+                ByteArrayInputStream(defaultCover),
+                defaultCover.size.toLong(),
             )
-
         }
 
         val isSubtitle = session.uri.endsWith(".srt", ignoreCase = true)
         if (isSubtitle) {
+            AppLog.d("MediaHttpServer", "Subtitle request for $id")
             val subtitle =
-                allFiles[id]?.subtitle
+                item?.subtitle
                     ?: return newFixedLengthResponse(
                         Response.Status.NOT_FOUND,
                         MIME_PLAINTEXT,
@@ -103,16 +105,16 @@ class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                 )
             return response
         }
-
-        val file =
-            allFiles[id]?.mediaFile
-                ?: return newFixedLengthResponse(
-                    Response.Status.NOT_FOUND,
-                    MIME_PLAINTEXT,
-                    "Media file with id $id not found!",
-                )
+        AppLog.i("MediaHttpServer", "Media request for $id")
+        item
+            ?: return newFixedLengthResponse(
+                Response.Status.NOT_FOUND,
+                MIME_PLAINTEXT,
+                "Media file with id $id not found!",
+            )
+        val file = item.mediaFile
         val fileLength = file.length()
-        val mimeType = allFiles[id]!!.mimeType
+        val mimeType = item.mimeType
         val rangeHeader = session.headers["range"]
         try {
             val (start, end) =
@@ -146,7 +148,7 @@ class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                     newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength).apply {
                         addHeader(
                             "contentFeatures.dlna.org",
-                            "DLNA.ORG_PN=${allFiles[id]!!.dlnaProfile}.;DLNA.ORG_OP=11;" +
+                            "DLNA.ORG_PN=${item.dlnaProfile}.;DLNA.ORG_OP=11;" +
                                 "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000",
                         )
                         addHeader("transferMode.dlna.org", "Streaming")
@@ -154,7 +156,7 @@ class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
                 }
             response.addHeader("Accept-Ranges", "bytes")
             response.addHeader("Connection", "keep-alive")
-            Log.i("MediaFileHttpServer", "<- ${session.uri}")
+            Log.i("MediaHttpServer", "<- ${session.uri}")
             return response
         } catch (e: Exception) {
             e.printStackTrace()
@@ -167,49 +169,52 @@ class MediaFileHttpServer(private val serverPort: Int) : NanoHTTPD(serverPort) {
     }
 }
 
-val mediaFileHttpServer = MediaFileHttpServer(serverPort)
+class MediaServerService : Service() {
+    private val mediaServerNotification = MediaServerNotification()
+    private var mediaHttpServer: MediaHttpServer? = null
+    private var isServerStarted = false
 
-const val ACTION_STOP_SERVER = "io.github.scovillo.playondlna.server.ACTION_STOP_SERVER"
-
-class MediaFileServerService : Service() {
     override fun onCreate() {
+        AppLog.i("MediaServerService", "onCreate")
         super.onCreate()
+        mediaServerNotification.createNotificationChannel(this)
+        isServerStarted = startMediaFileServer()
+        if (!isServerStarted) {
+            stopSelf()
+        }
+    }
+
+    private fun startMediaFileServer(): Boolean =
         try {
-            mediaFileHttpServer.start()
-            Log.i("MediaFileServerService", "Http Server started!")
-        } catch (e: IOException) {
-            e.printStackTrace()
+            val defaultCover = resources.openRawResource(R.raw.playlist_album_cover).use { it.readBytes() }
+            mediaHttpServer =
+                MediaHttpServer(
+                    serverPort,
+                    LibraryManager(cacheDir),
+                    PlaylistManager(cacheDir),
+                    defaultCover,
+                ).also { it.start() }
+            promoteToForeground(
+                mediaServerNotification.build(this, getString(R.string.notification_text, localIpAddress.value(), serverPort)),
+            )
+            Log.i("MediaServerService", "HTTP server started")
+            true
+        } catch (exception: Exception) {
+            Log.e("MediaServerService", "Failed to start HTTP server", exception)
+            mediaHttpServer?.stop()
+            mediaHttpServer = null
+            false
         }
 
-        val stopIntent =
-            Intent(this, MediaFileServerService::class.java).apply {
-                action = ACTION_STOP_SERVER
-            }
-        val stopPendingIntent =
-            PendingIntent.getService(
-                this,
-                0,
-                stopIntent,
-                PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        val notification: Notification =
-            NotificationCompat.Builder(this, "http_channel")
-                .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text, localIpAddress.value(), serverPort))
-                .setSmallIcon(R.drawable.playondlna_icon)
-                .setOngoing(true)
-                .addAction(
-                    android.R.drawable.ic_menu_close_clear_cancel,
-                    getString(R.string.stop),
-                    stopPendingIntent,
-                )
-                .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+    private fun promoteToForeground(notification: Notification) {
+        val isSdkModern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        if (isSdkModern) {
+            AppLog.i("MediaServerService", "startForeground modern with FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK")
+            startForeground(mediaServerNotification.id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            return
         } else {
-            startForeground(1, notification)
+            AppLog.i("MediaServerService", "startForeground oldschool")
+            startForeground(mediaServerNotification.id, notification)
         }
     }
 
@@ -218,19 +223,30 @@ class MediaFileServerService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        if (intent?.action == ACTION_STOP_SERVER) {
+        if (intent?.action == mediaServerNotification.actionStopServer) {
+            AppLog.i("MediaServerService", "Stopping service cause of notification action")
             stopSelf()
             return START_NOT_STICKY
         }
+        if (!isServerStarted) {
+            AppLog.i("MediaServerService", "Stopping service because server failed to start")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        AppLog.i("MediaServerService", "Start sticky")
         return START_STICKY
     }
 
     override fun onDestroy() {
-        mediaFileHttpServer.stop()
+        AppLog.i("MediaServerService", "onDestroy")
+        mediaHttpServer?.stop()
+        mediaHttpServer = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
+        AppLog.i("MediaServerService", "onBind")
         return null
     }
 }

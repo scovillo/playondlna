@@ -64,11 +64,11 @@ import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryItem
-import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.MediaModel
 
 @Composable
 fun DlnaListScreen(
-    videoJobModel: VideoJobModel,
+    mediaModel: MediaModel,
     dlnaModel: DlnaDevicesListScreenModel,
     playlistVideoFiles: List<LibraryItem> = emptyList(),
     playlist: DlnaPlaylist? = null,
@@ -113,8 +113,8 @@ fun DlnaListScreen(
                 .padding(padding),
         ) {
             Column {
-                val currentVideo = videoJobModel.currentVideoFile.value
-                val currentThumbnail = videoJobModel.currentThumbnailFile.value
+                val currentVideo = mediaModel.currentVideoFile.value
+                val currentThumbnail = mediaModel.currentThumbnailFile.value
                 DlnaRemoteControl(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
@@ -132,9 +132,10 @@ fun DlnaListScreen(
                     },
                 )
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(

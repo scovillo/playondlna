@@ -40,7 +40,7 @@ class PlaylistNavigationTest {
             uploader = "uploader",
             durationInSeconds = 10,
             isAudioOnly = isAudioOnly,
-            qualityName = if (isAudioOnly) "Audio" else "Video"
+            qualityName = if (isAudioOnly) "Audio" else "Video",
         ),
         mediaFile = File(if (isAudioOnly) "$id.mp3" else "$id.mp4"),
         thumbnail = null,

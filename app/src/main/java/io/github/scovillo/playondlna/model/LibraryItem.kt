@@ -27,7 +27,6 @@ class LibraryItem(
     val thumbnail: File?,
     val subtitle: Subtitle?,
 ) {
-
     val mimeType: String
         get() =
             when {

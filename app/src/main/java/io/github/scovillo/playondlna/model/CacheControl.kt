@@ -27,7 +27,7 @@ class CacheControl(
     init {
         viewModelScope.launch {
             sizeCalculationTrigger.collect {
-                AppLog.i("CacheControl", "Ffmpeg Session completed, recalculating cache size")
+                AppLog.i("CacheControl", "Library changed, recalculating cache size")
                 calculateCacheDirSizeInGb()
             }
         }
@@ -70,7 +70,7 @@ class CacheControl(
                             !file.name.contains(
                                 currentItem.metadata.id,
                             )
-                        )
+                    )
                 ) {
                     file.delete()
                 }

@@ -75,7 +75,7 @@ class DlnaRemoteControlSessionTest {
                 uploader = "Uploader",
                 durationInSeconds = 10,
                 isAudioOnly = true,
-                qualityName = "Audio"
+                qualityName = "Audio",
             ),
             mediaFile = File("$id.mp3"),
             thumbnail = null,

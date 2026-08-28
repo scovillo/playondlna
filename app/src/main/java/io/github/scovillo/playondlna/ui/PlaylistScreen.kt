@@ -38,13 +38,13 @@ import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.PlaylistViewModel
-import io.github.scovillo.playondlna.preparation.VideoJobModel
+import io.github.scovillo.playondlna.preparation.MediaModel
 
 @Composable
 fun PlaylistsScreen(
     playlistViewModel: PlaylistViewModel,
     libraryViewModel: LibraryViewModel,
-    videoJobModel: VideoJobModel,
+    mediaModel: MediaModel,
     navController: NavHostController,
     onPlayPlaylist: (Playlist, List<LibraryItem>) -> Unit,
 ) {
@@ -64,15 +64,16 @@ fun PlaylistsScreen(
         PlaylistDetails(
             playlist = playlist,
             libraryViewModel = libraryViewModel,
-            videoJobModel = videoJobModel,
+            mediaModel = mediaModel,
             onRemove = { playlistViewModel.removeVideo(playlist.id, it) },
             onPlay = onPlayPlaylist,
         )
     } else {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
         ) {
             Button(onClick = { creating = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Icon(Icons.Default.Add, null)
@@ -80,23 +81,29 @@ fun PlaylistsScreen(
             }
             if (playlists.isEmpty()) {
                 Text(
-                    stringResource(R.string.no_playlists), modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 32.dp)
+                    stringResource(R.string.no_playlists),
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(top = 32.dp),
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(playlists, key = { it.id }) { item ->
                         val playableItems = item.videoIds.mapNotNull { videoId -> libraryItems.find { it.metadata.id == videoId } }
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                                .clickable { navController.navigate("playlist/${item.id}") }) {
-                            Row(
-                                modifier = Modifier
+                            modifier =
+                                Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp), verticalAlignment = Alignment.CenterVertically
+                                    .padding(vertical = 6.dp)
+                                    .clickable { navController.navigate("playlist/${item.id}") },
+                        ) {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.name, style = MaterialTheme.typography.titleMedium)
@@ -149,7 +156,7 @@ fun PlaylistsScreen(
 private fun PlaylistDetails(
     playlist: Playlist,
     libraryViewModel: LibraryViewModel,
-    videoJobModel: VideoJobModel,
+    mediaModel: MediaModel,
     onRemove: (String) -> Unit,
     onPlay: (Playlist, List<LibraryItem>) -> Unit,
 ) {
@@ -159,9 +166,10 @@ private fun PlaylistDetails(
     var startError by remember(playlist.id) { mutableStateOf(false) }
     var isStarting by remember(playlist.id) { mutableStateOf(false) }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(playlist.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
@@ -185,14 +193,18 @@ private fun PlaylistDetails(
                 items(validItems, key = { it.metadata.id }) { item ->
                     val videoId = item.metadata.id
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                            .clickable { videoJobModel.selectMediaItem(item) }) {
-                        Row(
-                            modifier = Modifier
+                        modifier =
+                            Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp), verticalAlignment = Alignment.CenterVertically
+                                .padding(vertical = 6.dp)
+                                .clickable { mediaModel.selectMediaItem(item) },
+                    ) {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.metadata.title)
