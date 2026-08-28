@@ -1,46 +1,38 @@
 # PlayOnDlna
 
-📦 **Version:** 14 (1.13)
+📦 **Version:** 15 (1.14)
 ⚙️ **Build-Tool:** Gradle 8.14.3
+
+## ✨ Highlights
+
+**Your media. Your player. Your network.**
+
+- 🌍 **More than YouTube** — Share links from YouTube, YMusic, PeerTube, SoundCloud, Bandcamp, and media.ccc.de
+- 🎧 **Video and audio** — PlayOnDlna prepares compatible media, cover artwork, and subtitles for your DLNA player
+- 🎶 **Playlists that just work** — Enjoy continuous playback even when your player has no native playlist support
+- 📚 **Your personal media library** — Keep prepared videos and audio ready to play again whenever you like
+- 📡 **Effortless discovery and control** — Find compatible players automatically and control playback from the app
+- 🔒 **Local by design** — Media is served directly from your Android device over your local network
+
+No account, no ads, and no complicated setup—just share a link, choose a player, and enjoy.
+
+## 📱 Description
+
+Play your media ad-free on DLNA players such as Kodi and Smart TVs in your local network!
+Simply share a supported media link with PlayOnDlna. The app prepares compatible video or audio and streams it directly to your selected player.
+
+Supported sources include YouTube, YMusic, PeerTube, SoundCloud, Bandcamp, and media.ccc.de.
 
 ## 🤖 Android Configuration
 
 - **Application ID:** io.github.scovillo.playondlna
-- **Compile SDK:** android-35
+- **Compile SDK:** android-36
 - **Min SDK:** 26
-- **Target SDK:** 35
+- **Target SDK:** 36
+
+PlayOnDlna runs on Android 8.0 and newer.
 
 The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
-
-## 📱 Description
-
-Play YouTube videos ad-free on DLNA players (e.g. Kodi, SmartTV) in your local network!
-Browse YouTube in your favorite client and share the link to the PlayOnDlna app
-to play the video ad-free on a DLNA player in your local network.
-
-🎨 <b>Sleek Design</b><br>
-A graphical interface reduced to the essentials in a dark design that's easy on the eyes even at night.<br>
-
-💝 <b>Ad-Free</b><br>
-Enjoy videos ad-free on your local network.<br>
-
-🤩 <b>Simple</b><br>
-Ad-free playback at the touch of a button without complex setup!
-An automated search finds compatible players on your local network.<br>
-
-👐 <b>Transparency</b><br>
-The publicly accessible source code allows anyone to personally verify the quality, privacy, and security.<br>
-
-If the app serves you well, consider a 🎁 donation to support my efforts.<br>
-
-<b>Kodi Setup</b><br>
-To stream videos to Kodi, you have to ensure that Kodi is found as dlna player in your local network.
-To achieve this, follow the instructions below.<br>
-1. Go to <b>⚙ Settings > Services > UPnP DLNA</b><br>
-2. Enable <b>Enable UPnP support</b><br>
-3. Enable <b>Allow remote control via UPnP</b><br>
-
-❤️ Happy streaming! ❤️
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.

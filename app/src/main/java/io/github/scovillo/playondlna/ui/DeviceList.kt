@@ -114,7 +114,7 @@ fun DlnaListScreen(
         ) {
             Column {
                 val currentVideo = mediaModel.currentVideoFile.value
-                val currentThumbnail = mediaModel.currentThumbnailFile.value
+                val currentThumbnail = mediaModel.currentVideoFile.value?.thumbnail
                 DlnaRemoteControl(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,

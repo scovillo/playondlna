@@ -164,7 +164,6 @@ class MediaModel(
     private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
     val currentVideoFile: State<LibraryItem?> get() = _currentVideoFile
-    val currentThumbnailFile: State<File?> get() = _currentThumbnailFile
     val currentFfmpegSession: State<Session?> get() = _currentFfmpegSession
     val title: State<String> get() = _title
     val playlistPosition: State<PlaylistPosition?> get() = _playlistPosition

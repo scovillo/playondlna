@@ -1,158 +1,470 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta
-      name="google-site-verification"
-      content="_3wDyFAG3-pmDLcyJvvwiWVnWiVGRZn2c3HQmdS5LEs"
+        content="_3wDyFAG3-pmDLcyJvvwiWVnWiVGRZn2c3HQmdS5LEs"
+        name="google-site-verification"
     />
-    <link rel="canonical" href="https://scovillo.github.io/playondlna/" />
-    <meta name="robots" content="index, follow" />
-    <title>PlayOnDlna – Stream YouTube ad-free to Kodi & Smart TVs</title>
+    <link href="https://scovillo.github.io/playondlna/" rel="canonical"/>
+    <meta content="index, follow" name="robots"/>
+    <title>PlayOnDlna – Play your media ad-free on DLNA players</title>
     <meta
-      name="description"
-      content="Stream YouTube videos ad-free to your Kodi or Smart TV via DLNA. Open source, simple and privacy-friendly."
-    />
-    <meta
-      name="keywords"
-      content="DLNA, YouTube DLNA, Kodi streaming, Smart TV streaming, ad-free YouTube, Android DLNA app"
-    />
-    <meta property="og:title" content="PlayOnDlna" />
-    <meta
-      property="og:description"
-      content="Stream YouTube ad-free to your Kodi or Smart TV via DLNA."
+        content="Play video and audio ad-free on Kodi, Smart TVs and other DLNA players. Open source, local and easy to use."
+        name="description"
     />
     <meta
-      property="og:image"
-      content="https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png"
+        content="DLNA, Kodi streaming, Smart TV streaming, Android DLNA app, audio playlists, media streaming, open source"
+        name="keywords"
     />
-    <meta property="og:url" content="https://scovillo.github.io/playondlna/" />
-    <meta property="og:type" content="website" />
     <meta
-      name="google-site-verification"
-      content="_3wDyFAG3-pmDLcyJvvwiWVnWiVGRZn2c3HQmdS5LEs"
+        content="PlayOnDlna – Your media. Your player. Your network."
+        property="og:title"
     />
-    <link rel="stylesheet" href="style.css" />
-    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <meta
+        content="Play video and audio ad-free on Kodi, Smart TVs and other DLNA players."
+        property="og:description"
+    />
+    <meta
+        content="https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png"
+        property="og:image"
+    />
+    <meta content="https://scovillo.github.io/playondlna/" property="og:url"/>
+    <meta content="website" property="og:type"/>
+    <link href="style.css" rel="stylesheet"/>
+    <link href="assets/icon.png" rel="icon" type="image/png"/>
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "PlayOnDlna",
-        "operatingSystem": "Android, Smart TV, Kodi",
-        "applicationCategory": "Multimedia",
-        "url": "https://scovillo.github.io/playondlna/",
-        "image": "https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png",
-        "description": "Stream YouTube videos ad-free to your Kodi or Smart TV via DLNA. Open source, simple and privacy-friendly."
-      }
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "PlayOnDlna",
+            "operatingSystem": "Android 8.0 and newer",
+            "applicationCategory": "MultimediaApplication",
+            "url": "https://scovillo.github.io/playondlna/",
+            "image": "https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png",
+            "description": "Play video and audio ad-free on Kodi, Smart TVs and other DLNA players. Open source, local and easy to use."
+        }
     </script>
-  </head>
-  <body>
-    <div class="hero">
-      <h1>PlayOnDlna</h1>
-      <h2>
-        Stream YouTube videos ad‑free on your
-        <a href="https://kodi.tv/">Kodi</a> or Smart TV via DLNA
-      </h2>
-      <a class="btn btn-primary" href="https://github.com/scovillo/playondlna"
-        >View on GitHub</a
-      >
-      <a
-        class="btn btn-secondary"
-        href="https://f-droid.org/packages/io.github.scovillo.playondlna/"
-        >Get it on F‑Droid</a
-      >
-      <div class="badges">
-        <img
-          src="https://img.shields.io/github/stars/scovillo/playondlna?style=social"
-          alt="Stars Badge"
-        />
-        <img
-          src="https://img.shields.io/badge/license-GPLv3-red"
-          alt="License Badge"
-        />
-        <img
-          src="https://img.shields.io/badge/platform-Android-red"
-          alt="Platform Badge"
-        />
-      </div>
+    <script defer src="app.js"></script>
+</head>
+<body>
+<header class="site-header">
+    <a
+        aria-label="PlayOnDlna home"
+        class="brand"
+        data-i18n-aria="homeLabel"
+        href="#top"
+    >
+        <img alt="" src="assets/icon.png"/>
+        <span>PlayOnDlna</span>
+    </a>
+    <nav
+        aria-label="Main navigation"
+        class="main-nav"
+        data-i18n-aria="navigationLabel"
+    >
+        <a data-i18n="navFeatures" href="#features">Features</a>
+        <a data-i18n="navScreenshots" href="#screenshots">Screenshots</a>
+        <a data-i18n="navDownload" href="#download">Download</a>
+    </nav>
+    <div
+        aria-label="Choose language"
+        class="language-switcher"
+        data-i18n-aria="languageLabel"
+        role="group"
+    >
+        <button aria-label="English" data-lang="en" type="button">EN</button>
+        <button aria-label="Deutsch" data-lang="de" type="button">DE</button>
+        <button aria-label="Русский" data-lang="ru" type="button">RU</button>
+        <button aria-label="Українська" data-lang="uk" type="button">UK</button>
     </div>
-    <div class="container">
-      <h2>✨ Features</h2>
-      <div class="features">
-        <div class="feature">
-          <h3>Ad‑Free Playback</h3>
-          <p>Stream without ads on your DLNA devices.</p>
-        </div>
-        <div class="feature">
-          <h3>DLNA Support</h3>
-          <p>Compatible with Smart TVs, Kodi & more.</p>
-        </div>
-        <div class="feature">
-          <h3>Easy to Use</h3>
-          <p>Share a link and play instantly.</p>
-        </div>
-        <div class="feature">
-          <h3>Open Source</h3>
-          <p>Transparent & privacy‑friendly on GitHub.</p>
-        </div>
-      </div>
+</header>
 
-      <h2>📸 Screenshots</h2>
-      <div class="screenshots">
-        <div class="screenshot">
-          <img
-            src="assets/screenshots/Screenshot_PlayOnDlna_1.png"
-            alt="PlayOnDlna in idle mode"
-          />
+<main id="top">
+    <section class="hero section-shell">
+        <div class="hero-copy">
+            <p class="eyebrow" data-i18n="heroEyebrow">
+                Android · Open source · Local first
+            </p>
+            <h1 data-i18n-html="heroTitle">
+                Your media.<br/>Your player.<br/><span>Your network.</span>
+            </h1>
+            <p class="hero-lead" data-i18n="heroLead">
+                Share a media link, choose a DLNA player and enjoy video or audio
+                without advertising interruptions.
+            </p>
+            <div class="hero-actions">
+                <a
+                    class="button button-primary"
+                    data-i18n="getFdroid"
+                    href="https://f-droid.org/packages/io.github.scovillo.playondlna/"
+                >Get it on F-Droid</a
+                >
+                <a
+                    class="button button-secondary"
+                    data-i18n="viewGithub"
+                    href="https://github.com/scovillo/playondlna"
+                >View on GitHub</a
+                >
+            </div>
+            <ul
+                aria-label="Product benefits"
+                class="trust-list"
+                data-i18n-aria="benefitsLabel"
+            >
+                <li data-i18n="trustAndroid">Android 8+</li>
+                <li data-i18n="trustAccount">No account</li>
+                <li data-i18n="trustLicense">GPLv3</li>
+            </ul>
+            <div aria-label="GitHub project statistics" class="github-stats">
+                <a
+                    href="https://github.com/scovillo/playondlna/stargazers"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    <img
+                        alt="GitHub stars"
+                        height="24"
+                        loading="lazy"
+                        src="https://img.shields.io/github/stars/scovillo/playondlna?style=flat-square&amp;logo=github&amp;label=Stars&amp;color=ff514d&amp;labelColor=151b25"
+                    />
+                </a>
+                <a
+                    href="https://github.com/scovillo/playondlna/forks"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    <img
+                        alt="GitHub forks"
+                        height="24"
+                        loading="lazy"
+                        src="https://img.shields.io/github/forks/scovillo/playondlna?style=flat-square&amp;logo=github&amp;label=Forks&amp;color=ff514d&amp;labelColor=151b25"
+                    />
+                </a>
+                <a
+                    href="https://github.com/scovillo/playondlna/releases/latest"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    <img
+                        alt="Latest GitHub release"
+                        height="24"
+                        loading="lazy"
+                        src="https://img.shields.io/github/v/release/scovillo/playondlna?style=flat-square&amp;logo=github&amp;label=Release&amp;color=ff514d&amp;labelColor=151b25"
+                    />
+                </a>
+                <a
+                    href="https://github.com/scovillo/playondlna/releases"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                >
+                    <img
+                        alt="GitHub release downloads"
+                        height="24"
+                        loading="lazy"
+                        src="https://img.shields.io/github/downloads/scovillo/playondlna/total?style=flat-square&amp;logo=github&amp;label=Downloads&amp;color=ff514d&amp;labelColor=151b25"
+                    />
+                </a>
+            </div>
         </div>
-        <div class="screenshot">
-          <img
-            src="assets/screenshots/Screenshot_PlayOnDlna_2.png"
-            alt="PlayOnDlna in ready mode"
-          />
+        <div aria-hidden="true" class="hero-visual">
+            <div class="glow"></div>
+            <div class="phone-frame">
+                <img
+                    alt=""
+                    data-screenshot="1"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_1.png"
+                />
+            </div>
+            <div class="floating-card floating-card-top">
+                <span class="status-dot"></span>
+                <span data-i18n="localStreaming">Local streaming</span>
+            </div>
+            <div class="floating-card floating-card-bottom">
+                <span>♫</span>
+                <span data-i18n="audioReady">Audio & playlists ready</span>
+            </div>
         </div>
-        <div class="screenshot">
-          <img
-            src="assets/screenshots/Screenshot_PlayOnDlna_3.png"
-            alt="PlayOnDlna settings"
-          />
+    </section>
+
+    <section aria-label="Supported sources" class="source-showcase">
+        <div class="section-shell source-showcase-inner">
+            <span aria-hidden="true" class="source-count">6</span>
+            <div class="source-heading">
+                <p class="eyebrow" data-i18n="supportedSources">
+                    Supported sources
+                </p>
+                <h2 data-i18n="sourceTitle">
+                    One app. Six sources. More freedom.
+                </h2>
+                <p data-i18n="sourceLead">
+                    Share a link from any supported platform and PlayOnDlna takes
+                    care of the rest.
+                </p>
+            </div>
+            <div class="source-grid">
+                <div class="source-card source-youtube">
+                    <span aria-hidden="true" class="source-mark">Y</span>
+                    <strong>YouTube</strong>
+                </div>
+                <div class="source-card source-ymusic">
+                    <span aria-hidden="true" class="source-mark">Y</span>
+                    <strong>YMusic</strong>
+                </div>
+                <div class="source-card source-peertube">
+                    <span aria-hidden="true" class="source-mark">P</span>
+                    <strong>PeerTube</strong>
+                </div>
+                <div class="source-card source-soundcloud">
+                    <span aria-hidden="true" class="source-mark">S</span>
+                    <strong>SoundCloud</strong>
+                </div>
+                <div class="source-card source-bandcamp">
+                    <span aria-hidden="true" class="source-mark">B</span>
+                    <strong>Bandcamp</strong>
+                </div>
+                <div class="source-card source-ccc">
+                    <span aria-hidden="true" class="source-mark">C</span>
+                    <strong>media.ccc.de</strong>
+                </div>
+            </div>
         </div>
-        <div class="screenshot">
-          <img
-            src="assets/screenshots/Screenshot_PlayOnDlna_4.png"
-            alt="Support PlayOnDlna"
-          />
+    </section>
+
+    <section class="content-section section-shell" id="features">
+        <div class="section-heading">
+            <p class="eyebrow" data-i18n="featuresEyebrow">Built for freedom</p>
+            <h2 data-i18n="featuresTitle">Everything you need to press play</h2>
+            <p data-i18n="featuresLead">
+                PlayOnDlna prepares, organizes and serves your media while keeping
+                the entire experience inside your local network.
+            </p>
         </div>
-      </div>
-      <h2>⚙️ How it works</h2>
-      <ol class="steps">
-        <li>Open YouTube in your favorite client app</li>
-        <li>Share the video to PlayOnDlna</li>
-        <li>Select your DLNA device</li>
-        <li>Enjoy ad-free playback 🎉</li>
-      </ol>
-      <h2>📦 Download</h2>
-      <p>
-        Get it on
-        <a href="https://f-droid.org/packages/io.github.scovillo.playondlna/"
-          >F‑Droid</a
+        <div class="feature-grid">
+            <article class="feature-card feature-card-accent">
+                <span class="feature-icon">🌍</span>
+                <h3 data-i18n="featureChoiceTitle">More choice</h3>
+                <p data-i18n="featureChoiceText">
+                    Enjoy media from multiple platforms instead of being tied to a
+                    single source.
+                </p>
+            </article>
+            <article class="feature-card">
+                <span class="feature-icon">🎧</span>
+                <h3 data-i18n="featureMediaTitle">Video and audio</h3>
+                <p data-i18n="featureMediaText">
+                    Compatible media, cover artwork and subtitles are prepared for
+                    your player.
+                </p>
+            </article>
+            <article class="feature-card feature-card-wide">
+                <span class="feature-icon">🎶</span>
+                <h3 data-i18n="featurePlaylistTitle">
+                    Playlists that just work
+                </h3>
+                <p data-i18n="featurePlaylistText">
+                    Your player does not support playlists? No problem—PlayOnDlna
+                    handles continuous playback for you.
+                </p>
+            </article>
+            <article class="feature-card">
+                <span class="feature-icon">📚</span>
+                <h3 data-i18n="featureLibraryTitle">Your media library</h3>
+                <p data-i18n="featureLibraryText">
+                    Keep prepared video and audio ready to play again whenever you
+                    like.
+                </p>
+            </article>
+            <article class="feature-card">
+                <span class="feature-icon">📡</span>
+                <h3 data-i18n="featureDiscoveryTitle">Effortless control</h3>
+                <p data-i18n="featureDiscoveryText">
+                    Find compatible players automatically and control playback from
+                    the app.
+                </p>
+            </article>
+            <article class="feature-card feature-card-dark">
+                <span class="feature-icon">🔒</span>
+                <h3 data-i18n="featureLocalTitle">Local by design</h3>
+                <p data-i18n="featureLocalText">
+                    Media is served directly from your Android device over your local
+                    network.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <section class="workflow-section">
+        <div class="section-shell workflow-layout">
+            <div class="section-heading section-heading-left">
+                <p class="eyebrow" data-i18n="workflowEyebrow">Simple by design</p>
+                <h2 data-i18n="workflowTitle">From link to living room in moments</h2>
+                <p data-i18n="workflowLead">
+                    No server setup, no account and no complicated configuration.
+                </p>
+            </div>
+            <ol class="workflow-steps">
+                <li>
+                    <span>1</span>
+                    <div>
+                        <h3 data-i18n="stepShareTitle">Share a link</h3>
+                        <p data-i18n="stepShareText">
+                            Send a supported media link to PlayOnDlna.
+                        </p>
+                    </div>
+                </li>
+                <li>
+                    <span>2</span>
+                    <div>
+                        <h3 data-i18n="stepChooseTitle">Choose your player</h3>
+                        <p data-i18n="stepChooseText">
+                            Select a discovered DLNA device on your network.
+                        </p>
+                    </div>
+                </li>
+                <li>
+                    <span>3</span>
+                    <div>
+                        <h3 data-i18n="stepEnjoyTitle">Sit back and enjoy</h3>
+                        <p data-i18n="stepEnjoyText">
+                            Control ad-free playback directly from your phone.
+                        </p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="content-section section-shell" id="screenshots">
+        <div class="section-heading">
+            <p class="eyebrow" data-i18n="screenshotsEyebrow">The app</p>
+            <h2 data-i18n="screenshotsTitle">Focused on what matters</h2>
+            <p data-i18n="screenshotsLead">
+                A clean, dark interface keeps your library, playlists, players and
+                settings within easy reach.
+            </p>
+        </div>
+        <div class="screenshot-grid">
+            <figure>
+                <img
+                    alt="Media library in PlayOnDlna"
+                    data-i18n-alt="screenshotLibrary"
+                    data-screenshot="1"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_1.png"
+                />
+            </figure>
+            <figure>
+                <img
+                    alt="Playlist preparation in PlayOnDlna"
+                    data-i18n-alt="screenshotPreparation"
+                    data-screenshot="2"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_2.png"
+                />
+            </figure>
+            <figure>
+                <img
+                    alt="Playlist overview in PlayOnDlna"
+                    data-i18n-alt="screenshotPlaylists"
+                    data-screenshot="3"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_3.png"
+                />
+            </figure>
+            <figure>
+                <img
+                    alt="Playback controls and player selection in PlayOnDlna"
+                    data-i18n-alt="screenshotPlayback"
+                    data-screenshot="4"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_4.png"
+                />
+            </figure>
+            <figure>
+                <img
+                    alt="Media settings in PlayOnDlna"
+                    data-i18n-alt="screenshotMediaSettings"
+                    data-screenshot="5"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_5.png"
+                />
+            </figure>
+            <figure>
+                <img
+                    alt="Favorite device settings in PlayOnDlna"
+                    data-i18n-alt="screenshotDevices"
+                    data-screenshot="6"
+                    loading="lazy"
+                    src="assets/screenshots/Screenshot_PlayOnDlna_6.png"
+                />
+            </figure>
+        </div>
+    </section>
+
+    <section class="open-source-section section-shell">
+        <div class="open-source-card">
+            <div>
+                <p class="eyebrow" data-i18n="openEyebrow">Open source</p>
+                <h2 data-i18n="openTitle">Transparent from screen to stream</h2>
+                <p data-i18n="openText">
+                    PlayOnDlna is free software licensed under GPLv3. Inspect the
+                    code, report issues or help make it better.
+                </p>
+            </div>
+            <a
+                class="text-link"
+                data-i18n="exploreSource"
+                href="https://github.com/scovillo/playondlna"
+            >Explore the source →</a
+            >
+        </div>
+    </section>
+
+    <section class="download-section" id="download">
+        <div class="section-shell download-card">
+            <img alt="" src="assets/icon.png"/>
+            <div>
+                <p class="eyebrow" data-i18n="downloadEyebrow">Ready to stream?</p>
+                <h2 data-i18n="downloadTitle">Put your media on the big screen</h2>
+                <p data-i18n="downloadText">
+                    Download PlayOnDlna from F-Droid or get the latest APK from
+                    GitHub.
+                </p>
+            </div>
+            <div class="download-actions">
+                <a
+                    class="button button-light"
+                    data-i18n="getFdroid"
+                    href="https://f-droid.org/packages/io.github.scovillo.playondlna/"
+                >Get it on F-Droid</a
+                >
+                <a
+                    class="button button-ghost"
+                    data-i18n="getApk"
+                    href="https://github.com/scovillo/playondlna/releases"
+                >Download APK</a
+                >
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <div class="section-shell footer-inner">
+        <a class="brand" href="#top">
+            <img alt="" src="assets/icon.png"/>
+            <span>PlayOnDlna</span>
+        </a>
+        <p>
+            <span data-i18n="footerMade">Made with ❤️ by</span>
+            <a href="https://github.com/scovillo">scovillo</a>
+        </p>
+        <a href="https://github.com/scovillo/playondlna/blob/main/LICENSE"
+        >GPLv3</a
         >
-        or check
-        <a href="https://github.com/scovillo/playondlna/releases"
-          >the apk releases on GitHub</a
-        >.
-      </p>
-      <h2>💻 Open Source</h2>
-      <p>
-        Report issues or contribute on
-        <a href="https://github.com/scovillo/playondlna">GitHub</a>.
-      </p>
     </div>
-
-    <footer>
-      Made with ❤️ by <a href="https://github.com/scovillo">scovillo</a>
-    </footer>
-  </body>
+</footer>
+</body>
 </html>

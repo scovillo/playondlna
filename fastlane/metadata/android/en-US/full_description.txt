@@ -1,25 +1,33 @@
-Play YouTube videos ad-free on DLNA players (e.g. Kodi, SmartTV) in your local network!
-Browse YouTube in your favorite client and share the link to the PlayOnDlna app
-to play the video ad-free on a DLNA player in your local network.
+Play your media ad-free on DLNA players such as Kodi and Smart TVs in your local network!
+Simply share a supported media link with PlayOnDlna. The app prepares compatible video or audio and streams it directly to your selected player.
 
-🎨 <b>Sleek Design</b><br>
-A graphical interface reduced to the essentials in a dark design that's easy on the eyes even at night.<br>
+Supported sources include YouTube, YMusic, PeerTube, SoundCloud, Bandcamp, and media.ccc.de.
+
+🌍 <b>More Choice</b><br>
+Enjoy media from your favorite platforms in one simple app.<br>
+
+🎧 <b>Video and Audio</b><br>
+PlayOnDlna prepares compatible media, cover artwork, and subtitles for your DLNA player.<br>
+
+🎶 <b>Playlists That Just Work</b><br>
+Enjoy continuous playback even when your player has no native playlist support.<br>
+
+📚 <b>Your Media Library</b><br>
+Keep prepared videos and audio ready to play again whenever you like.<br>
+
+📡 <b>Simple</b><br>
+Automatic discovery finds compatible players on your local network. Choose a player and control playback directly from the app.<br>
 
 💝 <b>Ad-Free</b><br>
-Enjoy videos ad-free on your local network.<br>
+Enjoy your media without advertising interruptions.<br>
 
-🤩 <b>Simple</b><br>
-Ad-free playback at the touch of a button without complex setup!
-An automated search finds compatible players on your local network.<br>
+👐 <b>Transparent and Local</b><br>
+Media is served directly from your Android device over your local network. The publicly available source code lets anyone verify the app's quality, privacy, and security.<br>
 
-👐 <b>Transparency</b><br>
-The publicly accessible source code allows anyone to personally verify the quality, privacy, and security.<br>
-
-If the app serves you well, consider a 🎁 donation to support my efforts.<br>
+If the app serves you well, consider a 🎁 donation to support continued development.<br>
 
 <b>Kodi Setup</b><br>
-To stream videos to Kodi, you have to ensure that Kodi is found as dlna player in your local network.
-To achieve this, follow the instructions below.<br>
+To stream media to Kodi, make sure Kodi can be found as a DLNA player in your local network.<br>
 1. Go to <b>⚙ Settings > Services > UPnP DLNA</b><br>
 2. Enable <b>Enable UPnP support</b><br>
 3. Enable <b>Allow remote control via UPnP</b><br>

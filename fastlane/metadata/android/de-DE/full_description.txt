@@ -1,27 +1,35 @@
-Spiele YouTube-Videos werbefrei auf DLNA-Playern (z.B. Kodi, SmartTV) in deinem lokalen Netzwerk ab!
-Durchsuche YouTube in deinem Lieblings-Client und teile den Link zur PlayOnDlna-App,
-um das Video werbefrei auf einem DLNA-Player in deinem lokalen Netzwerk abzuspielen.
+Spiele deine Medien werbefrei auf DLNA-Playern wie Kodi und Smart-TVs in deinem lokalen Netzwerk ab!
+Teile einfach einen unterstützten Medienlink mit PlayOnDlna. Die App bereitet kompatibles Video oder Audio auf und streamt es direkt an deinen ausgewählten Player.
 
-🎨 <b>Schlankes Design</b><br>
-Eine grafische Oberfläche reduziert auf das Wesentliche im dunklen Design, das auch in der Nacht angenehm für die Augen ist.<br>
+Unterstützte Quellen sind YouTube, YMusic, PeerTube, SoundCloud, Bandcamp und media.ccc.de.
+
+🌍 <b>Mehr Auswahl</b><br>
+Genieße Medien deiner Lieblingsplattformen bequem in einer einzigen App.<br>
+
+🎧 <b>Video und Audio</b><br>
+PlayOnDlna bereitet kompatible Medien, Cover und Untertitel für deinen DLNA-Player auf.<br>
+
+🎶 <b>Playlists, die einfach funktionieren</b><br>
+Genieße fortlaufende Wiedergabe, selbst wenn dein Player keine Playlists unterstützt.<br>
+
+📚 <b>Deine Medienbibliothek</b><br>
+Bewahre vorbereitete Videos und Audiodateien auf und spiele sie jederzeit erneut ab.<br>
+
+📡 <b>Einfach</b><br>
+Die automatische Suche findet kompatible Player im lokalen Netzwerk. Wähle einen Player aus und steuere die Wiedergabe direkt aus der App.<br>
 
 💝 <b>Werbefrei</b><br>
-Genieße Videos werbefrei in deinem lokalen Netzwerk.<br>
+Genieße deine Medien ohne Werbeunterbrechungen.<br>
 
-🤩 <b>Einfach</b><br>
-Werbefreies Abspielen per Knopfdruck ohne komplexe Einrichtungen!
-Eine automatisierte Suche findet kompatible Player in deinem lokalen Netzwerk.<br>
+👐 <b>Transparent und lokal</b><br>
+Medien werden direkt von deinem Android-Gerät im lokalen Netzwerk bereitgestellt. Der öffentlich zugängliche Quellcode macht Qualität, Datenschutz und Sicherheit nachvollziehbar.<br>
 
-👐 <b>Transparenz</b><br>
-Der öffentlich zugängliche Quellcode ermöglicht jedem, sich persönlich von Qualität, Datenschutz und Sicherheit zu überzeugen.<br>
-
-Wenn dir die App gute Dienste leistet, würde ich mich über eine 🎁 Spende freuen, um meine Bemühungen zu unterstützen.<br>
+Wenn dir die App gute Dienste leistet, kannst du die weitere Entwicklung mit einer 🎁 Spende unterstützen.<br>
 
 <b>Kodi-Setup</b><br>
-Um Videos auf Kodi zu streamen, musst du sicherstellen, dass Kodi als DLNA-Player in deinem lokalen Netzwerk gefunden wird.
-Befolge dazu die folgenden Anweisungen.<br>
+Um Medien auf Kodi zu streamen, muss Kodi als DLNA-Player im lokalen Netzwerk gefunden werden können.<br>
 1. Gehe zu <b>⚙ Einstellungen > Dienste > UPnP DLNA</b><br>
 2. Aktiviere <b>UPnP-Unterstützung aktivieren</b><br>
 3. Aktiviere <b>Fernsteuerung über UPnP erlauben</b><br>
 
-❤️ Happy streaming! ❤️
+❤️ Viel Spaß beim Streamen! ❤️

@@ -1,0 +1,8 @@
+New in version 1.14:
+
+- More freedom: stream links from PeerTube, SoundCloud, Bandcamp, media.ccc.de and YMusic alongside YouTube
+- Audio and audio playlists are now supported
+- Your player doesn't support playlists? No problem—PlayOnDlna handles it for you!
+- Faster, more reliable discovery of players on your network
+- A refined media server keeps streaming stable and easy to control
+- PlayOnDlna now runs on Android 8.0 and newer

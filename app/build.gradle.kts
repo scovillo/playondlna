@@ -18,8 +18,8 @@ android {
         applicationId = "io.github.scovillo.playondlna"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.13"
+        versionCode = 15
+        versionName = "1.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -122,6 +122,7 @@ tasks.register("generateReadme") {
         val readmeFile = file("$projectDir/../README.md")
         val descText =
             file("$projectDir/../fastlane/metadata/android/en-US/full_description.txt").readText()
+        val readmeDescription = descText.substringBefore("\n\n🌍")
         val appName = project.findProperty("appName") as? String ?: project.name
         val android =
             project.extensions.findByName("android") as? com.android.build.gradle.internal.dsl.BaseAppModuleExtension
@@ -146,6 +147,23 @@ tasks.register("generateReadme") {
 📦 **Version:** $versionCode ($versionName)
 ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
 
+## ✨ Highlights
+
+**Your media. Your player. Your network.**
+
+- 🌍 **More than YouTube** — Share links from YouTube, YMusic, PeerTube, SoundCloud, Bandcamp, and media.ccc.de
+- 🎧 **Video and audio** — PlayOnDlna prepares compatible media, cover artwork, and subtitles for your DLNA player
+- 🎶 **Playlists that just work** — Enjoy continuous playback even when your player has no native playlist support
+- 📚 **Your personal media library** — Keep prepared videos and audio ready to play again whenever you like
+- 📡 **Effortless discovery and control** — Find compatible players automatically and control playback from the app
+- 🔒 **Local by design** — Media is served directly from your Android device over your local network
+
+No account, no ads, and no complicated setup—just share a link, choose a player, and enjoy.
+
+## 📱 Description
+
+${readmeDescription.trimIndent()}
+
 ## 🤖 Android Configuration
 
 - **Application ID:** $appId
@@ -153,11 +171,9 @@ tasks.register("generateReadme") {
 - **Min SDK:** $minSdk
 - **Target SDK:** $targetSdk
 
+PlayOnDlna runs on Android 8.0 and newer.
+
 The global configuration `android:usesCleartextTraffic="true"` is needed to communicate with DLNA devices in the local network and is never used in the public internet context.
-
-## 📱 Description
-
-${descText.trimIndent()}
 
 The app is built entirely on free software libraries.
 All dependencies are compatible with the GNU GPLv3 license.
