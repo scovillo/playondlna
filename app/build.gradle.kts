@@ -144,6 +144,8 @@ tasks.register("generateReadme") {
             """
 # $appName
 
+[🌐 Official website](https://scovillo.github.io/playondlna/) · [📥 Download on F-Droid](https://f-droid.org/packages/io.github.scovillo.playondlna/)
+
 📦 **Version:** $versionCode ($versionName)
 ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
 

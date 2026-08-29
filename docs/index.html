@@ -8,7 +8,9 @@
         name="google-site-verification"
     />
     <link href="https://scovillo.github.io/playondlna/" rel="canonical"/>
-    <meta content="index, follow" name="robots"/>
+    <meta content="index, follow, max-image-preview:large" name="robots"/>
+    <meta content="#080b11" name="theme-color"/>
+    <meta content="Scovillo" name="author"/>
     <title>PlayOnDlna – Play your media ad-free on DLNA players</title>
     <meta
         content="Play video and audio ad-free on Kodi, Smart TVs and other DLNA players. Open source, local and easy to use."
@@ -32,18 +34,82 @@
     />
     <meta content="https://scovillo.github.io/playondlna/" property="og:url"/>
     <meta content="website" property="og:type"/>
+    <meta content="PlayOnDlna" property="og:site_name"/>
+    <meta content="en_US" property="og:locale"/>
+    <meta content="de_DE" property="og:locale:alternate"/>
+    <meta content="ru_RU" property="og:locale:alternate"/>
+    <meta content="uk_UA" property="og:locale:alternate"/>
+    <meta content="summary_large_image" name="twitter:card"/>
+    <meta
+        content="PlayOnDlna – Your media. Your player. Your network."
+        name="twitter:title"
+    />
+    <meta
+        content="Play video and audio ad-free on Kodi, Smart TVs and other DLNA players."
+        name="twitter:description"
+    />
+    <meta
+        content="https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png"
+        name="twitter:image"
+    />
     <link href="style.css" rel="stylesheet"/>
     <link href="assets/icon.png" rel="icon" type="image/png"/>
     <script type="application/ld+json">
         {
             "@context": "https://schema.org",
-            "@type": "SoftwareApplication",
-            "name": "PlayOnDlna",
-            "operatingSystem": "Android 8.0 and newer",
-            "applicationCategory": "MultimediaApplication",
-            "url": "https://scovillo.github.io/playondlna/",
-            "image": "https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png",
-            "description": "Play video and audio ad-free on Kodi, Smart TVs and other DLNA players. Open source, local and easy to use."
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "@id": "https://scovillo.github.io/playondlna/#website",
+                    "url": "https://scovillo.github.io/playondlna/",
+                    "name": "PlayOnDlna",
+                    "description": "Play video and audio ad-free on Kodi, Smart TVs and other DLNA players.",
+                    "inLanguage": [
+                        "en",
+                        "de",
+                        "ru",
+                        "uk"
+                    ]
+                },
+                {
+                    "@type": "SoftwareApplication",
+                    "@id": "https://scovillo.github.io/playondlna/#app",
+                    "name": "PlayOnDlna",
+                    "alternateName": "Play On DLNA",
+                    "softwareVersion": "1.14",
+                    "operatingSystem": "Android 8.0 and newer",
+                    "applicationCategory": "MultimediaApplication",
+                    "applicationSubCategory": "DLNA media player",
+                    "url": "https://scovillo.github.io/playondlna/",
+                    "downloadUrl": "https://f-droid.org/packages/io.github.scovillo.playondlna/",
+                    "installUrl": "https://f-droid.org/packages/io.github.scovillo.playondlna/",
+                    "codeRepository": "https://github.com/scovillo/playondlna",
+                    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+                    "image": "https://scovillo.github.io/playondlna/assets/screenshots/Screenshot_PlayOnDlna_1.png",
+                    "description": "PlayOnDlna is an open-source Android app for streaming video, audio and playlists from YouTube, PeerTube, SoundCloud, Bandcamp, media.ccc.de and YMusic to DLNA players.",
+                    "featureList": [
+                        "Ad-free media playback",
+                        "Video, audio and playlist support",
+                        "Automatic DLNA player discovery",
+                        "Local media server",
+                        "YouTube, PeerTube, SoundCloud, Bandcamp, media.ccc.de and YMusic support"
+                    ],
+                    "offers": {
+                        "@type": "Offer",
+                        "price": "0",
+                        "priceCurrency": "EUR"
+                    },
+                    "author": {
+                        "@type": "Person",
+                        "name": "Scovillo",
+                        "url": "https://github.com/scovillo"
+                    },
+                    "sameAs": [
+                        "https://github.com/scovillo/playondlna",
+                        "https://f-droid.org/packages/io.github.scovillo.playondlna/"
+                    ]
+                }
+            ]
         }
     </script>
     <script defer src="app.js"></script>

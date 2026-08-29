@@ -1,5 +1,7 @@
 # PlayOnDlna
 
+[🌐 Official website](https://scovillo.github.io/playondlna/) · [📥 Download on F-Droid](https://f-droid.org/packages/io.github.scovillo.playondlna/)
+
 📦 **Version:** 15 (1.14)
 ⚙️ **Build-Tool:** Gradle 8.14.3
 

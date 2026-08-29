@@ -122,14 +122,14 @@ class MediaModel(
     private val playlistManager: PlaylistManager,
 ) : ViewModel() {
     private val youtubeUrl = YoutubeUrl()
-    private var _currentVideoFile = mutableStateOf<LibraryItem?>(null)
-    private var _currentThumbnailFile = mutableStateOf<File?>(null)
-    private var _currentFfmpegSession = mutableStateOf<Session?>(null)
-    private val _title = mutableStateOf("idle")
-    private val _playlistPosition = mutableStateOf<PlaylistPosition?>(null)
-    private val _playlistImportSummary = mutableStateOf<PlaylistImportSummary?>(null)
-    private val _toastEvents = MutableSharedFlow<ToastEvent>()
-    private val _onLibraryChange = MutableSharedFlow<Unit>()
+    private val currentVideoFileState = mutableStateOf<LibraryItem?>(null)
+    private val currentThumbnailFileState = mutableStateOf<File?>(null)
+    private val currentFfmpegSessionState = mutableStateOf<Session?>(null)
+    private val titleState = mutableStateOf("idle")
+    private val playlistPositionState = mutableStateOf<PlaylistPosition?>(null)
+    private val playlistImportSummaryState = mutableStateOf<PlaylistImportSummary?>(null)
+    private val mutableToastEvents = MutableSharedFlow<ToastEvent>()
+    private val mutableOnLibraryChange = MutableSharedFlow<Unit>()
     private val requestMediaServer = Channel<Unit>(Channel.CONFLATED)
     private val state = MediaFileJobState()
 
@@ -163,15 +163,15 @@ class MediaModel(
             )
     private val runningJobs = Collections.synchronizedList(mutableListOf<Job>())
 
-    val currentVideoFile: State<LibraryItem?> get() = _currentVideoFile
-    val currentFfmpegSession: State<Session?> get() = _currentFfmpegSession
-    val title: State<String> get() = _title
-    val playlistPosition: State<PlaylistPosition?> get() = _playlistPosition
-    val playlistImportSummary: State<PlaylistImportSummary?> get() = _playlistImportSummary
+    val currentVideoFile: State<LibraryItem?> = currentVideoFileState
+    val currentFfmpegSession: State<Session?> = currentFfmpegSessionState
+    val title: State<String> = titleState
+    val playlistPosition: State<PlaylistPosition?> = playlistPositionState
+    val playlistImportSummary: State<PlaylistImportSummary?> = playlistImportSummaryState
     val progress: State<Float> get() = state.progress
     val status: State<MediaFileJobStatus> get() = state.status
-    val toastEvents = _toastEvents.asSharedFlow()
-    val onLibraryChange = _onLibraryChange.asSharedFlow()
+    val toastEvents = mutableToastEvents.asSharedFlow()
+    val onLibraryChange = mutableOnLibraryChange.asSharedFlow()
     val requestMediaServerEvents = requestMediaServer.receiveAsFlow()
 
     init {
@@ -179,16 +179,16 @@ class MediaModel(
     }
 
     fun dismissPlaylistImportSummary() {
-        _playlistImportSummary.value = null
+        playlistImportSummaryState.value = null
     }
 
     fun selectMediaItem(item: LibraryItem) {
-        _currentVideoFile.value = item
+        currentVideoFileState.value = item
         requestMediaServer.trySend(Unit)
     }
 
     fun selectPlaylist(items: List<LibraryItem>) {
-        _currentThumbnailFile.value = items.firstOrNull()?.thumbnail
+        currentThumbnailFileState.value = items.firstOrNull()?.thumbnail
         requestMediaServer.trySend(Unit)
     }
 
@@ -204,10 +204,10 @@ class MediaModel(
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     Log.i("MediaModel", "Requesting: $normalizedUrl")
-                    _currentVideoFile.value = null
-                    _currentThumbnailFile.value = null
-                    _currentFfmpegSession.value = null
-                    _title.value = normalizedUrl
+                    currentVideoFileState.value = null
+                    currentThumbnailFileState.value = null
+                    currentFfmpegSessionState.value = null
+                    titleState.value = normalizedUrl
                     val resolvedUrl = resolveSoundCloudShortUrl(normalizedUrl)
                     val service = NewPipe.getServiceByUrl(resolvedUrl)
                     if (service.getLinkTypeByUrl(resolvedUrl) == StreamingService.LinkType.PLAYLIST) {
@@ -216,7 +216,7 @@ class MediaModel(
                         importSingleMediaFile(resolvedUrl)
                     }
                     if (state.status.value != MediaFileJobStatus.ERROR) {
-                        _title.value = "idle"
+                        titleState.value = "idle"
                         state.idle()
                     }
                     Log.d("MediaModel", "Job for $normalizedUrl completed successfully")
@@ -224,7 +224,7 @@ class MediaModel(
                     throw e
                 } catch (e: HttpStatusException) {
                     Log.e("MediaModel", "HTTP ${e.statusCode} for $normalizedUrl", e)
-                    _toastEvents.emit(
+                    mutableToastEvents.emit(
                         if (e.statusCode == 401 || e.statusCode == 403) {
                             ToastEvent.Show(R.string.error_video_requires_authentication)
                         } else {
@@ -234,15 +234,15 @@ class MediaModel(
                     resetDownloadPanel()
                 } catch (e: ContentNotAvailableException) {
                     Log.e("MediaModel", "Content unavailable for $normalizedUrl", e)
-                    _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
+                    mutableToastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
                     resetDownloadPanel()
                 } catch (e: DownloadFailedException) {
                     Log.e("MediaModel", "Download failed for $normalizedUrl", e)
-                    _toastEvents.emit(ToastEvent.Show(R.string.download_failed))
+                    mutableToastEvents.emit(ToastEvent.Show(R.string.download_failed))
                     resetDownloadPanel()
                 } catch (e: Exception) {
                     Log.e("MediaModel", "Error in job for $normalizedUrl", e)
-                    _toastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
+                    mutableToastEvents.emit(ToastEvent.Show(R.string.error_processing_link))
                     resetDownloadPanel()
                 }
             }
@@ -276,7 +276,7 @@ class MediaModel(
         var skippedEntries = 0
         try {
             entries.forEachIndexed { index, entry ->
-                _playlistPosition.value = PlaylistPosition(index + 1, entries.size)
+                playlistPositionState.value = PlaylistPosition(index + 1, entries.size)
                 try {
                     val entryUrl = normalizePlaylistEntryUrl(entry.url)
                     check(playlistManager.addVideo(playlist.id, importSingleMediaFile(entryUrl))) {
@@ -294,9 +294,9 @@ class MediaModel(
                 }
             }
         } finally {
-            _playlistPosition.value = null
+            playlistPositionState.value = null
         }
-        _playlistImportSummary.value = PlaylistImportSummary(addedEntries, skippedEntries)
+        playlistImportSummaryState.value = PlaylistImportSummary(addedEntries, skippedEntries)
     }
 
     private suspend fun createMuxedLibraryItem(
@@ -362,7 +362,7 @@ class MediaModel(
         Log.i("MediaModel", "Final FFMPEGKit command: ${ffmpegCmd.value()}")
         state.finalizing()
         suspendCancellableCoroutine { continuation ->
-            _currentFfmpegSession.value =
+            currentFfmpegSessionState.value =
                 FFmpegKit.executeAsync(
                     ffmpegCmd.value(),
                     { session ->
@@ -383,8 +383,8 @@ class MediaModel(
                                     if (bestVideo == null) null else streamFiles.subtitle,
                                 )
                             libraryManager.save(libraryItem.metadata)
-                            viewModelScope.launch { _onLibraryChange.emit(Unit) }
-                            if (_currentFfmpegSession.value?.sessionId == session.sessionId) {
+                            viewModelScope.launch { mutableOnLibraryChange.emit(Unit) }
+                            if (currentFfmpegSessionState.value?.sessionId == session.sessionId) {
                                 state.ready()
                                 if (continuation.isActive) continuation.resume(Unit)
                             } else if (continuation.isActive) {
@@ -439,7 +439,7 @@ class MediaModel(
                 null,
             )
         libraryManager.save(libraryItem.metadata)
-        _onLibraryChange.emit(Unit)
+        mutableOnLibraryChange.emit(Unit)
         return libraryItem
     }
 
@@ -460,7 +460,7 @@ class MediaModel(
     private suspend fun importSingleMediaFile(url: String): String {
         val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
         extractor.fetchPage()
-        _title.value = extractor.name
+        titleState.value = extractor.name
         val mediaId = extractor.safeId()
         if (libraryManager.isExisting(mediaId)) {
             state.ready()
@@ -471,7 +471,7 @@ class MediaModel(
     }
 
     private fun resetDownloadPanel() {
-        _title.value = "idle"
+        titleState.value = "idle"
         state.idle()
     }
 
@@ -484,7 +484,7 @@ class MediaModel(
                 }
                 if (isWlanProtectionEnabled.value && !wifiConnectionState.isConnected()) {
                     withContext(Dispatchers.Main) {
-                        _toastEvents.emit(ToastEvent.Show(R.string.wlan_disconnected))
+                        mutableToastEvents.emit(ToastEvent.Show(R.string.wlan_disconnected))
                         state.error()
                     }
                     cancelJobs()

@@ -11,6 +11,7 @@ line_ending = lf
 [*.{kt,kts}]
 ktlint_code_style = ktlint_official
 ktlint_standard_no-wildcard-imports = enabled
+ktlint_function_naming_ignore_when_annotated_with = Composable
 max_line_length = 180
 
 [.editorconfig]
