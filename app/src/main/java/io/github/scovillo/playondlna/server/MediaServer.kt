@@ -22,6 +22,7 @@ import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -177,6 +178,7 @@ class MediaServerService : Service() {
     override fun onCreate() {
         AppLog.i("MediaServerService", "onCreate")
         super.onCreate()
+        localIpAddress.initialize(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
         mediaServerNotification.createNotificationChannel(this)
         isServerStarted = startMediaFileServer()
         if (!isServerStarted) {

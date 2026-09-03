@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         NewPipe.init(OkHttpDownloadClient())
 
+        val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        localIpAddress.initialize(connectivityManager)
         val settingsRepository = SettingsRepository(this)
         val libraryManager = LibraryManager(cacheDir)
         val libraryViewModel = LibraryViewModel(libraryManager)
@@ -90,9 +92,7 @@ class MainActivity : ComponentActivity() {
         mediaModel =
             MediaModel(
                 settingsRepository,
-                WifiConnectionState(
-                    getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager,
-                ),
+                WifiConnectionState(connectivityManager),
                 cacheDir,
                 libraryManager,
                 playlistManager,

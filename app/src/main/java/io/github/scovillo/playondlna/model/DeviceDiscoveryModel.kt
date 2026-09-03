@@ -2,12 +2,14 @@ package io.github.scovillo.playondlna.model
 
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
 import androidx.lifecycle.AndroidViewModel
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import io.github.scovillo.playondlna.dlna.discovery.SsdpDiscovery
+import io.github.scovillo.playondlna.server.localIpAddress
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -20,9 +22,11 @@ class DeviceDiscoveryModel(application: Application) : AndroidViewModel(applicat
         return try {
             val context = getApplication<Application>().applicationContext
             val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            localIpAddress.initialize(connectivityManager)
 
             val deviceClient = SsdpDeviceClient()
-            val discovery = SsdpDiscovery(wifiManager, deviceClient)
+            val discovery = SsdpDiscovery(wifiManager, deviceClient, localIpAddress.wifiNetwork())
 
             discovery.discoverLocalNetworkMediaRenderers(onDeviceDiscovered = onDeviceDiscovered)
         } catch (e: Exception) {

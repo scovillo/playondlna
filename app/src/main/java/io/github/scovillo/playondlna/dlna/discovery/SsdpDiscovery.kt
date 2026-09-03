@@ -18,6 +18,7 @@
 
 package io.github.scovillo.playondlna.dlna.discovery
 
+import android.net.Network
 import android.net.wifi.WifiManager
 import android.util.Log
 import io.github.scovillo.playondlna.AppLog
@@ -40,6 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class SsdpDiscovery(
     private val wifiManager: WifiManager,
     private val detailsClient: SsdpDeviceClient,
+    private val wifiNetwork: Network?,
 ) {
     companion object {
         private const val SSDP_GROUP = "239.255.255.250"
@@ -90,6 +92,7 @@ class SsdpDiscovery(
 
             val socket =
                 DatagramSocket(0).apply {
+                    wifiNetwork?.bindSocket(this)
                     soTimeout = RECEIVE_SOCKET_TIMEOUT_MS
                 }
 
