@@ -7,6 +7,7 @@
     <string name="playlist_download_position">Video %1$d von %2$d</string>
     <string name="clear_cache">Cache leeren</string>
     <string name="available_players">Verfügbare Player</string>
+    <string name="favorite">Favorit</string>
     <string name="force_playondlna_managed_playlist">Erzwinge PlayOnDlna-verwaltete Playlist</string>
     <string name="wlan_disconnected">WLAN getrennt! Downloads abgebrochen, um dein mobiles Datenvolumen zu schützen 🔒</string>
     <string name="multicast_disabled">Suche fehlgeschlagen! Multicast ist in deinem aktuellen Netzwerk nicht möglich</string>

@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -160,12 +159,16 @@ fun DlnaListScreen(
                     }
                 }
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(devices) { device ->
+                    items(
+                        items = devices,
+                        key = { device -> device.location },
+                    ) { device ->
                         val isSelected = selectedDevice?.location == device.location
                         val forcePlayOnDlnaManagedPlaylist =
                             deviceSettings[device.usn]?.forcePlayOnDlnaManagedPlaylist ?: false
                         Card(
                             Modifier
+                                .animateItem()
                                 .padding(8.dp)
                                 .fillMaxWidth()
                                 .scale(if (isSelected) 1.03f else 1f)
@@ -200,6 +203,34 @@ fun DlnaListScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.padding(top = 8.dp),
                                     ) {
+                                        IconButton(
+                                            onClick = {
+                                                if (isFavorite) {
+                                                    dlnaModel.favoriteDevices.removeLocation(device.location)
+                                                } else {
+                                                    dlnaModel.favoriteDevices.addLocation(device.location)
+                                                }
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector =
+                                                    if (isFavorite) {
+                                                        Icons.Filled.Star
+                                                    } else {
+                                                        Icons.Outlined.StarBorder
+                                                    },
+                                                contentDescription = stringResource(R.string.favorite),
+                                                modifier = Modifier.size(32.dp),
+                                            )
+                                        }
+                                        Text(
+                                            stringResource(R.string.favorite),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                    }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Checkbox(
                                                 checked = forcePlayOnDlnaManagedPlaylist,
@@ -219,27 +250,6 @@ fun DlnaListScreen(
                                             style = MaterialTheme.typography.bodyMedium,
                                         )
                                     }
-                                }
-                                Spacer(Modifier.weight(1f))
-                                IconButton(
-                                    onClick = {
-                                        if (isFavorite) {
-                                            dlnaModel.favoriteDevices.removeLocation(device.location)
-                                        } else {
-                                            dlnaModel.favoriteDevices.addLocation(device.location)
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        imageVector =
-                                            if (isFavorite) {
-                                                Icons.Filled.Star
-                                            } else {
-                                                Icons.Outlined.StarBorder
-                                            },
-                                        contentDescription = stringResource(R.string.save_device),
-                                        modifier = Modifier.size(32.dp),
-                                    )
                                 }
                             }
                         }
