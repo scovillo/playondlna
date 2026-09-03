@@ -187,14 +187,9 @@ class MainActivity : ComponentActivity() {
 
     private fun handleShareIntent(intent: Intent?) {
         AppLog.i("ShareIntent", "Received new ShareIntent: $intent")
-        if (intent?.action == Intent.ACTION_SEND) {
-            if (intent.type == "text/plain") {
-                val url = intent.extras?.getString("android.intent.extra.TEXT")
-                if (url != null) {
-                    this.mediaModel.import(url)
-                }
-            }
-        }
+        if (intent?.action != Intent.ACTION_SEND || intent.type?.startsWith("text/") != true) return
+
+        intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.let(mediaModel::import)
     }
 
     private fun startWebServerService() {
