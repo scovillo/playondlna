@@ -31,6 +31,16 @@ data class DlnaDevice(
     val deviceType: String,
     val avTransportUrl: String?,
     val renderingControlUrl: String?,
+    val services: List<DlnaService> = emptyList(),
 ) {
     fun requireAvTransportUrl(): String = requireNotNull(avTransportUrl) { "No AVTransport URL for $friendlyName" }
 }
+
+@Serializable
+data class DlnaService(
+    val serviceType: String,
+    val serviceId: String?,
+    val scpdUrl: String?,
+    val controlUrl: String?,
+    val eventSubUrl: String?,
+)

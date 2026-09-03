@@ -20,6 +20,7 @@ package io.github.scovillo.playondlna.dlna.discovery
 
 import android.util.Log
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.DlnaService
 import java.net.URL
 
 /**
@@ -73,26 +74,11 @@ class SsdpDeviceClient {
                 val serviceList =
                     device.getElementsByTagName("serviceList").item(0) as? org.w3c.dom.Element
 
-                var avTransportControlUrl: String? = null
-                var renderingControlUrl: String? = null
-
-                if (serviceList != null) {
-                    val services = serviceList.getElementsByTagName("service")
-                    for (i in 0 until services.length) {
-                        val service = services.item(i) as? org.w3c.dom.Element ?: continue
-                        val serviceType =
-                            service.getElementsByTagName("serviceType").item(0)?.textContent
-                        val controlUrl =
-                            service.getElementsByTagName("controlURL").item(0)?.textContent
-
-                        if (serviceType == "urn:schemas-upnp-org:service:AVTransport:1") {
-                            avTransportControlUrl = resolveUrl(location, controlUrl)
-                        }
-                        if (serviceType == "urn:schemas-upnp-org:service:RenderingControl:1") {
-                            renderingControlUrl = resolveUrl(location, controlUrl)
-                        }
-                    }
-                }
+                val services = parseServices(serviceList, location)
+                val avTransportControlUrl =
+                    services.firstOrNull { it.serviceType == "urn:schemas-upnp-org:service:AVTransport:1" }?.controlUrl
+                val renderingControlUrl =
+                    services.firstOrNull { it.serviceType == "urn:schemas-upnp-org:service:RenderingControl:1" }?.controlUrl
 
                 DlnaDevice(
                     usn = usn,
@@ -112,6 +98,7 @@ class SsdpDeviceClient {
                             ?: "unknown",
                     avTransportUrl = avTransportControlUrl,
                     renderingControlUrl = renderingControlUrl,
+                    services = services,
                 )
             }
         } catch (e: Exception) {
@@ -120,6 +107,32 @@ class SsdpDeviceClient {
             null
         }
     }
+
+    private fun parseServices(
+        serviceList: org.w3c.dom.Element?,
+        location: String,
+    ): List<DlnaService> {
+        if (serviceList == null) return emptyList()
+
+        val services = serviceList.getElementsByTagName("service")
+        return buildList {
+            for (i in 0 until services.length) {
+                val service = services.item(i) as? org.w3c.dom.Element ?: continue
+                val serviceType = service.childTextContent("serviceType") ?: continue
+                add(
+                    DlnaService(
+                        serviceType = serviceType,
+                        serviceId = service.childTextContent("serviceId"),
+                        scpdUrl = resolveUrl(location, service.childTextContent("SCPDURL")),
+                        controlUrl = resolveUrl(location, service.childTextContent("controlURL")),
+                        eventSubUrl = resolveUrl(location, service.childTextContent("eventSubURL")),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun org.w3c.dom.Element.childTextContent(name: String): String? = getElementsByTagName(name).item(0)?.textContent
 
     private fun resolveUrl(
         base: String,

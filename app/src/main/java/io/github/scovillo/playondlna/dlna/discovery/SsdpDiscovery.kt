@@ -160,6 +160,7 @@ class SsdpDiscovery(
                     "SSDP",
                     "⏵ ${it.friendlyName} (${it.modelName}, ${it.deviceType}) @ ${it.location}",
                 )
+                Log.d("SSDP", it.services.joinToString("\n"))
             }
             result
         }
