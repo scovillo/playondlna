@@ -99,6 +99,10 @@ Beispiele:\n
     <string name="remove_from_playlist">Aus Playlist entfernen</string>
     <string name="play_playlist">Playlist abspielen</string>
     <string name="playlist_no_playable_videos">Diese Playlist enthält keine abspielbaren Videos.</string>
+    <string name="playlist">Playlist</string>
+    <string name="playlist_with_management">Playlist (%1$s verwaltet)</string>
+    <string name="playondlna_managed">PlayOnDlna</string>
+    <string name="player_managed">Player</string>
     <string name="notification_channel_name">Medienserver</string>
     <string name="notification_title">Streaming aktiv</string>
     <string name="notification_text">Server läuft unter http://%1$s:%2$d/</string>

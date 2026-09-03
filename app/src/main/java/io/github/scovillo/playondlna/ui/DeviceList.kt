@@ -77,6 +77,7 @@ fun DlnaListScreen(
     val isLoading by dlnaModel.isLoading.collectAsState()
     val favorites by dlnaModel.favoriteDevices.locations.collectAsState()
     val selectedDevice by dlnaModel.selectedDevice.collectAsState()
+    val playlistPlaybackModes by dlnaModel.activePlaylistPlaybackModes.collectAsState()
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
             dlnaModel.discoverDevices()
@@ -119,6 +120,7 @@ fun DlnaListScreen(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
                     playlist = playlist,
+                    playlistPlaybackMode = selectedDevice?.location?.let(playlistPlaybackModes::get),
                     selectedDevice = selectedDevice,
                     onCommand = dlnaModel::remoteCommand,
                     onPlay = { device ->

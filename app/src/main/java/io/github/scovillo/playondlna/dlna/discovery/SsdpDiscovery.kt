@@ -31,6 +31,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.SocketTimeoutException
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * SSDP (Simple Service Discovery Protocol) based DLNA device discovery.
@@ -101,7 +102,7 @@ class SsdpDiscovery(
                 val packet = DatagramPacket(requestBytes, requestBytes.size, multicastAddress, SSDP_PORT)
                 repeat(SEND_ROUNDS) {
                     socket.send(packet)
-                    delay(SEND_ROUND_DELAY_MS)
+                    delay(SEND_ROUND_DELAY_MS.milliseconds)
                 }
             }
 

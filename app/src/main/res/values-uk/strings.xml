@@ -99,6 +99,10 @@
     <string name="remove_from_playlist">Видалити з плейлиста</string>
     <string name="play_playlist">Відтворити плейлист</string>
     <string name="playlist_no_playable_videos">У цьому плейлисті немає відео, які можна відтворити.</string>
+    <string name="playlist">Плейлист</string>
+    <string name="playlist_with_management">Плейлист (керується %1$s)</string>
+    <string name="playondlna_managed">PlayOnDlna</string>
+    <string name="player_managed">програвачем</string>
     <string name="notification_channel_name">Медіасервер</string>
 	<string name="notification_title">Передача активна</string>
 	<string name="notification_text">Сервер працює за адресою http://%1$s:%2$d/</string>

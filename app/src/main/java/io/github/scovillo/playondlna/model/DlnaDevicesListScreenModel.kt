@@ -27,6 +27,7 @@ import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.control.PlaylistPlaybackMode
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -58,6 +59,7 @@ class DlnaDevicesListScreenModel(
 
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
+    val activePlaylistPlaybackModes: StateFlow<Map<String, PlaylistPlaybackMode>> = remote.activePlaylistPlaybackModes
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
@@ -126,6 +128,8 @@ class DlnaDevicesListScreenModel(
         nativePlaylist: DlnaPlaylist,
         videoFiles: List<LibraryItem>,
     ) = remote.playPlaylist(device, nativePlaylist, videoFiles)
+
+    fun clearPlaylistPlaybackModes() = remote.clearPlaylistPlaybackModes()
 
     fun remoteCommand(command: PlaybackCommand) {
         _selectedDevice.value?.let { remote.command(it, command) }

@@ -34,6 +34,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -110,6 +112,8 @@ class DlnaRemoteControl(
 ) {
     private val playbackJobs = ConcurrentHashMap<String, Job>()
     private val playbackSessions = MutableStateFlow<Map<String, PlaybackSession>>(emptyMap())
+    private val playlistPlaybackModes = MutableStateFlow<Map<String, PlaylistPlaybackMode>>(emptyMap())
+    val activePlaylistPlaybackModes: StateFlow<Map<String, PlaylistPlaybackMode>> = playlistPlaybackModes.asStateFlow()
 
     fun playVideo(
         device: DlnaDevice,
@@ -123,6 +127,10 @@ class DlnaRemoteControl(
             }
             runCatching { transport.playFile(device, item) }.onFailure { onPlaybackFailure(it) }
         }
+    }
+
+    fun clearPlaylistPlaybackModes() {
+        playlistPlaybackModes.value = emptyMap()
     }
 
     fun playPlaylist(
@@ -143,6 +151,7 @@ class DlnaRemoteControl(
                         try {
                             AppLog.i("DlnaRemoteControl", "Trying native playlist for device: ${device.friendlyName}")
                             transport.playPlaylist(device, nativePlaylist)
+                            setPlaylistPlaybackMode(device, PlaylistPlaybackMode.PLAYER_MANAGED)
                             AppLog.i("DlnaRemoteControl", "Native playlist playback success on device: ${device.friendlyName}")
                             return@launch
                         } catch (exception: Exception) {
@@ -166,6 +175,7 @@ class DlnaRemoteControl(
                             0,
                         ),
                     )
+                    setPlaylistPlaybackMode(device, PlaylistPlaybackMode.PLAY_ON_DLNA_MANAGED)
                     playAppPlaylistFrom(deviceKey, 0)
                     AppLog.i("DlnaRemoteControl", "App managed playlist playback started on device: ${device.friendlyName}")
                 } catch (_: CancellationException) {
@@ -395,11 +405,24 @@ class DlnaRemoteControl(
         playbackSessions.update { it + (session.device.location to session) }
     }
 
+    private fun setPlaylistPlaybackMode(
+        device: DlnaDevice,
+        mode: PlaylistPlaybackMode,
+    ) {
+        playlistPlaybackModes.update { it + (device.location to mode) }
+    }
+
     private fun cancelPlayback(device: DlnaDevice) {
         val deviceKey = device.location
         playbackJobs.remove(deviceKey)?.cancel()
         playbackSessions.update { it - deviceKey }
+        playlistPlaybackModes.update { it - deviceKey }
     }
+}
+
+enum class PlaylistPlaybackMode {
+    PLAY_ON_DLNA_MANAGED,
+    PLAYER_MANAGED,
 }
 
 data class PlaybackSession(
