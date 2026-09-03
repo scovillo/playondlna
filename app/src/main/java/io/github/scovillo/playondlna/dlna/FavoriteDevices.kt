@@ -8,6 +8,7 @@ import io.github.scovillo.playondlna.dlna.discovery.SsdpDeviceClient
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,18 +78,25 @@ class FavoriteDevices(private val settingsRepository: SettingsRepository) : View
     }
 
     suspend fun discover(): List<DlnaDevice> {
-        val locations = locations.first()
-        return locations.mapNotNull { location ->
-            try {
-                deviceClient.fetch(
-                    usn = "manual-$location",
-                    st = "manual",
-                    location = location,
-                )
-            } catch (_: Exception) {
-                AppLog.w("loadManualDevices", "$location not reachable")
-                null
-            }
+        return discoverFavoriteDevices(settingsRepository.favoriteDeviceLocationsFlow) { location ->
+            deviceClient.fetch(
+                usn = "manual-$location",
+                st = "manual",
+                location = location,
+            )
         }
     }
 }
+
+internal suspend fun discoverFavoriteDevices(
+    favoriteLocations: Flow<List<String>>,
+    fetchDevice: (String) -> DlnaDevice?,
+): List<DlnaDevice> =
+    favoriteLocations.first().mapNotNull { location ->
+        try {
+            fetchDevice(location)
+        } catch (_: Exception) {
+            AppLog.w("loadManualDevices", "$location not reachable")
+            null
+        }
+    }
