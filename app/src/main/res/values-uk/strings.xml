@@ -7,6 +7,7 @@
     <string name="playlist_download_position">Відео %1$d з %2$d</string>
     <string name="clear_cache">Очистити кеш</string>
     <string name="available_players">Доступні плеєри</string>
+    <string name="force_playondlna_managed_playlist">Примусово керувати плейлистом через PlayOnDlna</string>
     <string name="wlan_disconnected">Wi-Fi відключено! Завантаження скасовано для захисту мобільного трафіку 🔒</string>
     <string name="multicast_disabled">Помилка сканування! Multicast недоступний у вашій мережі</string>
     <string name="playback_failed">Не вдалося відтворити!</string>

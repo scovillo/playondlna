@@ -1,6 +1,7 @@
 package io.github.scovillo.playondlna.persistence
 
 import android.content.Context
+import android.util.Base64
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -9,8 +10,13 @@ import io.github.scovillo.playondlna.model.VideoQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 
 val Context.dataStore by preferencesDataStore("settings")
+
+data class DeviceSettings(
+    val forcePlayOnDlnaManagedPlaylist: Boolean = false,
+)
 
 class SettingsRepository(private val context: Context) {
     private object Keys {
@@ -19,6 +25,9 @@ class SettingsRepository(private val context: Context) {
         val IS_INTERNAL_SUBTITLE_ENABLED = booleanPreferencesKey("is_internal_subtitle_enabled")
         val IS_WLAN_PROTECTION_ENABLED = booleanPreferencesKey("is_wlan_protection_enabled")
         val FAVORITE_LOCATIONS = stringPreferencesKey("favorite_locations")
+        val FORCE_PLAY_ON_DLNA_MANAGED_PLAYLIST_USNS =
+            stringPreferencesKey("force_play_on_dlna_managed_playlist_usns")
+        val DEVICE_SETTINGS = stringPreferencesKey("device_settings")
     }
 
     val videoQualityFlow: Flow<VideoQuality> =
@@ -55,6 +64,17 @@ class SettingsRepository(private val context: Context) {
                 ?.split("|")
                 ?.filter { it.isNotBlank() }
                 ?: emptyList()
+        }
+
+    /**
+     * Settings are keyed by the stable UPnP USN and stored as a JSON object per device.
+     * Add fields to [DeviceSettings] and [encodeDeviceSettings] as further per-device options
+     * become necessary.
+     */
+    val deviceSettingsFlow: Flow<Map<String, DeviceSettings>> =
+        context.dataStore.data.map { prefs ->
+            decodeDeviceSettings(prefs[Keys.DEVICE_SETTINGS])
+                .ifEmpty { legacyDeviceSettings(prefs) }
         }
 
     suspend fun saveVideoQuality(value: VideoQuality) {
@@ -105,4 +125,50 @@ class SettingsRepository(private val context: Context) {
                 updated.joinToString("|")
         }
     }
+
+    suspend fun saveDeviceSettings(
+        deviceUsn: String,
+        settings: DeviceSettings,
+    ) {
+        context.dataStore.edit { prefs ->
+            val updated = legacyDeviceSettings(prefs) + decodeDeviceSettings(prefs[Keys.DEVICE_SETTINGS]) + (deviceUsn to settings)
+            prefs[Keys.DEVICE_SETTINGS] = encodeDeviceSettings(updated)
+            prefs.remove(Keys.FORCE_PLAY_ON_DLNA_MANAGED_PLAYLIST_USNS)
+        }
+    }
+
+    private fun legacyDeviceSettings(prefs: androidx.datastore.preferences.core.Preferences): Map<String, DeviceSettings> =
+        prefs[Keys.FORCE_PLAY_ON_DLNA_MANAGED_PLAYLIST_USNS]
+            ?.split("|")
+            ?.filter { it.isNotBlank() }
+            ?.map(::decodeUsn)
+            .orEmpty()
+            .associateWith { DeviceSettings(forcePlayOnDlnaManagedPlaylist = true) }
+
+    private fun decodeDeviceSettings(serializedSettings: String?): Map<String, DeviceSettings> =
+        runCatching {
+            val settings = JSONObject(serializedSettings ?: "{}")
+            settings.keys().asSequence().associateWith { usn ->
+                val deviceSettings = settings.getJSONObject(usn)
+                DeviceSettings(
+                    forcePlayOnDlnaManagedPlaylist =
+                        deviceSettings.optBoolean("forcePlayOnDlnaManagedPlaylist"),
+                )
+            }
+        }.getOrDefault(emptyMap())
+
+    private fun encodeDeviceSettings(settings: Map<String, DeviceSettings>): String =
+        JSONObject().apply {
+            settings.forEach { (usn, deviceSettings) ->
+                put(
+                    usn,
+                    JSONObject().put(
+                        "forcePlayOnDlnaManagedPlaylist",
+                        deviceSettings.forcePlayOnDlnaManagedPlaylist,
+                    ),
+                )
+            }
+        }.toString()
+
+    private fun decodeUsn(encodedUsn: String): String = String(Base64.decode(encodedUsn, Base64.URL_SAFE or Base64.NO_WRAP), Charsets.UTF_8)
 }

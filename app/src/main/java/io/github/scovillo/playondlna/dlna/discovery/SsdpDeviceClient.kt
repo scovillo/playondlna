@@ -70,6 +70,10 @@ class SsdpDeviceClient {
                 doc.documentElement.normalize()
 
                 val device = doc.getElementsByTagName("device").item(0) as? org.w3c.dom.Element ?: return null
+                val deviceUsn =
+                    device.getElementsByTagName("UDN").item(0)?.textContent
+                        ?.takeIf { it.isNotBlank() }
+                        ?: usn
 
                 val serviceList =
                     device.getElementsByTagName("serviceList").item(0) as? org.w3c.dom.Element
@@ -81,7 +85,7 @@ class SsdpDeviceClient {
                     services.firstOrNull { it.serviceType == "urn:schemas-upnp-org:service:RenderingControl:1" }?.controlUrl
 
                 DlnaDevice(
-                    usn = usn,
+                    usn = deviceUsn,
                     st = st,
                     location = location,
                     friendlyName =

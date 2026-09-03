@@ -7,6 +7,7 @@
     <string name="playlist_download_position">Video %1$d of %2$d</string>
     <string name="clear_cache">Clear Cache</string>
     <string name="available_players">Available Players</string>
+    <string name="force_playondlna_managed_playlist">Force PlayOnDlna-managed playlist</string>
     <string name="wlan_disconnected">Wlan disconnected! Downloads cancelled to protect your mobile data volume 🔒</string>
     <string name="multicast_disabled">Scan failed! Multicast is not possible in your current network</string>
     <string name="playback_failed">Playback failed!</string>

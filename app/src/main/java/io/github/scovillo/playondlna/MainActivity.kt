@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
             DlnaDevicesListScreenModel(
                 ViewModelProvider(this)[DeviceDiscoveryModel::class.java],
                 favoriteDevices,
+                settingsRepository,
             )
         setContent {
             playOnDlnaTheme {

@@ -137,6 +137,7 @@ class DlnaRemoteControl(
         device: DlnaDevice,
         nativePlaylist: DlnaPlaylist,
         items: List<LibraryItem>,
+        forcePlayOnDlnaManagedPlaylist: Boolean = false,
     ) {
         cancelPlayback(device)
         val deviceKey = device.location
@@ -147,7 +148,7 @@ class DlnaRemoteControl(
                     return@launch
                 }
                 try {
-                    if (!isMixedPlaylist(items)) {
+                    if (!forcePlayOnDlnaManagedPlaylist && !isMixedPlaylist(items)) {
                         try {
                             AppLog.i("DlnaRemoteControl", "Trying native playlist for device: ${device.friendlyName}")
                             transport.playPlaylist(device, nativePlaylist)
@@ -164,7 +165,11 @@ class DlnaRemoteControl(
                             }
                             AppLog.i("DlnaRemoteControl", "Native playlist playback failed on device: ${device.friendlyName}")
                         }
-                    } else {
+                    }
+                    if (forcePlayOnDlnaManagedPlaylist) {
+                        AppLog.i("DlnaRemoteControl", "Force app managed playback for playlists is enabled")
+                    }
+                    if (isMixedPlaylist(items)) {
                         AppLog.i("DlnaRemoteControl", "Using app managed playback for mixed playlist")
                     }
                     currentCoroutineContext().ensureActive()

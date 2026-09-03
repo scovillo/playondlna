@@ -28,6 +28,8 @@ import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.dlna.control.PlaylistPlaybackMode
+import io.github.scovillo.playondlna.persistence.DeviceSettings
+import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,6 +45,7 @@ import kotlinx.coroutines.launch
 class DlnaDevicesListScreenModel(
     private val deviceDiscoveryModel: DeviceDiscoveryModel,
     val favoriteDevices: FavoriteDevices,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
@@ -61,6 +64,9 @@ class DlnaDevicesListScreenModel(
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
     val activePlaylistPlaybackModes: StateFlow<Map<String, PlaylistPlaybackMode>> = remote.activePlaylistPlaybackModes
 
+    private val _deviceSettings = MutableStateFlow<Map<String, DeviceSettings>>(emptyMap())
+    val deviceSettings: StateFlow<Map<String, DeviceSettings>> = _deviceSettings.asStateFlow()
+
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
 
@@ -69,6 +75,9 @@ class DlnaDevicesListScreenModel(
             favoriteDevices.locations.collect { favorites ->
                 _devices.update { current -> sortDevices(current, favorites) }
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.deviceSettingsFlow.collect { _deviceSettings.value = it }
         }
     }
 
@@ -127,7 +136,27 @@ class DlnaDevicesListScreenModel(
         device: DlnaDevice,
         nativePlaylist: DlnaPlaylist,
         videoFiles: List<LibraryItem>,
-    ) = remote.playPlaylist(device, nativePlaylist, videoFiles)
+    ) {
+        remote.playPlaylist(
+            device,
+            nativePlaylist,
+            videoFiles,
+            forcePlayOnDlnaManagedPlaylist =
+                _deviceSettings.value[device.usn]?.forcePlayOnDlnaManagedPlaylist ?: false,
+        )
+    }
+
+    fun setForcePlayOnDlnaManagedPlaylist(
+        device: DlnaDevice,
+        force: Boolean,
+    ) {
+        viewModelScope.launch {
+            settingsRepository.saveDeviceSettings(
+                device.usn,
+                DeviceSettings(forcePlayOnDlnaManagedPlaylist = force),
+            )
+        }
+    }
 
     fun clearPlaylistPlaybackModes() = remote.clearPlaylistPlaybackModes()
 
