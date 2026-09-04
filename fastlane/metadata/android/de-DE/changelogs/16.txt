@@ -1,0 +1,8 @@
+Neu in Version 1.15:
+
+- Zuverlässigeres Streaming bei mehreren Netzwerkverbindungen: PlayOnDlna verwendet gezielt dein WLAN
+- Bei Playlists siehst du jetzt, ob PlayOnDlna oder dein Player die Wiedergabe steuert
+- Falls dein Player Playlists nicht richtig abspielt, kannst du die Steuerung dauerhaft PlayOnDlna überlassen
+- Favoriten lassen sich übersichtlicher verwalten und werden schneller geladen
+- Geteilte Links werden aus mehr Apps zuverlässig übernommen
+- Player werden zuverlässiger erkannt

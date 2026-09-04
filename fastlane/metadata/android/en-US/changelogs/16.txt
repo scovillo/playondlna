@@ -1,0 +1,8 @@
+New in version 1.15:
+
+- More reliable streaming with multiple network connections: PlayOnDlna now targets your Wi-Fi network
+- Playlists now show whether playback is managed by PlayOnDlna or your player
+- If your player struggles with playlists, you can permanently let PlayOnDlna manage them
+- Favorites are clearer to manage and load faster
+- Shared links are accepted reliably from more apps
+- Players are discovered more reliably
