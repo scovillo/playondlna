@@ -144,7 +144,7 @@ tasks.register("generateReadme") {
             """
 # $appName
 
-[🌐 Official website](https://scovillo.github.io/playondlna/) · [📥 Download on F-Droid](https://f-droid.org/packages/io.github.scovillo.playondlna/)
+[🌐 Official website](https://scovillo.github.io/playondlna/) · [🌶️ Spicy Sources](https://spicy-sources.lukas-scheerer.de/en/projects/playondlna/) · [📝 Tech blog](https://spicy-sources.lukas-scheerer.de/en/blog/) · [📥 Download on F-Droid](https://f-droid.org/packages/io.github.scovillo.playondlna/)
 
 📦 **Version:** $versionCode ($versionName)
 ⚙️ **Build-Tool:** Gradle ${gradle.gradleVersion}
@@ -165,6 +165,14 @@ No account, no ads, and no complicated setup—just share a link, choose a playe
 ## 📱 Description
 
 ${readmeDescription.trimIndent()}
+
+## 🔧 How it works
+
+1. **Resolve the shared link.** NewPipe Extractor reads the media information and provides the available video, audio, and subtitle streams.
+2. **Prepare a compatible file.** PlayOnDlna selects suitable streams, fetches them to the Android device, and uses FFmpeg to combine separate video and audio tracks. If necessary, incompatible audio is converted to AAC.
+3. **Serve and play it locally.** The app starts an HTTP server on the Android device, sends the local media URL and metadata to the selected player via UPnP AVTransport, and the player streams the prepared file directly from the device over the local network.
+
+There is no cloud relay or separate media server to configure. For more background, read [A media link is not a stream](https://spicy-sources.lukas-scheerer.de/en/blog/dlna-im-lokalen-netz/) on the Spicy Sources tech blog.
 
 ## 🤖 Android Configuration
 
