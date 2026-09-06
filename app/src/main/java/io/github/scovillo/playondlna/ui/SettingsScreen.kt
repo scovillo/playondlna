@@ -127,6 +127,8 @@ fun SettingsScreen(
         item { Spacer(Modifier.height(SectionSpacing)) }
         item { WlanProtection(videoSettingsState) }
         item { Spacer(Modifier.height(SectionSpacing)) }
+        item { SponsorBlock(videoSettingsState) }
+        item { Spacer(Modifier.height(SectionSpacing)) }
         item { CustomFavoriteDevices(favoriteDevices) }
         items(
             items = deviceLocations.toList(),
@@ -358,6 +360,22 @@ fun WlanProtection(videoSettingsState: VideoSettingsState) {
                     videoSettingsState.onWlanProtectionEnabledSelect(it)
                 },
             )
+        }
+    }
+}
+
+@Composable
+fun SponsorBlock(videoSettingsState: VideoSettingsState) {
+    val isEnabled by videoSettingsState.isSponsorBlockEnabled
+    Column {
+        Text(stringResource(R.string.sponsorblock_title), style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(ContentSpacing))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.sponsorblock_label))
+                Text(stringResource(R.string.sponsorblock_desc), style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = isEnabled, onCheckedChange = videoSettingsState::onSponsorBlockEnabledSelect)
         }
     }
 }

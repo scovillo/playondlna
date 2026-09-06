@@ -62,6 +62,14 @@
     <string name="wlan_protection_title">🔒 Захист Wi-Fi</string>
     <string name="wlan_protection_label">Увімкнути захист Wi-Fi</string>
     <string name="wlan_protection_desc">Якщо увімкнено, завантаження скасовуються при відключенні Wi-Fi для захисту мобільного трафіку.</string>
+    <string name="sponsorblock_title">⏭️ SponsorBlock</string>
+    <string name="sponsorblock_label">Використовувати SponsorBlock</string>
+    <string name="sponsorblock_desc">Автоматично пропускає спонсорські сегменти, позначені спільнотою, під час відтворення YouTube. Потрібен сумісний DLNA-програвач і з’єднання зі службою SponsorBlock.</string>
+    <plurals name="sponsorblock_segment_count">
+        <item quantity="one">%1$d сегмент SponsorBlock</item>
+        <item quantity="other">%1$d сегментів SponsorBlock</item>
+    </plurals>
+    <string name="sponsorblock_no_segments">Немає сегментів SponsorBlock</string>
     <string name="device_url_hint">URL пристрою (напр. http://192.168.178.80:1379/)</string>
     <string name="add_device_url">Додати URL пристрою</string>
     <string name="cache_title">💾 Кеш</string>

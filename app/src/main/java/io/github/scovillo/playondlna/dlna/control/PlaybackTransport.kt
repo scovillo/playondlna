@@ -28,4 +28,31 @@ interface PlaybackTransport {
      * Get the URI of the currently playing track.
      */
     fun currentTrackUri(): String?
+
+    fun currentPositionSeconds(): Double?
+
+    /** Read URI and position from one GetPositionInfo request where possible. */
+    fun positionInfo(): PlaybackPositionInfo =
+        PlaybackPositionInfo(
+            trackUri = currentTrackUri(),
+            positionSeconds = currentPositionSeconds(),
+            durationSeconds = null,
+        )
+
+    fun mediaInfo(): PlaybackMediaInfo? = null
+
+    fun seekTo(seconds: Double)
 }
+
+data class PlaybackPositionInfo(
+    val trackUri: String?,
+    val positionSeconds: Double?,
+    val trackNumber: Int? = null,
+    val durationSeconds: Double? = null,
+)
+
+data class PlaybackMediaInfo(
+    val numberOfTracks: Int?,
+    val currentUri: String?,
+    val nextUri: String?,
+)

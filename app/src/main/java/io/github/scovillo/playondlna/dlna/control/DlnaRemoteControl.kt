@@ -30,16 +30,20 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /** Transport boundary used by [DlnaRemoteControl] - provides legacy compatibility layer */
 interface DlnaTransport {
@@ -61,6 +65,15 @@ interface DlnaTransport {
     fun transportState(device: DlnaDevice): TransportState
 
     fun currentTrackUri(device: DlnaDevice): String?
+
+    fun currentPositionSeconds(device: DlnaDevice): Double?
+
+    fun positionInfo(device: DlnaDevice): PlaybackPositionInfo = PlaybackPositionInfo(currentTrackUri(device), currentPositionSeconds(device))
+
+    fun seekTo(
+        device: DlnaDevice,
+        seconds: Double,
+    )
 }
 
 /**
@@ -83,7 +96,9 @@ class SoapDlnaTransport : DlnaTransport {
         device: DlnaDevice,
         playlist: DlnaPlaylist,
     ) {
-        transportFor(device).play(playlist.url, playlist.metadataDidlLite())
+        val playbackTransport = transportFor(device)
+        playbackTransport.play(playlist.url, playlist.metadataDidlLite())
+        playbackTransport.mediaInfo()
     }
 
     override fun command(
@@ -96,6 +111,15 @@ class SoapDlnaTransport : DlnaTransport {
     override fun transportState(device: DlnaDevice): TransportState = transportFor(device).transportState()
 
     override fun currentTrackUri(device: DlnaDevice): String? = transportFor(device).currentTrackUri()
+
+    override fun currentPositionSeconds(device: DlnaDevice): Double? = transportFor(device).currentPositionSeconds()
+
+    override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo = transportFor(device).positionInfo()
+
+    override fun seekTo(
+        device: DlnaDevice,
+        seconds: Double,
+    ) = transportFor(device).seekTo(seconds)
 }
 
 /**
@@ -109,24 +133,45 @@ class DlnaRemoteControl(
     private val transport: DlnaTransport = SoapDlnaTransport(),
     private val onIncompatibleDevice: suspend (DlnaDevice) -> Unit = {},
     private val onPlaybackFailure: suspend (Throwable) -> Unit = {},
+    private val isSponsorBlockEnabled: () -> Boolean = { false },
+    private val sponsorBlockClient: SponsorBlockClient,
+    private val playbackObservationDelay: Duration = 1.seconds,
 ) {
+    private companion object {
+        const val NATIVE_PLAYLIST_TERMINAL_POLLS = 10
+        val ACTIVE_TRANSPORT_STATES =
+            setOf(TransportState.PLAYING, TransportState.TRANSITIONING, TransportState.PAUSED_PLAYBACK)
+        val TERMINAL_TRANSPORT_STATES = setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
+    }
+
     private val playbackJobs = ConcurrentHashMap<String, Job>()
+    private val playbackObservations = ConcurrentHashMap<String, PlaybackObservation>()
     private val playbackSessions = MutableStateFlow<Map<String, PlaybackSession>>(emptyMap())
     private val playlistPlaybackModes = MutableStateFlow<Map<String, PlaylistPlaybackMode>>(emptyMap())
     val activePlaylistPlaybackModes: StateFlow<Map<String, PlaylistPlaybackMode>> = playlistPlaybackModes.asStateFlow()
 
-    fun playVideo(
+    fun playMedia(
         device: DlnaDevice,
         item: LibraryItem,
     ) {
         cancelPlayback(device)
-        scope.launch(Dispatchers.IO) {
-            if (device.avTransportUrl == null) {
-                onIncompatibleDevice(device)
-                return@launch
+        val playbackJob =
+            scope.launch(Dispatchers.IO) {
+                if (device.avTransportUrl == null) {
+                    AppLog.i("DlnaRemoteControl", "No avTransportUrl: ${device.friendlyName}")
+                    onIncompatibleDevice(device)
+                    return@launch
+                }
+                runCatching {
+                    transport.playFile(device, item)
+                    val observation = startPlaybackObservation(device)
+                    monitorTrack(device, observation, item)
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    onPlaybackFailure(it)
+                }
             }
-            runCatching { transport.playFile(device, item) }.onFailure { onPlaybackFailure(it) }
-        }
+        registerPlaybackJob(device.usn, playbackJob)
     }
 
     fun clearPlaylistPlaybackModes() {
@@ -140,7 +185,6 @@ class DlnaRemoteControl(
         forcePlayOnDlnaManagedPlaylist: Boolean = false,
     ) {
         cancelPlayback(device)
-        val deviceKey = device.location
         val playbackJob =
             scope.launch(Dispatchers.IO) {
                 if (device.avTransportUrl == null) {
@@ -152,8 +196,41 @@ class DlnaRemoteControl(
                         try {
                             AppLog.i("DlnaRemoteControl", "Trying native playlist for device: ${device.friendlyName}")
                             transport.playPlaylist(device, nativePlaylist)
+                            val observation = startPlaybackObservation(device)
                             setPlaylistPlaybackMode(device, PlaylistPlaybackMode.PLAYER_MANAGED)
                             AppLog.i("DlnaRemoteControl", "Native playlist playback success on device: ${device.friendlyName}")
+                            var finalTrackPlaybackObserved = false
+                            var playbackObserved = false
+                            var consecutiveTerminalPolls = 0
+                            try {
+                                monitorSponsorBlock(
+                                    device,
+                                    observation,
+                                    stopWhen = { status ->
+                                        val isFinalTrack =
+                                            status.trackNumber?.let { it == items.size }
+                                                ?: trackUrisMatch(status.trackUri, items.last().url)
+                                        finalTrackPlaybackObserved =
+                                            finalTrackPlaybackObserved ||
+                                            (isFinalTrack && status.transportState in ACTIVE_TRANSPORT_STATES)
+                                        playbackObserved =
+                                            playbackObserved || status.transportState in ACTIVE_TRANSPORT_STATES
+                                        consecutiveTerminalPolls =
+                                            if (status.transportState in TERMINAL_TRANSPORT_STATES) {
+                                                consecutiveTerminalPolls + 1
+                                            } else {
+                                                0
+                                            }
+                                        (finalTrackPlaybackObserved && status.transportState in TERMINAL_TRANSPORT_STATES) ||
+                                            (playbackObserved && consecutiveTerminalPolls >= NATIVE_PLAYLIST_TERMINAL_POLLS)
+                                    },
+                                ) { status ->
+                                    items.firstOrNull { trackUrisMatch(status.trackUri, it.url) }
+                                        ?: status.trackNumber?.let { items.getOrNull(it - 1) }
+                                }
+                            } finally {
+                                observation.stop()
+                            }
                             return@launch
                         } catch (exception: Exception) {
                             if (
@@ -181,7 +258,7 @@ class DlnaRemoteControl(
                         ),
                     )
                     setPlaylistPlaybackMode(device, PlaylistPlaybackMode.PLAY_ON_DLNA_MANAGED)
-                    playAppPlaylistFrom(deviceKey, 0)
+                    playAppPlaylistFrom(device.usn, 0)
                     AppLog.i("DlnaRemoteControl", "App managed playlist playback started on device: ${device.friendlyName}")
                 } catch (_: CancellationException) {
                     // A newer command superseded this playback session.
@@ -189,45 +266,41 @@ class DlnaRemoteControl(
                     onPlaybackFailure(exception)
                 }
             }
-        registerPlaybackJob(deviceKey, playbackJob)
+        registerPlaybackJob(device.usn, playbackJob)
     }
 
     fun command(
         device: DlnaDevice,
         command: PlaybackCommand,
     ) {
-        val deviceKey = device.location
-        val playbackSession = playbackSessions.value[deviceKey]
+        val playbackSession = playbackSessions.value[device.usn]
         if (playbackSession == null) {
             sendCommand(device, command)
             return
         }
-        val previousPlaybackJob = playbackJobs[deviceKey]
+        val previousPlaybackJob = playbackJobs[device.usn]
         AppLog.i("AppManagedPlaylist", "Manual $command requested at index ${playbackSession.currentIndex}")
         previousPlaybackJob?.cancel()
         val playbackJob =
             scope.launch(Dispatchers.IO) {
                 try {
                     previousPlaybackJob?.join()
-                    val currentSession = playbackSessions.value[deviceKey] ?: return@launch
+                    val currentSession = playbackSessions.value[device.usn] ?: return@launch
                     AppLog.i("AppManagedPlaylist", "Manual $command runs at index ${currentSession.currentIndex}")
-                    when {
-                        command == PlaybackCommand.NEXT ||
-                            command == PlaybackCommand.PREVIOUS -> {
+                    when (command) {
+                        PlaybackCommand.NEXT, PlaybackCommand.PREVIOUS -> {
                             changeTrack(currentSession, command)
                         }
 
-                        command == PlaybackCommand.PLAY &&
-                            currentSession.transportState == TransportState.STOPPED -> {
-                            resumeStoppedSession(currentSession)
+                        PlaybackCommand.PLAY -> {
+                            if (currentSession.transportState == TransportState.STOPPED) {
+                                resumeStoppedSession(currentSession)
+                            } else {
+                                resumeSession(currentSession)
+                            }
                         }
 
-                        command == PlaybackCommand.PLAY -> {
-                            resumeSession(currentSession)
-                        }
-
-                        command == PlaybackCommand.PAUSE ||
-                            command == PlaybackCommand.STOP -> {
+                        PlaybackCommand.PAUSE, PlaybackCommand.STOP -> {
                             pauseOrStop(currentSession, command)
                         }
                     }
@@ -241,12 +314,12 @@ class DlnaRemoteControl(
                             exception,
                         )
                     ) {
-                        markUnsupported(deviceKey, command)
+                        markUnsupported(device.usn, command)
                     }
                     onPlaybackFailure(exception)
                 }
             }
-        registerPlaybackJob(deviceKey, playbackJob)
+        registerPlaybackJob(device.usn, playbackJob)
     }
 
     private fun sendCommand(
@@ -262,6 +335,38 @@ class DlnaRemoteControl(
         }
     }
 
+    private suspend fun monitorSponsorBlock(
+        device: DlnaDevice,
+        observation: PlaybackObservation,
+        stopWhen: ((PlaybackStatus) -> Boolean)? = null,
+        itemForStatus: (PlaybackStatus) -> LibraryItem?,
+    ) {
+        if (!isSponsorBlockEnabled() && stopWhen == null) return
+        val detectors = mutableMapOf<String, SponsorBlockSkipDetector>()
+        observation.status.first { status ->
+            if (isSponsorBlockEnabled()) {
+                val item = itemForStatus(status)
+                val position = status.positionSeconds
+                if (item != null && position != null) {
+                    val detector =
+                        detectors.getOrPut(item.metadata.id) {
+                            SponsorBlockSkipDetector(sponsorBlockClient.sponsorSegments(item.metadata.id))
+                        }
+                    val seekPosition = detector.nextSeekPosition(position)
+                    if (seekPosition != null) {
+                        AppLog.i("SponsorBlock", "Seeking mediaId=${item.metadata.id} from $position to $seekPosition")
+                        runCatching { transport.seekTo(device, seekPosition) }.onFailure {
+                            AppLog.w("SponsorBlock", "Seek unsupported for mediaId=${item.metadata.id}: ${it.message}")
+                            throw CancellationException("Seek unsupported", it)
+                        }
+                    }
+                }
+            }
+
+            stopWhen?.invoke(status) == true
+        }
+    }
+
     private suspend fun changeTrack(
         session: PlaybackSession,
         command: PlaybackCommand,
@@ -270,7 +375,7 @@ class DlnaRemoteControl(
         if (session.transportState == TransportState.STOPPED) {
             setPlaybackSession(session.copy(currentIndex = index))
         } else {
-            playAppPlaylistFrom(session.device.location, index)
+            playAppPlaylistFrom(session.device.usn, index)
         }
     }
 
@@ -280,7 +385,7 @@ class DlnaRemoteControl(
                 transportState = TransportState.PLAYING,
             ),
         )
-        playAppPlaylistFrom(session.device.location, session.currentIndex)
+        playAppPlaylistFrom(session.device.usn, session.currentIndex)
     }
 
     private suspend fun resumeSession(session: PlaybackSession) {
@@ -311,20 +416,20 @@ class DlnaRemoteControl(
     }
 
     private fun markUnsupported(
-        deviceKey: String,
+        deviceId: String,
         command: PlaybackCommand,
     ) {
         playbackSessions.update { sessions ->
-            val session = sessions[deviceKey] ?: return@update sessions
-            sessions + (deviceKey to session.copy(unsupportedCommands = session.unsupportedCommands + command))
+            val session = sessions[deviceId] ?: return@update sessions
+            sessions + (deviceId to session.copy(unsupportedCommands = session.unsupportedCommands + command))
         }
     }
 
     private suspend fun playAppPlaylistFrom(
-        deviceKey: String,
+        deviceId: String,
         startIndex: Int,
     ) {
-        var session = playbackSessions.value[deviceKey] ?: return
+        var session = playbackSessions.value[deviceId] ?: return
         AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.items.size}")
         for (index in startIndex..session.items.lastIndex) {
             currentCoroutineContext().ensureActive()
@@ -345,83 +450,99 @@ class DlnaRemoteControl(
                 AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.items.size}")
             }
             currentCoroutineContext().ensureActive()
-            if (index < session.items.lastIndex) awaitPlaybackEnd(session.device, item.url)
+            val observation = startPlaybackObservation(session.device)
+            monitorTrack(session.device, observation, item)
+        }
+    }
+
+    private suspend fun monitorTrack(
+        device: DlnaDevice,
+        observation: PlaybackObservation,
+        item: LibraryItem,
+    ) {
+        coroutineScope {
+            val sponsorBlockJob = launch { monitorSponsorBlock(device, observation) { item } }
+            try {
+                awaitPlaybackEnd(observation, item.url)
+            } finally {
+                sponsorBlockJob.cancelAndJoin()
+                observation.stop()
+            }
         }
     }
 
     private suspend fun continueAppPlaylist(session: PlaybackSession) {
-        if (session.currentIndex >= session.items.lastIndex) return
-        awaitPlaybackEnd(session.device, session.items[session.currentIndex].url)
-        playAppPlaylistFrom(session.device.location, session.currentIndex + 1)
+        val observation = startPlaybackObservation(session.device)
+        monitorTrack(session.device, observation, session.items[session.currentIndex])
+        if (session.currentIndex < session.items.lastIndex) {
+            playAppPlaylistFrom(session.device.usn, session.currentIndex + 1)
+        }
     }
 
     private suspend fun awaitPlaybackEnd(
-        device: DlnaDevice,
+        observation: PlaybackObservation,
         expectedTrackUri: String,
     ) {
         val detector = PlaybackEndDetector()
         var startupPolls = 0
         var previousState: TransportState? = null
-        while (true) {
-            delay(1000.milliseconds)
-            val state = transportStateWithRetry(device)
-            currentCoroutineContext().ensureActive()
-            val trackUri = runCatching { transport.currentTrackUri(device) }.getOrNull()
-            currentCoroutineContext().ensureActive()
-            if (state != previousState) {
-                AppLog.i("AppManagedPlaylist", "Track state: $state, URI: $trackUri")
-                previousState = state
+        observation.status
+            .onEach { status ->
+                if (status.transportState != previousState) {
+                    AppLog.i("AppManagedPlaylist", "Track state: ${status.transportState}, URI: ${status.trackUri}")
+                    previousState = status.transportState
+                }
             }
-            if (detector.observe(state, trackUri, expectedTrackUri)) {
-                AppLog.i("AppManagedPlaylist", "Track ended: $expectedTrackUri")
-                return
-            } else {
-                AppLog.i("AppManagedPlaylist", "playbackEnded: false")
+            .first { status ->
+                detector.observe(
+                    status.transportState,
+                    status.trackUri,
+                    expectedTrackUri,
+                    status.positionSeconds,
+                    status.durationSeconds,
+                ).also { ended ->
+                    if (ended) AppLog.i("AppManagedPlaylist", "Track ended: $expectedTrackUri")
+                    if (!detector.hasObservedPlayback() && ++startupPolls >= 15) {
+                        error("Renderer did not enter an active playback state")
+                    }
+                }
             }
-            if (!detector.hasObservedPlayback() && ++startupPolls >= 15) {
-                error("Renderer did not enter an active playback state")
-            }
-        }
-    }
-
-    private suspend fun transportStateWithRetry(device: DlnaDevice): TransportState {
-        var lastError: Exception? = null
-        repeat(3) { attempt ->
-            try {
-                return transport.transportState(device)
-            } catch (exception: Exception) {
-                if (exception is CancellationException) throw exception
-                lastError = exception
-                if (attempt < 2) delay(500.milliseconds)
-            }
-        }
-        throw lastError ?: IllegalStateException("GetTransportInfo failed")
     }
 
     private fun registerPlaybackJob(
-        deviceKey: String,
+        deviceId: String,
         playbackJob: Job,
     ) {
-        playbackJobs[deviceKey] = playbackJob
-        playbackJob.invokeOnCompletion { playbackJobs.remove(deviceKey, playbackJob) }
+        playbackJobs[deviceId] = playbackJob
+        playbackJob.invokeOnCompletion { playbackJobs.remove(deviceId, playbackJob) }
     }
 
     private fun setPlaybackSession(session: PlaybackSession) {
-        playbackSessions.update { it + (session.device.location to session) }
+        playbackSessions.update { it + (session.device.usn to session) }
     }
 
     private fun setPlaylistPlaybackMode(
         device: DlnaDevice,
         mode: PlaylistPlaybackMode,
     ) {
-        playlistPlaybackModes.update { it + (device.location to mode) }
+        playlistPlaybackModes.update { it + (device.usn to mode) }
+    }
+
+    /** Replaces only this renderer's poller; observations for other renderers keep running. */
+    private fun startPlaybackObservation(device: DlnaDevice): PlaybackObservation {
+        val deviceId = device.usn
+        val observation = PlaybackObservation(scope, device, transport, playbackObservationDelay)
+        playbackObservations.put(deviceId, observation)?.stop()
+        observation.start()
+        return observation
     }
 
     private fun cancelPlayback(device: DlnaDevice) {
-        val deviceKey = device.location
-        playbackJobs.remove(deviceKey)?.cancel()
-        playbackSessions.update { it - deviceKey }
-        playlistPlaybackModes.update { it - deviceKey }
+        val deviceId = device.usn
+        playbackJobs.remove(deviceId)?.cancel()
+        playbackObservations[deviceId]?.stop()
+        playbackSessions.update { it - deviceId }
+        playlistPlaybackModes.update { it - deviceId }
     }
 }
 

@@ -83,6 +83,7 @@ fun DlnaListScreen(
     val selectedDevice by dlnaModel.selectedDevice.collectAsState()
     val deviceSettings by dlnaModel.deviceSettings.collectAsState()
     val playlistPlaybackModes by dlnaModel.activePlaylistPlaybackModes.collectAsState()
+    val sponsorBlockSegmentCounts by dlnaModel.sponsorBlockSegmentCounts.collectAsState()
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
             dlnaModel.discoverDevices()
@@ -121,11 +122,15 @@ fun DlnaListScreen(
             Column {
                 val currentVideo = mediaModel.currentVideoFile.value
                 val currentThumbnail = mediaModel.currentVideoFile.value?.thumbnail
+                LaunchedEffect(currentVideo?.metadata?.id) {
+                    currentVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
+                }
                 DlnaRemoteControl(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
                     playlist = playlist,
                     playlistPlaybackMode = selectedDevice?.location?.let(playlistPlaybackModes::get),
+                    sponsorBlockSegmentCount = currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get),
                     selectedDevice = selectedDevice,
                     onCommand = dlnaModel::remoteCommand,
                     onPlay = { device ->

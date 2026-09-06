@@ -18,7 +18,10 @@
 
 package io.github.scovillo.playondlna.dlna.soap
 
+import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.control.PlaybackMediaInfo
+import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
 import io.github.scovillo.playondlna.dlna.control.PlaybackTransport
 import io.github.scovillo.playondlna.dlna.control.TransportState
 import okhttp3.OkHttpClient
@@ -46,9 +49,47 @@ class SoapPlaybackTransport(
         }
     }
 
-    override fun transportState(): TransportState = extractor.parseTransportState(soapClient.execute(GetTransportInfoCommand(serviceUrl)))
+    override fun transportState(): TransportState {
+        val state = extractor.parseTransportState(soapClient.execute(GetTransportInfoCommand(serviceUrl)))
+        AppLog.i("SoapPlayback", "GetTransportInfo response: state=$state")
+        return state
+    }
 
     override fun currentTrackUri(): String? = extractor.parseCurrentTrackUri(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
+
+    override fun currentPositionSeconds(): Double? = extractor.parseRelativeTimeSeconds(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
+
+    override fun positionInfo(): PlaybackPositionInfo {
+        val response = soapClient.execute(GetPositionInfoCommand(serviceUrl))
+        return PlaybackPositionInfo(
+            trackUri = extractor.parseCurrentTrackUri(response),
+            positionSeconds = extractor.parseRelativeTimeSeconds(response),
+            trackNumber = extractor.parseCurrentTrackNumber(response),
+            durationSeconds = extractor.parseTrackDurationSeconds(response),
+        ).also {
+            AppLog.i(
+                "SoapPlayback",
+                "GetPositionInfo response: track=${it.trackNumber}, uri=${it.trackUri}, position=${it.positionSeconds}, duration=${it.durationSeconds}",
+            )
+        }
+    }
+
+    override fun mediaInfo(): PlaybackMediaInfo {
+        val response = soapClient.execute(GetMediaInfoCommand(serviceUrl))
+        val info =
+            PlaybackMediaInfo(
+                numberOfTracks = extractor.parseNumberOfTracks(response),
+                currentUri = extractor.parseCurrentUri(response),
+                nextUri = extractor.parseNextUri(response),
+            )
+        AppLog.i("SoapPlayback", "GetMediaInfo response: tracks=${info.numberOfTracks}, currentUri=${info.currentUri}, nextUri=${info.nextUri}")
+        return info
+    }
+
+    override fun seekTo(seconds: Double) {
+        val value = seconds.toInt()
+        soapClient.execute(SeekCommand(serviceUrl, "%02d:%02d:%02d".format(value / 3600, value / 60 % 60, value % 60)))
+    }
 }
 
 class SoapPlaybackTransportFactory(

@@ -56,10 +56,12 @@ class VideoSettingsState(private val repository: SettingsRepository) : ViewModel
     private val _isSubtitleEnabled = mutableStateOf(false)
     private val _isInternalSubtitleEnabled = mutableStateOf(false)
     private val _isWlanProtectionEnabled = mutableStateOf(true)
+    private val _isSponsorBlockEnabled = mutableStateOf(false)
     val videoQuality: State<VideoQuality> get() = _videoQuality
     val isSubtitleEnabled: State<Boolean> get() = _isSubtitleEnabled
     val isInternalSubtitleEnabled: State<Boolean> get() = _isInternalSubtitleEnabled
     val isWlanProtectionEnabled: State<Boolean> get() = _isWlanProtectionEnabled
+    val isSponsorBlockEnabled: State<Boolean> get() = _isSponsorBlockEnabled
 
     init {
         viewModelScope.launch {
@@ -67,6 +69,7 @@ class VideoSettingsState(private val repository: SettingsRepository) : ViewModel
             _isSubtitleEnabled.value = repository.isSubtitleEnabledFlow.first()
             _isInternalSubtitleEnabled.value = repository.isInternalSubtitleEnabledFlow.first()
             _isWlanProtectionEnabled.value = repository.isWlanProtectionEnabledFlow.first()
+            _isSponsorBlockEnabled.value = repository.isSponsorBlockEnabledFlow.first()
         }
     }
 
@@ -96,5 +99,10 @@ class VideoSettingsState(private val repository: SettingsRepository) : ViewModel
         viewModelScope.launch {
             repository.saveWlanProtectionEnabled(value)
         }
+    }
+
+    fun onSponsorBlockEnabledSelect(value: Boolean) {
+        _isSponsorBlockEnabled.value = value
+        viewModelScope.launch { repository.saveSponsorBlockEnabled(value) }
     }
 }

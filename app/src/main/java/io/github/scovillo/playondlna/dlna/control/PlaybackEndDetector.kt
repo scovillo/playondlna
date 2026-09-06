@@ -11,6 +11,7 @@ class PlaybackEndDetector {
     private var expectedTrackObserved = false
     private var consecutiveActivePolls = 0
     private var playbackObserved = false
+    private var trackEndObserved = false
 
     /**
      * Observe a single polling cycle.
@@ -21,6 +22,8 @@ class PlaybackEndDetector {
         transportState: TransportState,
         currentTrackUri: String?,
         expectedTrackUri: String,
+        positionSeconds: Double? = null,
+        durationSeconds: Double? = null,
     ): Boolean {
         expectedTrackObserved = expectedTrackObserved || trackUrisMatch(currentTrackUri, expectedTrackUri)
 
@@ -36,8 +39,19 @@ class PlaybackEndDetector {
         val stateBelongsToExpectedTrack = expectedTrackObserved || consecutiveActivePolls >= 3
         playbackObserved = playbackObserved || (stateBelongsToExpectedTrack && isActive)
 
+        if (
+            stateBelongsToExpectedTrack &&
+            positionSeconds != null &&
+            durationSeconds != null &&
+            durationSeconds > 0 &&
+            positionSeconds >= durationSeconds - END_TOLERANCE_SECONDS
+        ) {
+            trackEndObserved = true
+        }
+
         val playbackEnded =
             playbackObserved &&
+                trackEndObserved &&
                 transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
 
         AppLog.i("PlaybackEndDetector", "State: $transportState, URI: $currentTrackUri, Ended: $playbackEnded")
@@ -50,17 +64,19 @@ class PlaybackEndDetector {
      * Used to detect if renderer is responding and playing.
      */
     fun hasObservedPlayback(): Boolean = playbackObserved
+}
 
-    private fun trackUrisMatch(
-        currentTrackUri: String?,
-        expectedTrackUri: String,
-    ): Boolean {
-        if (currentTrackUri == null) return false
-        if (currentTrackUri == expectedTrackUri) return true
-        return runCatching {
-            val currentPath = URI(currentTrackUri).normalize().path
-            val expectedPath = URI(expectedTrackUri).normalize().path
-            currentPath.isNotEmpty() && currentPath == expectedPath
-        }.getOrDefault(false)
-    }
+private const val END_TOLERANCE_SECONDS = 2.0
+
+fun trackUrisMatch(
+    currentTrackUri: String?,
+    expectedTrackUri: String,
+): Boolean {
+    if (currentTrackUri == null) return false
+    if (currentTrackUri == expectedTrackUri) return true
+    return runCatching {
+        val currentPath = URI(currentTrackUri).normalize().path
+        val expectedPath = URI(expectedTrackUri).normalize().path
+        currentPath.isNotEmpty() && currentPath == expectedPath
+    }.getOrDefault(false)
 }

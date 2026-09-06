@@ -211,3 +211,28 @@ class GetPositionInfoCommand(override val serviceUrl: String) : SoapCommand {
         </s:Envelope>
         """.trimIndent()
 }
+
+class GetMediaInfoCommand(override val serviceUrl: String) : SoapCommand {
+    override val actionName = "GetMediaInfo"
+    override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#GetMediaInfo"
+
+    override fun createPayload(): String =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
+          <u:GetMediaInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetMediaInfo>
+        </s:Body></s:Envelope>
+        """.trimIndent()
+}
+
+class SeekCommand(override val serviceUrl: String, private val target: String) : SoapCommand {
+    override val actionName = "Seek"
+    override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Seek"
+
+    override fun createPayload(): String =
+        """
+        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
+        <u:Seek xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID>
+        <Unit>REL_TIME</Unit><Target>$target</Target></u:Seek></s:Body></s:Envelope>
+        """.trimIndent()
+}

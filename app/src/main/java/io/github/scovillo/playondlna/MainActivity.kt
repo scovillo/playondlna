@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 ViewModelProvider(this)[DeviceDiscoveryModel::class.java],
                 favoriteDevices,
                 settingsRepository,
+                cacheDir,
             )
         setContent {
             playOnDlnaTheme {

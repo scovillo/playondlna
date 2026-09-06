@@ -7,6 +7,7 @@ import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.VideoQuality
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,23 +42,23 @@ class DlnaPlaylistTest {
     }
 
     @Test
-    fun createsAudioPayloadWithCoverMetadata() {
+    fun createsAudioPayloadWithoutExtraMetadata() {
         val playlist = Playlist("list", "Audio", listOf("track"))
         val payload = DlnaPlaylist(playlist, listOf(audioItem("track", "Track", File("cover.jpg"))), "http://server").toPayload()!!
 
         assertEquals("audio/x-mpegurl", payload.mimeType)
-        assertTrue(payload.content.contains("#EXTALBUMARTURL:http://server/playlists/list/cover.jpg"))
+        assertFalse(payload.content.contains("#EXTALBUMARTURL"))
         assertTrue(payload.content.contains("/track/audio.mp3"))
-        assertTrue(payload.content.contains("tvg-logo=\"http://server/track/cover.jpg\""))
+        assertFalse(payload.content.contains("tvg-logo"))
     }
 
     @Test
-    fun usesPlayOnDlnaCoverForAudioEntriesWithoutThumbnail() {
+    fun omitsCoverMetadataForAudioEntriesWithoutThumbnail() {
         val playlist = Playlist("list", "Audio", listOf("track"))
         val payload = DlnaPlaylist(playlist, listOf(audioItem("track", "Track", null)), "http://server").toPayload()!!
 
-        assertTrue(payload.content.contains("#EXTALBUMARTURL:http://server/track/cover.jpg"))
-        assertTrue(payload.content.contains("tvg-logo=\"http://server/track/cover.jpg\""))
+        assertFalse(payload.content.contains("#EXTALBUMARTURL"))
+        assertFalse(payload.content.contains("tvg-logo"))
     }
 
     @Test
@@ -70,11 +71,9 @@ class DlnaPlaylistTest {
 
         assertEquals(
             "#EXTM3U\r\n" +
-                "#EXTALBUMARTURL:http://192.168.1.2:8080/playlists/list/cover.jpg\r\n" +
-                "#PLAYLIST:My list\r\n" +
-                "#EXTINF:10 ,Uploader - Second\r\n" +
+                "#EXTINF:10,Uploader - Second\r\n" +
                 "http://192.168.1.2:8080/two/video.mp4\r\n" +
-                "#EXTINF:10 ,Uploader - First video\r\n" +
+                "#EXTINF:10,Uploader - First video\r\n" +
                 "http://192.168.1.2:8080/one/video.mp4\r\n",
             payload.content,
         )
@@ -107,7 +106,7 @@ class DlnaPlaylistTest {
     }
 
     @Test
-    fun includesTrackCoverForVideoPayloads() {
+    fun omitsTrackCoverForVideoPayloads() {
         val payload =
             DlnaPlaylist(
                 Playlist("list", "Video", listOf("video")),
@@ -115,8 +114,8 @@ class DlnaPlaylistTest {
                 "http://server",
             ).toPayload()!!
 
-        assertTrue(payload.content.contains("tvg-logo=\"http://server/video/cover.jpg\""))
-        assertTrue(payload.content.contains("#EXTALBUMARTURL:http://server/video/cover.jpg\r\n"))
+        assertFalse(payload.content.contains("tvg-logo"))
+        assertFalse(payload.content.contains("#EXTALBUMARTURL"))
     }
 
     private fun audioItem(

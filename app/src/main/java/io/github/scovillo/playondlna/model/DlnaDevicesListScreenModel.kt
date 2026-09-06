@@ -28,8 +28,10 @@ import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.dlna.control.PlaylistPlaybackMode
+import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
 import io.github.scovillo.playondlna.persistence.DeviceSettings
 import io.github.scovillo.playondlna.persistence.SettingsRepository
+import io.github.scovillo.playondlna.persistence.SponsorBlockCache
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -41,11 +43,13 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import java.io.File
 
 class DlnaDevicesListScreenModel(
     private val deviceDiscoveryModel: DeviceDiscoveryModel,
     val favoriteDevices: FavoriteDevices,
     private val settingsRepository: SettingsRepository,
+    cacheDir: File,
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
@@ -53,11 +57,18 @@ class DlnaDevicesListScreenModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val isSponsorBlockEnabled = MutableStateFlow(false)
+    private val sponsorBlockClient = SponsorBlockClient(cache = SponsorBlockCache(cacheDir))
+    private val _sponsorBlockSegmentCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val sponsorBlockSegmentCounts: StateFlow<Map<String, Int>> = _sponsorBlockSegmentCounts.asStateFlow()
+
     private val remote =
         DlnaRemoteControl(
             scope = viewModelScope,
             onIncompatibleDevice = ::incompatibleDevice,
             onPlaybackFailure = { _toastEvents.emit(ToastEvent.Show(R.string.playback_failed)) },
+            isSponsorBlockEnabled = { isSponsorBlockEnabled.value },
+            sponsorBlockClient = sponsorBlockClient,
         )
 
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
@@ -78,6 +89,9 @@ class DlnaDevicesListScreenModel(
         }
         viewModelScope.launch {
             settingsRepository.deviceSettingsFlow.collect { _deviceSettings.value = it }
+        }
+        viewModelScope.launch {
+            settingsRepository.isSponsorBlockEnabledFlow.collect { isSponsorBlockEnabled.value = it }
         }
     }
 
@@ -130,7 +144,7 @@ class DlnaDevicesListScreenModel(
     fun playVideoOnDevice(
         device: DlnaDevice,
         videoFile: LibraryItem,
-    ) = remote.playVideo(device, videoFile)
+    ) = remote.playMedia(device, videoFile)
 
     fun playPlaylistOnDevice(
         device: DlnaDevice,
@@ -159,6 +173,16 @@ class DlnaDevicesListScreenModel(
     }
 
     fun clearPlaylistPlaybackModes() = remote.clearPlaylistPlaybackModes()
+
+    fun loadSponsorBlockSegmentCount(videoId: String) {
+        if (_sponsorBlockSegmentCounts.value.containsKey(videoId)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val segmentCount =
+                runCatching { sponsorBlockClient.sponsorSegments(videoId).size }.getOrNull()
+                    ?: return@launch
+            _sponsorBlockSegmentCounts.update { it + (videoId to segmentCount) }
+        }
+    }
 
     fun remoteCommand(command: PlaybackCommand) {
         _selectedDevice.value?.let { remote.command(it, command) }

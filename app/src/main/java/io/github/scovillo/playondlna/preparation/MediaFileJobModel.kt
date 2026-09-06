@@ -317,6 +317,11 @@ class MediaModel(
         val bestAudio = AudioStreamSelection(extractor.audioStreams).best()
         check(bestVideo != null || bestAudio != null) { "No playable video or audio stream found" }
         val subtitle = if (isSubtitleEnabled.value) extractor.subtitle() else null
+        Log.i(
+            "MediaPreparation",
+            "Preparing mediaId=$mediaId, sourceId=${extractor.id}, video=${bestVideo?.format?.mimeType}/${bestVideo?.codec}, " +
+                "audio=${bestAudio?.format?.mimeType}/${bestAudio?.codec}, subtitle=${subtitle != null}",
+        )
         val download =
             PlayOnDlnaStreamDownload(
                 mediaId,
@@ -359,7 +364,12 @@ class MediaModel(
                 isInternalSubtitleEnabled.value,
                 remoteAudioUrl = remoteAudioUrl,
             )
-        Log.i("MediaModel", "Final FFMPEGKit command: ${ffmpegCmd.value()}")
+        Log.i(
+            "Mux",
+            "Starting FFmpeg session for mediaId=$mediaId: video=${streamFiles.videoFile != null}, " +
+                "localAudio=${streamFiles.audioFile != null}, remoteAudio=${remoteAudioUrl != null}, " +
+                "internalSubtitle=${isInternalSubtitleEnabled.value && streamFiles.subtitle != null}",
+        )
         state.finalizing()
         suspendCancellableCoroutine { continuation ->
             currentFfmpegSessionState.value =
@@ -367,7 +377,11 @@ class MediaModel(
                     ffmpegCmd.value(),
                     { session ->
                         if (ReturnCode.isSuccess(session.returnCode)) {
-                            Log.d("Mux", "Muxing completed successfully")
+                            Log.i(
+                                "Mux",
+                                "FFmpeg session ${session.sessionId} completed for mediaId=$mediaId, output=${mediaFile.name}, " +
+                                    "size=${mediaFile.length()} bytes",
+                            )
                             val libraryItem =
                                 LibraryItem(
                                     LibraryMetadata(
@@ -391,7 +405,10 @@ class MediaModel(
                                 continuation.resumeWithException(CancellationException("Superseded FFmpeg session"))
                             }
                         } else {
-                            Log.e("Mux", "Muxing failed!")
+                            Log.e(
+                                "Mux",
+                                "FFmpeg session ${session.sessionId} failed for mediaId=$mediaId with returnCode=${session.returnCode}",
+                            )
                             state.error()
                             mediaFile.delete()
                             if (continuation.isActive) continuation.resumeWithException(IllegalStateException("Muxing failed"))
@@ -463,6 +480,7 @@ class MediaModel(
         titleState.value = extractor.name
         val mediaId = extractor.safeId()
         if (libraryManager.isExisting(mediaId)) {
+            Log.i("MediaPreparation", "Reusing cached mediaId=$mediaId; preparation and SponsorBlock processing are skipped")
             state.ready()
             return mediaId
         }

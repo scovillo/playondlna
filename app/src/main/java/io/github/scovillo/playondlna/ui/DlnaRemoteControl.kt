@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
@@ -55,6 +56,7 @@ fun DlnaRemoteControl(
     currentThumbnail: File?,
     playlist: DlnaPlaylist?,
     playlistPlaybackMode: PlaylistPlaybackMode?,
+    sponsorBlockSegmentCount: Int?,
     selectedDevice: DlnaDevice?,
     onCommand: (PlaybackCommand) -> Unit,
     onPlay: (DlnaDevice) -> Unit,
@@ -102,6 +104,17 @@ fun DlnaRemoteControl(
                 }
                 selectedDevice?.let {
                     Text(it.friendlyName, style = MaterialTheme.typography.bodyMedium)
+                }
+                sponsorBlockSegmentCount?.let { count ->
+                    Text(
+                        text =
+                            if (count == 0) {
+                                stringResource(R.string.sponsorblock_no_segments)
+                            } else {
+                                pluralStringResource(R.plurals.sponsorblock_segment_count, count, count)
+                            },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }

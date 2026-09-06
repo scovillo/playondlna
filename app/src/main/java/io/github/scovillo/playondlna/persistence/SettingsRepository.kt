@@ -24,6 +24,7 @@ class SettingsRepository(private val context: Context) {
         val IS_SUBTITLE_ENABLED = booleanPreferencesKey("is_subtitle_enabled")
         val IS_INTERNAL_SUBTITLE_ENABLED = booleanPreferencesKey("is_internal_subtitle_enabled")
         val IS_WLAN_PROTECTION_ENABLED = booleanPreferencesKey("is_wlan_protection_enabled")
+        val IS_SPONSOR_BLOCK_ENABLED = booleanPreferencesKey("is_sponsor_block_enabled")
         val FAVORITE_LOCATIONS = stringPreferencesKey("favorite_locations")
         val FORCE_PLAY_ON_DLNA_MANAGED_PLAYLIST_USNS =
             stringPreferencesKey("force_play_on_dlna_managed_playlist_usns")
@@ -57,6 +58,9 @@ class SettingsRepository(private val context: Context) {
             val value = prefs[Keys.IS_WLAN_PROTECTION_ENABLED]
             value ?: true
         }.distinctUntilChanged()
+
+    val isSponsorBlockEnabledFlow: Flow<Boolean> =
+        context.dataStore.data.map { prefs -> prefs[Keys.IS_SPONSOR_BLOCK_ENABLED] ?: false }.distinctUntilChanged()
 
     val favoriteDeviceLocationsFlow: Flow<List<String>> =
         context.dataStore.data.map { prefs ->
@@ -99,6 +103,10 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.IS_WLAN_PROTECTION_ENABLED] = value
         }
+    }
+
+    suspend fun saveSponsorBlockEnabled(value: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.IS_SPONSOR_BLOCK_ENABLED] = value }
     }
 
     suspend fun saveFavoriteDeviceLocation(location: String) {

@@ -48,4 +48,62 @@ class SoapResponseExtractor {
             ?.trim()
             ?.replace("&amp;", "&")
             ?.takeIf { it.isNotEmpty() }
+
+    fun parseCurrentTrackNumber(responseBody: String): Int? =
+        Regex("""<(?:[A-Za-z_][\w.-]*:)?Track>\s*([^<]+)\s*</""")
+            .find(responseBody)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+
+    fun parseNumberOfTracks(responseBody: String): Int? = parseIntElement(responseBody, "NrTracks")
+
+    fun parseCurrentUri(responseBody: String): String? = parseTextElement(responseBody, "CurrentURI")
+
+    fun parseNextUri(responseBody: String): String? = parseTextElement(responseBody, "NextURI")
+
+    private fun parseIntElement(
+        responseBody: String,
+        name: String,
+    ): Int? = parseTextElement(responseBody, name)?.toIntOrNull()
+
+    private fun parseTextElement(
+        responseBody: String,
+        name: String,
+    ): String? =
+        Regex("""<(?:[A-Za-z_][\w.-]*:)?$name>\s*([^<]*)\s*</""")
+            .find(responseBody)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?.replace("&amp;", "&")
+            ?.takeIf { it.isNotEmpty() }
+
+    fun parseRelativeTimeSeconds(responseBody: String): Double? {
+        val value = Regex("""<(?:[A-Za-z_][\w.-]*:)?RelTime>\s*([^<]+)\s*</""").find(responseBody)?.groupValues?.get(1) ?: return null
+        val parts = value.trim().split(":")
+        if (parts.size != 3) return null
+        val hours = parts[0].toDoubleOrNull() ?: return null
+        val minutes = parts[1].toDoubleOrNull() ?: return null
+        val seconds = parts[2].toDoubleOrNull() ?: return null
+        return hours * 3600 + minutes * 60 + seconds
+    }
+
+    fun parseTrackDurationSeconds(responseBody: String): Double? {
+        val value =
+            Regex("""<(?:[A-Za-z_][\w.-]*:)?TrackDuration>\s*([^<]+)\s*</""")
+                .find(responseBody)
+                ?.groupValues
+                ?.get(1)
+                ?.trim()
+                ?: return null
+        val parts = value.split(":")
+        if (parts.size != 3) return null
+        val hours = parts[0].toDoubleOrNull() ?: return null
+        val minutes = parts[1].toDoubleOrNull() ?: return null
+        val seconds = parts[2].toDoubleOrNull() ?: return null
+        return hours * 3600 + minutes * 60 + seconds
+    }
 }

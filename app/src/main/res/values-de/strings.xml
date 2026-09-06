@@ -62,6 +62,14 @@ Beispiele:\n
     <string name="wlan_protection_title">🔒 WLAN-Schutz</string>
     <string name="wlan_protection_label">WLAN-Schutz aktivieren</string>
     <string name="wlan_protection_desc">Wenn aktiviert, werden Downloads abgebrochen, wenn das WLAN getrennt wird, um dein mobiles Datenvolumen zu schützen.</string>
+    <string name="sponsorblock_title">⏭️ SponsorBlock</string>
+    <string name="sponsorblock_label">SponsorBlock verwenden</string>
+    <string name="sponsorblock_desc">Überspringt während der YouTube-Wiedergabe automatisch von der Community gemeldete Sponsorsegmente. Dafür wird ein kompatibler DLNA-Player benötigt und der SponsorBlock-Dienst kontaktiert.</string>
+    <plurals name="sponsorblock_segment_count">
+        <item quantity="one">%1$d SponsorBlock-Segment</item>
+        <item quantity="other">%1$d SponsorBlock-Segmente</item>
+    </plurals>
+    <string name="sponsorblock_no_segments">Keine SponsorBlock-Segmente</string>
     <string name="device_url_hint">Geräte-URL (z. B. http://192.168.178.80:1379/)</string>
     <string name="add_device_url">Geräte-URL hinzufügen</string>
     <string name="cache_title">💾 Cache</string>
