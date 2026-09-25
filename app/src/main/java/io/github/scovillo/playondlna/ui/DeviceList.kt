@@ -25,7 +25,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,8 +41,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,8 +54,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
@@ -81,8 +76,6 @@ fun DlnaListScreen(
     val isLoading by dlnaModel.isLoading.collectAsState()
     val favorites by dlnaModel.favoriteDevices.locations.collectAsState()
     val selectedDevice by dlnaModel.selectedDevice.collectAsState()
-    val deviceSettings by dlnaModel.deviceSettings.collectAsState()
-    val playlistPlaybackModes by dlnaModel.activePlaylistPlaybackModes.collectAsState()
     val sponsorBlockSegmentCounts by dlnaModel.sponsorBlockSegmentCounts.collectAsState()
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
@@ -129,13 +122,12 @@ fun DlnaListScreen(
                     currentVideo = currentVideo,
                     currentThumbnail = currentThumbnail,
                     playlist = playlist,
-                    playlistPlaybackMode = selectedDevice?.location?.let(playlistPlaybackModes::get),
                     sponsorBlockSegmentCount = currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get),
                     selectedDevice = selectedDevice,
                     onCommand = dlnaModel::remoteCommand,
                     onPlay = { device ->
                         if (playlistVideoFiles.isNotEmpty() && playlist != null) {
-                            dlnaModel.playPlaylistOnDevice(device, playlist, playlistVideoFiles)
+                            dlnaModel.playPlaylistOnDevice(device, playlistVideoFiles)
                         } else if (currentVideo != null) {
                             dlnaModel.playVideoOnDevice(device, currentVideo)
                         } else {
@@ -169,8 +161,6 @@ fun DlnaListScreen(
                         key = { device -> device.location },
                     ) { device ->
                         val isSelected = selectedDevice?.location == device.location
-                        val forcePlayOnDlnaManagedPlaylist =
-                            deviceSettings[device.usn]?.forcePlayOnDlnaManagedPlaylist ?: false
                         Card(
                             Modifier
                                 .animateItem()
@@ -230,28 +220,6 @@ fun DlnaListScreen(
                                         }
                                         Text(
                                             stringResource(R.string.favorite),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                        )
-                                    }
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Checkbox(
-                                                checked = forcePlayOnDlnaManagedPlaylist,
-                                                onCheckedChange = {
-                                                    dlnaModel.setForcePlayOnDlnaManagedPlaylist(device, it)
-                                                },
-                                                colors = CheckboxDefaults.colors(uncheckedColor = Color.White),
-                                            )
-                                            Box(
-                                                Modifier
-                                                    .size(18.dp)
-                                                    .border(2.dp, Color.White, RectangleShape),
-                                            )
-                                        }
-                                        Text(
-                                            stringResource(R.string.force_playondlna_managed_playlist),
                                             style = MaterialTheme.typography.bodyMedium,
                                         )
                                     }

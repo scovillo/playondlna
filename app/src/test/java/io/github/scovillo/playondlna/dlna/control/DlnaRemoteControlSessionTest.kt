@@ -3,11 +3,8 @@ package io.github.scovillo.playondlna.dlna.control
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
-import io.github.scovillo.playondlna.dlna.soap.UpnpActionException
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
-import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,10 +52,10 @@ class DlnaRemoteControlSessionTest {
             val kitchen = device("kitchen")
 
             try {
-                remote.playPlaylist(livingRoom, nativePlaylist("living-room"), listOf(audioFile("living-room-track")))
+                remote.playPlaylist(livingRoom, listOf(audioFile("living-room-track")))
                 transport.awaitTrackCount(1)
 
-                remote.playPlaylist(kitchen, nativePlaylist("kitchen"), listOf(audioFile("kitchen-track")))
+                remote.playPlaylist(kitchen, listOf(audioFile("kitchen-track")))
                 transport.awaitTrackCount(2)
 
                 remote.command(livingRoom, PlaybackCommand.NEXT)
@@ -71,41 +68,13 @@ class DlnaRemoteControlSessionTest {
         }
 
     @Test
-    fun skipsSponsorSegmentsAcrossNativePlaylistTracks() =
-        runBlocking {
-            val items = listOf(videoFile("aaaaaaaaaaa"), videoFile("bbbbbbbbbbb"))
-            val cache = SponsorBlockCache(cacheDirectory)
-            cache.save(items[0].metadata.id, listOf(SponsorSegment(10.0, 20.0)))
-            cache.save(items[1].metadata.id, listOf(SponsorSegment(30.0, 40.0)))
-            val transport = SponsorBlockPlaylistTransport(items, nativePlaylist = true)
-            val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-            val remote =
-                DlnaRemoteControl(
-                    scope = controlScope,
-                    transport = transport,
-                    isSponsorBlockEnabled = { true },
-                    sponsorBlockClient = SponsorBlockClient(cache),
-                    playbackObservationDelay = 1.milliseconds,
-                )
-
-            try {
-                remote.playPlaylist(device("native"), nativePlaylist("native"), items)
-                transport.awaitSeekCount(2)
-
-                assertEquals(listOf(20.0, 40.0), transport.seekPositions)
-            } finally {
-                controlScope.cancel()
-            }
-        }
-
-    @Test
     fun skipsSponsorSegmentsAcrossAppManagedPlaylistTracks() =
         runBlocking {
             val items = listOf(videoFile("ccccccccccc"), videoFile("ddddddddddd"))
             val cache = SponsorBlockCache(cacheDirectory)
             cache.save(items[0].metadata.id, listOf(SponsorSegment(10.0, 20.0)))
             cache.save(items[1].metadata.id, listOf(SponsorSegment(30.0, 40.0)))
-            val transport = SponsorBlockPlaylistTransport(items, nativePlaylist = false)
+            val transport = SponsorBlockPlaylistTransport(items)
             val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val remote =
                 DlnaRemoteControl(
@@ -117,12 +86,7 @@ class DlnaRemoteControlSessionTest {
                 )
 
             try {
-                remote.playPlaylist(
-                    device("managed"),
-                    nativePlaylist("managed"),
-                    items,
-                    forcePlayOnDlnaManagedPlaylist = true,
-                )
+                remote.playPlaylist(device("managed"), items)
                 transport.awaitSeekCount(2)
 
                 assertEquals(listOf(20.0, 40.0), transport.seekPositions)
@@ -143,8 +107,6 @@ class DlnaRemoteControlSessionTest {
             avTransportUrl = "http://$id/avtransport",
             renderingControlUrl = null,
         )
-
-    private fun nativePlaylist(id: String) = DlnaPlaylist(Playlist(id, id, emptyList()), emptyList(), "http://server")
 
     private fun audioFile(id: String) =
         LibraryItem(
@@ -179,7 +141,6 @@ class DlnaRemoteControlSessionTest {
 
 private class SponsorBlockPlaylistTransport(
     private val items: List<LibraryItem>,
-    private val nativePlaylist: Boolean,
 ) : DlnaTransport {
     private data class Status(
         val state: TransportState,
@@ -201,21 +162,6 @@ private class SponsorBlockPlaylistTransport(
             buildList {
                 repeat(3) { add(Status(TransportState.PLAYING, item.url, sponsorPosition)) }
                 add(Status(TransportState.STOPPED, item.url, sponsorPosition + 10.0))
-            }
-        statusIndex = 0
-    }
-
-    override fun playPlaylist(
-        device: DlnaDevice,
-        playlist: DlnaPlaylist,
-    ) {
-        if (!nativePlaylist) throw UpnpActionException("SetAVTransportURI", 500, "<errorCode>714</errorCode>")
-        statuses =
-            buildList {
-                add(Status(TransportState.PLAYING, playlist.url, 12.0, trackNumber = 1))
-                add(Status(TransportState.STOPPED, playlist.url, 22.0, trackNumber = 1))
-                add(Status(TransportState.PLAYING, playlist.url, 32.0, trackNumber = 2))
-                repeat(5) { add(Status(TransportState.STOPPED, playlist.url, 42.0, trackNumber = 2)) }
             }
         statusIndex = 0
     }
@@ -262,13 +208,6 @@ private class RecordingTransport : DlnaTransport {
         item: LibraryItem,
     ) {
         playedTracks += device.location to item.metadata.id
-    }
-
-    override fun playPlaylist(
-        device: DlnaDevice,
-        playlist: DlnaPlaylist,
-    ) {
-        throw UpnpActionException("SetAVTransportURI", 500, "<errorCode>714</errorCode>")
     }
 
     override fun command(

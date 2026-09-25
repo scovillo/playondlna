@@ -51,7 +51,7 @@ class PlaybackEndDetector {
 
         val playbackEnded =
             playbackObserved &&
-                trackEndObserved &&
+                (trackEndObserved || durationSeconds == null) &&
                 transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
 
         AppLog.i("PlaybackEndDetector", "State: $transportState, URI: $currentTrackUri, Ended: $playbackEnded")

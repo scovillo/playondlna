@@ -23,13 +23,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaylistPlaybackMode
 import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
-import io.github.scovillo.playondlna.persistence.DeviceSettings
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
 import io.github.scovillo.playondlna.ui.ToastEvent
@@ -73,10 +70,6 @@ class DlnaDevicesListScreenModel(
 
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
-    val activePlaylistPlaybackModes: StateFlow<Map<String, PlaylistPlaybackMode>> = remote.activePlaylistPlaybackModes
-
-    private val _deviceSettings = MutableStateFlow<Map<String, DeviceSettings>>(emptyMap())
-    val deviceSettings: StateFlow<Map<String, DeviceSettings>> = _deviceSettings.asStateFlow()
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
@@ -86,9 +79,6 @@ class DlnaDevicesListScreenModel(
             favoriteDevices.locations.collect { favorites ->
                 _devices.update { current -> sortDevices(current, favorites) }
             }
-        }
-        viewModelScope.launch {
-            settingsRepository.deviceSettingsFlow.collect { _deviceSettings.value = it }
         }
         viewModelScope.launch {
             settingsRepository.isSponsorBlockEnabledFlow.collect { isSponsorBlockEnabled.value = it }
@@ -148,31 +138,13 @@ class DlnaDevicesListScreenModel(
 
     fun playPlaylistOnDevice(
         device: DlnaDevice,
-        nativePlaylist: DlnaPlaylist,
         videoFiles: List<LibraryItem>,
     ) {
         remote.playPlaylist(
             device,
-            nativePlaylist,
             videoFiles,
-            forcePlayOnDlnaManagedPlaylist =
-                _deviceSettings.value[device.usn]?.forcePlayOnDlnaManagedPlaylist ?: false,
         )
     }
-
-    fun setForcePlayOnDlnaManagedPlaylist(
-        device: DlnaDevice,
-        force: Boolean,
-    ) {
-        viewModelScope.launch {
-            settingsRepository.saveDeviceSettings(
-                device.usn,
-                DeviceSettings(forcePlayOnDlnaManagedPlaylist = force),
-            )
-        }
-    }
-
-    fun clearPlaylistPlaybackModes() = remote.clearPlaylistPlaybackModes()
 
     fun loadSponsorBlockSegmentCount(videoId: String) {
         if (_sponsorBlockSegmentCounts.value.containsKey(videoId)) return

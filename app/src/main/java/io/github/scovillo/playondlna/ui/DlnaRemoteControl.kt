@@ -46,7 +46,6 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaylistPlaybackMode
 import io.github.scovillo.playondlna.model.LibraryItem
 import java.io.File
 
@@ -55,7 +54,6 @@ fun DlnaRemoteControl(
     currentVideo: LibraryItem?,
     currentThumbnail: File?,
     playlist: DlnaPlaylist?,
-    playlistPlaybackMode: PlaylistPlaybackMode?,
     sponsorBlockSegmentCount: Int?,
     selectedDevice: DlnaDevice?,
     onCommand: (PlaybackCommand) -> Unit,
@@ -86,19 +84,9 @@ fun DlnaRemoteControl(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 playlist?.let {
-                    val managementText =
-                        playlistPlaybackMode?.let { mode ->
-                            stringResource(
-                                when (mode) {
-                                    PlaylistPlaybackMode.PLAY_ON_DLNA_MANAGED -> R.string.playondlna_managed
-                                    PlaylistPlaybackMode.PLAYER_MANAGED -> R.string.player_managed
-                                },
-                            )
-                        }
                     Text(
                         text =
-                            managementText?.let { stringResource(R.string.playlist_with_management, it) }
-                                ?: stringResource(R.string.playlist),
+                            stringResource(R.string.playlist),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

@@ -138,12 +138,10 @@ class MainActivity : ComponentActivity() {
                         LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, {
                             selectedPlaylistVideoFiles = emptyList()
                             selectedPlaylist = null
-                            dlnaDevicesListScreenModel.clearPlaylistPlaybackModes()
                             navController.navigate("play") {
                                 launchSingleTop = true
                             }
                         }) { playlist, items ->
-                            dlnaDevicesListScreenModel.clearPlaylistPlaybackModes()
                             selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
                             selectedPlaylist =
                                 DlnaPlaylist(
@@ -156,7 +154,6 @@ class MainActivity : ComponentActivity() {
                     },
                     playlistsScreen = { navController ->
                         PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController) { playlist, items ->
-                            dlnaDevicesListScreenModel.clearPlaylistPlaybackModes()
                             selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
                             selectedPlaylist =
                                 DlnaPlaylist(

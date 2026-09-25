@@ -3,7 +3,6 @@ package io.github.scovillo.playondlna.dlna.control
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.model.LibraryItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,11 +85,6 @@ private class GenerationTransport : DlnaTransport {
         item: LibraryItem,
     ) = Unit
 
-    override fun playPlaylist(
-        device: DlnaDevice,
-        playlist: DlnaPlaylist,
-    ) = Unit
-
     override fun command(
         device: DlnaDevice,
         command: PlaybackCommand,
@@ -114,11 +108,6 @@ private class SequenceTransport : DlnaTransport {
     override fun playFile(
         device: DlnaDevice,
         item: LibraryItem,
-    ) = Unit
-
-    override fun playPlaylist(
-        device: DlnaDevice,
-        playlist: DlnaPlaylist,
     ) = Unit
 
     override fun command(
