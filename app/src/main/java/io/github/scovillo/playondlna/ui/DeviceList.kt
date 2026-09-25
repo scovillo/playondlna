@@ -77,6 +77,8 @@ fun DlnaListScreen(
     val favorites by dlnaModel.favoriteDevices.locations.collectAsState()
     val selectedDevice by dlnaModel.selectedDevice.collectAsState()
     val sponsorBlockSegmentCounts by dlnaModel.sponsorBlockSegmentCounts.collectAsState()
+    val playbackStatuses by dlnaModel.playbackStatuses.collectAsState()
+    val playlistIndices by dlnaModel.playlistIndices.collectAsState()
     LaunchedEffect(Unit) {
         if (dlnaModel.devices.value.isEmpty()) {
             dlnaModel.discoverDevices()
@@ -114,24 +116,42 @@ fun DlnaListScreen(
         ) {
             Column {
                 val currentVideo = mediaModel.currentVideoFile.value
-                val currentThumbnail = mediaModel.currentVideoFile.value?.thumbnail
-                LaunchedEffect(currentVideo?.metadata?.id) {
-                    currentVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
+                val playbackStatus = selectedDevice?.let { playbackStatuses[it.usn] }
+                val playlistIndex = selectedDevice?.let { playlistIndices[it.usn] }
+                val playlistVideo =
+                    if (playlistVideoFiles.isNotEmpty()) {
+                        val trackIndex = playlistIndex ?: playbackStatus?.trackNumber?.minus(1)
+                        trackIndex?.takeIf { it in playlistVideoFiles.indices }?.let(playlistVideoFiles::get)
+                            ?: playbackStatus?.trackUri?.let { uri ->
+                                playlistVideoFiles.firstOrNull { it.url == uri }
+                            }
+                    } else {
+                        null
+                    }
+                val displayedVideo = playlistVideo ?: currentVideo
+                val currentThumbnail = displayedVideo?.thumbnail
+                LaunchedEffect(displayedVideo?.metadata?.id) {
+                    displayedVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
                 }
                 DlnaRemoteControl(
-                    currentVideo = currentVideo,
+                    currentVideo = displayedVideo,
                     currentThumbnail = currentThumbnail,
                     playlist = playlist,
-                    sponsorBlockSegmentCount = currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get),
+                    sponsorBlockSegmentCount = displayedVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get),
                     selectedDevice = selectedDevice,
+                    playbackStatus = playbackStatus,
+                    playlistIndex = playlistIndex,
+                    playlistSize = playlistVideoFiles.size,
                     onCommand = dlnaModel::remoteCommand,
+                    onSeek = dlnaModel::seekTo,
+                    onPlayerRequired = dlnaModel::notifyPlayerRequired,
                     onPlay = { device ->
                         if (playlistVideoFiles.isNotEmpty() && playlist != null) {
                             dlnaModel.playPlaylistOnDevice(device, playlistVideoFiles)
                         } else if (currentVideo != null) {
                             dlnaModel.playVideoOnDevice(device, currentVideo)
                         } else {
-                            dlnaModel.remoteCommand(PlaybackCommand.PLAY)
+                            dlnaModel.notifyPlayerRequired()
                         }
                     },
                 )

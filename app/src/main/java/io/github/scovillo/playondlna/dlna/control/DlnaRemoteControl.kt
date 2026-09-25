@@ -31,6 +31,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -56,6 +58,10 @@ class DlnaRemoteControl(
 ) {
     private val playbackJobs = ConcurrentHashMap<String, Job>()
     private val playbackObservations = ConcurrentHashMap<String, PlaybackObservation>()
+    private val _playbackStatuses = MutableStateFlow<Map<String, PlaybackStatus>>(emptyMap())
+    val playbackStatuses: StateFlow<Map<String, PlaybackStatus>> = _playbackStatuses.asStateFlow()
+    private val _playlistIndices = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val playlistIndices: StateFlow<Map<String, Int>> = _playlistIndices.asStateFlow()
     private val playbackSessions = MutableStateFlow<Map<String, PlaybackSession>>(emptyMap())
 
     fun playMedia(
@@ -125,11 +131,17 @@ class DlnaRemoteControl(
         }
         val previousPlaybackJob = playbackJobs[device.usn]
         AppLog.i("AppManagedPlaylist", "Manual $command requested at index ${playbackSession.currentIndex}")
-        previousPlaybackJob?.cancel()
+        if (command != PlaybackCommand.STOP) {
+            previousPlaybackJob?.cancel()
+        } else {
+            playbackObservations[device.usn]?.stopOnPlayerStop()
+        }
         val playbackJob =
             scope.launch(Dispatchers.IO) {
                 try {
-                    previousPlaybackJob?.join()
+                    if (command != PlaybackCommand.STOP) {
+                        previousPlaybackJob?.join()
+                    }
                     val currentSession = playbackSessions.value[device.usn] ?: return@launch
                     AppLog.i("AppManagedPlaylist", "Manual $command runs at index ${currentSession.currentIndex}")
                     when (command) {
@@ -165,6 +177,22 @@ class DlnaRemoteControl(
                 }
             }
         registerPlaybackJob(device.usn, playbackJob)
+    }
+
+    fun seekTo(
+        device: DlnaDevice,
+        seconds: Double,
+    ) {
+        scope.launch(Dispatchers.IO) {
+            val duration = _playbackStatuses.value[device.usn]?.durationSeconds
+            val boundedSeconds =
+                if (duration != null && duration > 0.0) {
+                    seconds.coerceIn(0.0, duration)
+                } else {
+                    seconds.coerceAtLeast(0.0)
+                }
+            runCatching { transport.seekTo(device, boundedSeconds) }.onFailure { onPlaybackFailure(it) }
+        }
     }
 
     private fun sendCommand(
@@ -282,7 +310,6 @@ class DlnaRemoteControl(
         for (index in startIndex..session.items.lastIndex) {
             currentCoroutineContext().ensureActive()
             session = session.copy(currentIndex = index)
-            setPlaybackSession(session)
             val item = session.items[index]
             AppLog.i("AppManagedPlaylist", "Start ${index + 1}/${session.items.size}: ${item.metadata.id}")
             try {
@@ -297,6 +324,7 @@ class DlnaRemoteControl(
                 }
                 AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.items.size}")
             }
+            setPlaybackSession(session)
             currentCoroutineContext().ensureActive()
             val observation = startPlaybackObservation(session.device)
             monitorTrack(session.device, observation, item)
@@ -367,6 +395,7 @@ class DlnaRemoteControl(
 
     private fun setPlaybackSession(session: PlaybackSession) {
         playbackSessions.update { it + (session.device.usn to session) }
+        _playlistIndices.update { it + (session.device.usn to session.currentIndex) }
     }
 
     /** Replaces only this renderer's poller; observations for other renderers keep running. */
@@ -374,6 +403,11 @@ class DlnaRemoteControl(
         val deviceId = device.usn
         val observation = PlaybackObservation(scope, device, transport, playbackObservationDelay)
         playbackObservations.put(deviceId, observation)?.stop()
+        scope.launch {
+            observation.status.collect { status ->
+                _playbackStatuses.update { it + (deviceId to status) }
+            }
+        }
         observation.start()
         return observation
     }
@@ -382,7 +416,8 @@ class DlnaRemoteControl(
         val deviceId = device.usn
         playbackJobs.remove(deviceId)?.cancel()
         playbackObservations[deviceId]?.stop()
+        _playbackStatuses.update { it - deviceId }
+        _playlistIndices.update { it - deviceId }
         playbackSessions.update { it - deviceId }
     }
 }
-

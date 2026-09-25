@@ -34,6 +34,8 @@ class PlaybackObservation(
     val status: SharedFlow<PlaybackStatus> = _status.asSharedFlow()
 
     private var job: Job? = null
+    @Volatile
+    private var stopOnPlayerStop = false
 
     /** Starts a fresh polling run. Calling it again restarts this player's existing observation. */
     @Synchronized
@@ -55,6 +57,7 @@ class PlaybackObservation(
                                 positionInfo.durationSeconds,
                             ),
                         )
+                        if (stopOnPlayerStop && transportState == TransportState.STOPPED) break
                     } catch (exception: Exception) {
                         if (exception is CancellationException) throw exception
                         AppLog.w("PlaybackObservation", "Could not query ${device.friendlyName}: ${exception.message}")
@@ -75,4 +78,11 @@ class PlaybackObservation(
         job?.cancel()
         job = null
     }
+
+    /** Keeps polling through transient states until a requested stop is confirmed. */
+    @Synchronized
+    fun stopOnPlayerStop() {
+        stopOnPlayerStop = true
+    }
+
 }

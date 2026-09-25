@@ -13,6 +13,7 @@
     <string name="multicast_disabled">Scan failed! Multicast is not possible in your current network</string>
     <string name="playback_failed">Playback failed!</string>
     <string name="player_incompatible">Media Player currently incompatible!</string>
+    <string name="select_player_for_playback">Select a player for playback.</string>
     <string name="cache_cleared">Cache cleared!</string>
     <string name="cache_usage">Currently used space: </string>
     <string name="cache_usage_value">%1$.1f GB</string>
@@ -79,6 +80,8 @@ Examples:\n
     <string name="stop">Stop</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
+    <string name="rewind_30_seconds">Rewind 30 seconds</string>
+    <string name="forward_30_seconds">Forward 30 seconds</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
     <string name="save_device">Save device</string>
@@ -110,6 +113,7 @@ Examples:\n
     <string name="play_playlist">Play playlist</string>
     <string name="playlist_no_playable_videos">This playlist has no playable videos.</string>
     <string name="playlist">Playlist</string>
+    <string name="playlist_title">%1$s Playlist</string>
     <string name="playlist_with_management">Playlist (managed by %1$s)</string>
     <string name="playondlna_managed">PlayOnDlna</string>
     <string name="player_managed">player</string>

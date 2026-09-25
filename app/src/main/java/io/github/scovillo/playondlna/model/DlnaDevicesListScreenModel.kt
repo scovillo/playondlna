@@ -26,6 +26,7 @@ import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.control.PlaybackStatus
 import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
@@ -70,6 +71,8 @@ class DlnaDevicesListScreenModel(
 
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
+    val playbackStatuses: StateFlow<Map<String, PlaybackStatus>> = remote.playbackStatuses
+    val playlistIndices: StateFlow<Map<String, Int>> = remote.playlistIndices
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
@@ -158,6 +161,16 @@ class DlnaDevicesListScreenModel(
 
     fun remoteCommand(command: PlaybackCommand) {
         _selectedDevice.value?.let { remote.command(it, command) }
+    }
+
+    fun notifyPlayerRequired() {
+        viewModelScope.launch {
+            _toastEvents.emit(ToastEvent.Show(R.string.select_player_for_playback))
+        }
+    }
+
+    fun seekTo(seconds: Double) {
+        _selectedDevice.value?.let { remote.seekTo(it, seconds) }
     }
 
     private suspend fun incompatibleDevice(device: DlnaDevice) {
