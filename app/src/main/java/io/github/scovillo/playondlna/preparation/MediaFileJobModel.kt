@@ -33,6 +33,7 @@ import io.github.scovillo.playondlna.download.PlayOnDlnaVideoInput
 import io.github.scovillo.playondlna.download.okHttpClient
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
+import io.github.scovillo.playondlna.model.Subtitle
 import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager
@@ -118,6 +119,7 @@ class MediaModel(
     settingsRepository: SettingsRepository,
     private val wifiConnectionState: WifiConnectionState,
     private val cacheDir: File,
+    private val libraryDir: File,
     private val libraryManager: LibraryManager,
     private val playlistManager: PlaylistManager,
 ) : ViewModel() {
@@ -185,6 +187,13 @@ class MediaModel(
     fun selectMediaItem(item: LibraryItem) {
         currentVideoFileState.value = item
         requestMediaServer.trySend(Unit)
+    }
+
+    fun clearSelectedMediaItem(id: String) {
+        if (currentVideoFileState.value?.metadata?.id == id) {
+            currentVideoFileState.value = null
+            currentThumbnailFileState.value = null
+        }
     }
 
     fun selectPlaylist(items: List<LibraryItem>) {
@@ -351,7 +360,8 @@ class MediaModel(
         }
         val mediaFile =
             withContext(Dispatchers.IO) {
-                val file = File(cacheDir, "${mediaId}_muxed_final${if (bestVideo == null) ".m4a" else ".mp4"}")
+                val file = File(libraryDir, "${mediaId}_muxed_final${if (bestVideo == null) ".m4a" else ".mp4"}")
+                libraryDir.mkdirs()
                 file.createNewFile()
                 file
             }
@@ -372,8 +382,8 @@ class MediaModel(
         )
         state.finalizing()
         suspendCancellableCoroutine { continuation ->
-            currentFfmpegSessionState.value =
-                FFmpegKit.executeAsync(
+                currentFfmpegSessionState.value =
+                    FFmpegKit.executeAsync(
                     ffmpegCmd.value(),
                     { session ->
                         if (ReturnCode.isSuccess(session.returnCode)) {
@@ -382,6 +392,17 @@ class MediaModel(
                                 "FFmpeg session ${session.sessionId} completed for mediaId=$mediaId, output=${mediaFile.name}, " +
                                     "size=${mediaFile.length()} bytes",
                             )
+                            val librarySubtitle =
+                                streamFiles.subtitle?.let { subtitle ->
+                                    val target = File(libraryDir, "${mediaId}.fetchSubtitle.${subtitle.locale().language}.srt")
+                                    runCatching {
+                                        libraryDir.mkdirs()
+                                        subtitle.file.copyTo(target, overwrite = true)
+                                        Subtitle(target)
+                                    }.onFailure {
+                                        Log.e("Mux", "Failed to persist subtitle for mediaId=$mediaId", it)
+                                    }.getOrNull()
+                                }
                             val libraryItem =
                                 LibraryItem(
                                     LibraryMetadata(
@@ -394,7 +415,7 @@ class MediaModel(
                                     ),
                                     mediaFile,
                                     mediaCover,
-                                    if (bestVideo == null) null else streamFiles.subtitle,
+                                    if (bestVideo == null) null else librarySubtitle,
                                 )
                             libraryManager.save(libraryItem.metadata)
                             viewModelScope.launch { mutableOnLibraryChange.emit(Unit) }
@@ -436,7 +457,8 @@ class MediaModel(
         val source = requireNotNull(streamFiles.audioFile)
         val mediaFile =
             withContext(Dispatchers.IO) {
-                val output = File(cacheDir, "${mediaId}_audio_final_.mp3")
+                val output = File(libraryDir, "${mediaId}_audio_final_.mp3")
+                libraryDir.mkdirs()
                 output.createNewFile()
                 source.copyTo(output, overwrite = true)
             }

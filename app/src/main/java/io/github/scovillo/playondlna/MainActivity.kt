@@ -40,14 +40,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.download.OkHttpDownloadClient
-import io.github.scovillo.playondlna.model.CacheControl
 import io.github.scovillo.playondlna.model.DeviceDiscoveryModel
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.PlaylistViewModel
+import io.github.scovillo.playondlna.model.StorageManagement
 import io.github.scovillo.playondlna.model.VideoSettingsState
 import io.github.scovillo.playondlna.persistence.LibraryManager
+import io.github.scovillo.playondlna.persistence.LibraryStorageMigration
 import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.preparation.MediaModel
@@ -61,6 +62,8 @@ import io.github.scovillo.playondlna.ui.PlaylistsScreen
 import io.github.scovillo.playondlna.ui.SettingsScreen
 import io.github.scovillo.playondlna.ui.mainScreen
 import io.github.scovillo.playondlna.ui.playOnDlnaTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -85,15 +88,21 @@ class MainActivity : ComponentActivity() {
         val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         localIpAddress.initialize(connectivityManager)
         val settingsRepository = SettingsRepository(this)
-        val libraryManager = LibraryManager(cacheDir)
-        val libraryViewModel = LibraryViewModel(libraryManager)
-        val playlistManager = PlaylistManager(cacheDir)
-        val playlistViewModel = PlaylistViewModel(playlistManager)
+        val libraryDir = filesDir
+        val migrationState = LibraryStorageMigration(cacheDir, libraryDir)
+        val migration = lifecycleScope.async(Dispatchers.IO) {
+            migrationState.migrate()
+        }
+        val libraryManager = LibraryManager(libraryDir)
+        val playlistManager = PlaylistManager(libraryDir)
+        val libraryViewModel = LibraryViewModel(libraryManager, playlistManager, migration, migrationState.progress)
+        val playlistViewModel = PlaylistViewModel(playlistManager, migration)
         mediaModel =
             MediaModel(
                 settingsRepository,
                 WifiConnectionState(connectivityManager),
                 cacheDir,
+                libraryDir,
                 libraryManager,
                 playlistManager,
             )
@@ -106,9 +115,14 @@ class MainActivity : ComponentActivity() {
             }
         }
         val videoSettingsState = VideoSettingsState(settingsRepository)
-        val cacheControl =
-            CacheControl(
+        val storageManagement =
+            StorageManagement(
                 cacheDir,
+                libraryDir,
+                libraryManager,
+                playlistManager,
+                migration,
+                { mediaModel.currentVideoFile.value?.metadata?.id?.let(mediaModel::clearSelectedMediaItem) },
                 mediaModel.currentVideoFile,
                 mediaModel.currentFfmpegSession,
                 mediaModel.onLibraryChange,
@@ -168,7 +182,7 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             videoSettingsState,
                             favoriteDevices,
-                            cacheControl,
+                            storageManagement,
                         )
                     },
                 )

@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
@@ -207,7 +208,11 @@ private fun PlaylistDetails(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.metadata.title)
+                                Text(
+                                    item.metadata.title,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                                 Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall)
                             }
                             IconButton(onClick = { onRemove(videoId) }) { Icon(Icons.Default.Delete, stringResource(R.string.remove_from_playlist)) }

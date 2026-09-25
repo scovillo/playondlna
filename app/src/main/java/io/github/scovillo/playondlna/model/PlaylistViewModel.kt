@@ -5,15 +5,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.persistence.PlaylistManager
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class PlaylistViewModel(private val playlistManager: PlaylistManager) : ViewModel() {
+class PlaylistViewModel(
+    private val playlistManager: PlaylistManager,
+    private val migration: Deferred<Unit>? = null,
+) : ViewModel() {
     private val _playlists = mutableStateOf<List<Playlist>>(emptyList())
     val playlists: State<List<Playlist>> = _playlists
 
-    fun loadPlaylists() = run { _playlists.value = playlistManager.getPlaylists() }
+    fun loadPlaylists() {
+        viewModelScope.launch {
+            migration?.join()
+            _playlists.value = withContext(Dispatchers.IO) { playlistManager.getPlaylists() }
+        }
+    }
 
     fun createPlaylist(name: String) = mutate { playlistManager.createPlaylist(name) != null }
 

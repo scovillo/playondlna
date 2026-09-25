@@ -192,8 +192,8 @@ class MediaServerService : Service() {
             mediaHttpServer =
                 MediaHttpServer(
                     serverPort,
-                    LibraryManager(cacheDir),
-                    PlaylistManager(cacheDir),
+                    LibraryManager(filesDir),
+                    PlaylistManager(filesDir),
                     defaultCover,
                 ).also { it.start() }
             promoteToForeground(

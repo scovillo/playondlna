@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,12 +31,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -207,8 +212,11 @@ private fun LibraryVideosScreen(
 ) {
     val items by libraryViewModel.items
     val isLoading by libraryViewModel.isLoading
+    val isMigrating by libraryViewModel.isMigrating
+    val migrationProgress by libraryViewModel.migrationProgress
     val playlists by playlistViewModel.playlists
     var videoToAdd by remember { mutableStateOf<String?>(null) }
+    var videoToDelete by remember { mutableStateOf<LibraryItem?>(null) }
 
     LaunchedEffect(Unit) {
         libraryViewModel.loadLibrary()
@@ -219,7 +227,22 @@ private fun LibraryVideosScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isLoading && items.isEmpty()) {
+        if (isMigrating) {
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                LinearProgressIndicator(
+                    progress = { migrationProgress },
+                    modifier =
+                        Modifier
+                            .width(220.dp)
+                            .height(12.dp),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.library_migration_in_progress))
+            }
+        } else if (isLoading && items.isEmpty()) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (items.isEmpty()) {
             Text(
@@ -230,71 +253,64 @@ private fun LibraryVideosScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(items) { item ->
-                    Card(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                                .clickable {
-                                    mediaModel.selectMediaItem(item)
-                                    onVideoSelected()
-                                },
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.StartToEnd) {
+                                videoToDelete = item
+                            }
+                            false
+                        },
+                    )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = true,
+                        enableDismissFromEndToStart = false,
+                        backgroundContent = {
+                            Box(
+                                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                            }
+                        },
                     ) {
-                        Row(
+                        Card(
                             modifier =
                                 Modifier
+                                    .fillMaxWidth()
                                     .padding(8.dp)
-                                    .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
+                                    .clickable {
+                                        mediaModel.selectMediaItem(item)
+                                        onVideoSelected()
+                                    },
                         ) {
-                            ThumbnailImage(
-                                file = item.thumbnail,
-                                modifier =
-                                    Modifier
-                                        .size(100.dp, 70.dp)
-                                        .background(Color.DarkGray),
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.metadata.title,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    maxLines = 2,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    text = item.metadata.uploader,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row {
-                                    item.metadata.qualityName.let { quality ->
-                                        Text(
-                                            text = quality,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                        )
+                            Row(
+                                modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                ThumbnailImage(file = item.thumbnail, modifier = Modifier.size(100.dp, 70.dp).background(Color.DarkGray))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        item.metadata.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row {
+                                        Text(item.metadata.qualityName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                                         Spacer(modifier = Modifier.width(8.dp))
+                                        Text(formatDuration(item.metadata.durationInSeconds), fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(formatFileSize(item.sizeInBytes), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                                     }
-                                    Text(
-                                        text = formatDuration(item.metadata.durationInSeconds),
-                                        fontSize = 12.sp,
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = formatFileSize(item.sizeInBytes),
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
                                 }
-                            }
-                            IconButton(onClick = { videoToAdd = item.metadata.id }) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.PlaylistAdd,
-                                    contentDescription = stringResource(R.string.add_to_playlist),
-                                )
+                                IconButton(onClick = { videoToAdd = item.metadata.id }) {
+                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist))
+                                }
                             }
                         }
                     }
@@ -310,6 +326,31 @@ private fun LibraryVideosScreen(
                 playlistViewModel.addVideo(it, videoId)
                 videoToAdd = null
             },
+        )
+    }
+    videoToDelete?.let { item ->
+        val containingPlaylists = playlists.filter { item.metadata.id in it.videoIds }
+        AlertDialog(
+            onDismissRequest = { videoToDelete = null },
+            title = { Text(stringResource(R.string.delete_video_dialog_title)) },
+            text = {
+                Text(
+                    if (containingPlaylists.isEmpty()) stringResource(R.string.delete_video_dialog_message, item.metadata.title)
+                    else stringResource(R.string.delete_video_with_playlists_dialog_message, item.metadata.title, containingPlaylists.joinToString { it.name }),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val playlistIds = containingPlaylists.map { it.id }
+                    videoToDelete = null
+                    libraryViewModel.deleteItem(item, playlistIds) { deleted ->
+                        if (deleted) mediaModel.clearSelectedMediaItem(item.metadata.id)
+                        libraryViewModel.loadLibrary()
+                        playlistViewModel.loadPlaylists()
+                    }
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = { TextButton(onClick = { videoToDelete = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }

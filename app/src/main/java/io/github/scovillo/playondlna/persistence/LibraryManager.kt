@@ -58,7 +58,7 @@ class LibraryManager(private val cacheDir: File) {
                 it.exists() &&
                     it.name.contains(id) &&
                     it.name.contains("fetchSubtitle") &&
-                    it.name.endsWith(".srt")
+                    LibraryFileType.from(it) == LibraryFileType.SUBTITLE
             }
         return if (file != null) Subtitle(file) else null
     }
@@ -75,7 +75,7 @@ class LibraryManager(private val cacheDir: File) {
     fun fetchAllItems(): List<LibraryItem> {
         val results = mutableListOf<LibraryItem>()
         val files = cacheDir.listFiles() ?: return emptyList()
-        val metaFiles = files.filter { it.name.endsWith(".meta.json") }
+        val metaFiles = files.filter { LibraryFileType.from(it) == LibraryFileType.METADATA }
         for (metaFile in metaFiles) {
             try {
                 val item = this.buildOneItem(metaFile, files)
@@ -85,6 +85,11 @@ class LibraryManager(private val cacheDir: File) {
             }
         }
         return results.sortedByDescending { it.mediaFile.lastModified() }
+    }
+
+    fun deleteItem(item: LibraryItem): Boolean {
+        val files = listOfNotNull(item.mediaFile, item.thumbnail, item.subtitle?.file, File(cacheDir, "${item.metadata.id}.meta.json"))
+        return files.distinct().all { !it.exists() || it.delete() }
     }
 
     private fun buildOneItem(

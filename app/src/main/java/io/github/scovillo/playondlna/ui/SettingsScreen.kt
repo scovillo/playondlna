@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -79,7 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
-import io.github.scovillo.playondlna.model.CacheControl
+import io.github.scovillo.playondlna.model.StorageManagement
 import io.github.scovillo.playondlna.model.VideoQuality
 import io.github.scovillo.playondlna.model.VideoSettingsState
 import kotlinx.coroutines.flow.merge
@@ -94,12 +95,12 @@ private val ButtonSpacing = 16.dp
 fun SettingsScreen(
     videoSettingsState: VideoSettingsState,
     favoriteDevices: FavoriteDevices,
-    cacheControl: CacheControl,
+    storageManagement: StorageManagement,
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         merge(
-            cacheControl.toastEvents,
+            storageManagement.toastEvents,
             favoriteDevices.toastEvents,
         ).collect { event ->
             when (event) {
@@ -140,7 +141,7 @@ fun SettingsScreen(
             )
         }
         item { Spacer(Modifier.height(SectionSpacing)) }
-        item { ClearCache(cacheControl) }
+        item { Storage(storageManagement) }
         item { Spacer(Modifier.height(SectionSpacing)) }
         item { Info(context) }
     }
@@ -204,7 +205,7 @@ fun SupportPlayOnDlna() {
         )
         Spacer(Modifier.height(ButtonSpacing))
         PlayOnDlnaButton(
-            icon = Icons.Default.Favorite,
+            icon = Icons.Default.VolunteerActivism,
             text = stringResource(R.string.become_sponsor),
             color = Color(0xFFEA4AAA),
             onClick = {
@@ -479,30 +480,67 @@ fun CustomFavoriteDevices(favoriteDevices: FavoriteDevices) {
 }
 
 @Composable
-fun ClearCache(cacheControl: CacheControl) {
-    val sizeInGb by cacheControl.sizeInGb.collectAsState()
+fun Storage(storageManagement: StorageManagement) {
+    val sizeInBytes by storageManagement.sizeInBytes.collectAsState()
+    val librarySizeInBytes by storageManagement.librarySizeInBytes.collectAsState()
     var showClearLibraryDialog by remember { mutableStateOf(false) }
+    var showPurgeUnusedDialog by remember { mutableStateOf(false) }
+    var showClearCacheDialog by remember { mutableStateOf(false) }
 
     Column {
-        Text(stringResource(R.string.cache_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.storage_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(ContentSpacing))
+        Text(stringResource(R.string.library_storage_title), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(RelatedContentSpacing))
         Text(
             buildAnnotatedString {
-                append(stringResource(R.string.cache_usage))
+                append(stringResource(R.string.storage_usage))
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                     append("  ")
-                    append(stringResource(R.string.cache_usage_value, sizeInGb))
+                    append(formatStorageSize(librarySizeInBytes))
                 }
             },
         )
         Spacer(Modifier.height(ContentSpacing))
-        Text(stringResource(R.string.cache_desc))
+        Text(stringResource(R.string.library_contents_desc))
+        Spacer(Modifier.height(ContentSpacing))
+        Text(stringResource(R.string.purge_unused_videos_desc))
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.CleaningServices,
+            text = stringResource(R.string.purge_unused_videos),
+            color = Color(0xFFFFC107),
+            onClick = { showPurgeUnusedDialog = true },
+        )
+        Spacer(Modifier.height(ContentSpacing))
+        Text(stringResource(R.string.library_delete_desc))
+        Spacer(Modifier.height(ContentSpacing))
+        PlayOnDlnaButton(
+            icon = Icons.Default.CleaningServices,
+            text = stringResource(id = R.string.clear_library),
+            color = colorResource(id = R.color.icon_color),
+            onClick = { showClearLibraryDialog = true },
+        )
+        Spacer(Modifier.height(SectionSpacing))
+        Text(stringResource(R.string.cache_title), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(RelatedContentSpacing))
+        Text(
+            buildAnnotatedString {
+                append(stringResource(R.string.storage_usage))
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("  ")
+                    append(formatStorageSize(sizeInBytes))
+                }
+            },
+        )
+        Spacer(Modifier.height(ContentSpacing))
+        Text(stringResource(R.string.cache_storage_desc))
         Spacer(Modifier.height(ContentSpacing))
         PlayOnDlnaButton(
             icon = Icons.Default.CleaningServices,
             text = stringResource(id = R.string.clear_cache),
-            color = colorResource(id = R.color.icon_color),
-            onClick = { showClearLibraryDialog = true },
+            color = Color(0xFFFFC107),
+            onClick = { showClearCacheDialog = true },
         )
     }
 
@@ -515,7 +553,7 @@ fun ClearCache(cacheControl: CacheControl) {
                 TextButton(
                     onClick = {
                         showClearLibraryDialog = false
-                        cacheControl.clearCache()
+                        storageManagement.clearLibrary()
                     },
                 ) {
                     Text(stringResource(R.string.delete))
@@ -528,6 +566,45 @@ fun ClearCache(cacheControl: CacheControl) {
             },
         )
     }
+
+    if (showPurgeUnusedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPurgeUnusedDialog = false },
+            title = { Text(stringResource(R.string.purge_unused_videos_dialog_title)) },
+            text = { Text(stringResource(R.string.purge_unused_videos_dialog_message)) },
+            confirmButton = {
+                TextButton(onClick = { showPurgeUnusedDialog = false; storageManagement.purgeUnusedVideos() }) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPurgeUnusedDialog = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
+    if (showClearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheDialog = false },
+            title = { Text(stringResource(R.string.clear_cache_dialog_title)) },
+            text = { Text(stringResource(R.string.clear_cache_dialog_message)) },
+            confirmButton = {
+                TextButton(onClick = { showClearCacheDialog = false; storageManagement.clearCache() }) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheDialog = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+}
+
+private fun formatStorageSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    if (bytes < 1024 * 1024) return "%.1f KB".format(bytes / 1024.0)
+    if (bytes < 1024L * 1024 * 1024) return "%.1f MB".format(bytes / (1024.0 * 1024))
+    return "%.1f GB".format(bytes / (1024.0 * 1024 * 1024))
 }
 
 @Composable
