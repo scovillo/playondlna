@@ -1,0 +1,7 @@
+Neu in Version 1.16:
+
+- Überspringe von der Community gemeldete Sponsorsegmente bei der YouTube-Wiedergabe automatisch mit SponsorBlock
+- Erlebe eine zuverlässigere Fernbedienung und eine flüssigere Wiedergabe von Wiedergabelisten auf kompatiblen Playern
+- Ordne Videos in deinen Wiedergabelisten neu an und erstelle deine perfekte Wiedergabereihenfolge
+- Verwalte Speicherplatz mit einer übersichtlicheren Aufteilung von Bibliothek, Cache und nicht verwendeten Downloads
+- Entdecke PlayOnDlna mit einem überarbeiteten thematischen App-Symbol

@@ -2,8 +2,8 @@
 
 [🌐 Official website](https://scovillo.github.io/playondlna/) · [🌶️ Spicy Sources](https://spicy-sources.lukas-scheerer.de/en/projects/playondlna/) · [📝 Tech blog](https://spicy-sources.lukas-scheerer.de/en/blog/) · [📥 Download on F-Droid](https://f-droid.org/packages/io.github.scovillo.playondlna/)
 
-📦 **Version:** 16 (1.15)
-⚙️ **Build-Tool:** Gradle 8.14.3
+📦 **Version:** 17 (1.16)
+⚙️ **Build-Tool:** Gradle 9.6.0
 
 ## ✨ Highlights
 

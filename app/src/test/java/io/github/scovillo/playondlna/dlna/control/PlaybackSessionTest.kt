@@ -34,7 +34,7 @@ class PlaybackSessionTest {
 
     @Test
     fun staysAtBounds() {
-        assertEquals(1, session.copy(currentIndex = 2).nextIndex(PlaybackCommand.NEXT))
+        assertEquals(2, session.copy(currentIndex = 2).nextIndex(PlaybackCommand.NEXT))
         assertEquals(0, session.copy(currentIndex = 0).nextIndex(PlaybackCommand.PREVIOUS))
     }
 

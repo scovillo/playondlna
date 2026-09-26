@@ -1,6 +1,6 @@
 package io.github.scovillo.playondlna.persistence
 
-import android.util.Log
+import io.github.scovillo.playondlna.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
@@ -35,16 +35,16 @@ class LibraryStorageMigration(
 
     fun migrate() {
         if (!legacyCacheDir.exists()) {
-            Log.i("LibraryMigration", "Skipped: legacy cache directory does not exist")
+            AppLog.i("LibraryMigration", "Skipped: legacy cache directory does not exist")
             return
         }
         if (legacyCacheDir.absoluteFile == libraryDir.absoluteFile) {
-            Log.w("LibraryMigration", "Skipped: legacy and library directories are identical")
+            AppLog.w("LibraryMigration", "Skipped: legacy and library directories are identical")
             return
         }
-        Log.i("LibraryMigration", "Starting migration from ${legacyCacheDir.absolutePath} to ${libraryDir.absolutePath}")
+        AppLog.i("LibraryMigration", "Starting migration from ${legacyCacheDir.absolutePath} to ${libraryDir.absolutePath}")
         if (!libraryDir.exists() && !libraryDir.mkdirs()) {
-            Log.e("LibraryMigration", "Failed to create library directory ${libraryDir.absolutePath}")
+            AppLog.e("LibraryMigration", "Failed to create library directory ${libraryDir.absolutePath}")
             return
         }
         val files = legacyCacheDir.listFiles()?.filter { LibraryFileType.from(it) != null }.orEmpty()
@@ -52,11 +52,11 @@ class LibraryStorageMigration(
         var migrated = 0
         var skipped = 0
         var failed = 0
-        Log.i("LibraryMigration", "Found ${files.size} library files to migrate")
+        AppLog.i("LibraryMigration", "Found ${files.size} library files to migrate")
         files.forEachIndexed { index, source ->
             val target = File(libraryDir, source.name)
             if (target.exists()) {
-                Log.i("LibraryMigration", "Keeping existing ${target.name}")
+                AppLog.i("LibraryMigration", "Keeping existing ${target.name}")
                 skipped++
                 _progress.value = (index + 1).toFloat() / files.size
                 return@forEachIndexed
@@ -69,19 +69,18 @@ class LibraryStorageMigration(
                             if (!deleted) throw IllegalStateException("source was not deleted")
                         }
                     }.onFailure { error ->
-                        Log.e("LibraryMigration", "Copy fallback failed for ${source.name}", error)
+                        AppLog.e("LibraryMigration", "Copy fallback failed for ${source.name}", error)
                     }.getOrDefault(false)
             if (!moved) {
-                Log.e("LibraryMigration", "Failed to migrate ${source.name}")
+                AppLog.e("LibraryMigration", "Failed to migrate ${source.name}")
                 target.delete()
                 failed++
             } else {
-                Log.i("LibraryMigration", "Migrated ${source.name}")
+                AppLog.i("LibraryMigration", "Migrated ${source.name}")
                 migrated++
             }
             _progress.value = (index + 1).toFloat() / files.size
         }
-        Log.i("LibraryMigration", "Finished: migrated=$migrated, skipped=$skipped, failed=$failed")
+        AppLog.i("LibraryMigration", "Finished: migrated=$migrated, skipped=$skipped, failed=$failed")
     }
-
 }

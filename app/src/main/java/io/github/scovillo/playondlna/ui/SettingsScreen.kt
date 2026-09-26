@@ -573,7 +573,10 @@ fun Storage(storageManagement: StorageManagement) {
             title = { Text(stringResource(R.string.purge_unused_videos_dialog_title)) },
             text = { Text(stringResource(R.string.purge_unused_videos_dialog_message)) },
             confirmButton = {
-                TextButton(onClick = { showPurgeUnusedDialog = false; storageManagement.purgeUnusedVideos() }) {
+                TextButton(onClick = {
+                    showPurgeUnusedDialog = false
+                    storageManagement.purgeUnusedVideos()
+                }) {
                     Text(stringResource(R.string.delete))
                 }
             },
@@ -589,7 +592,10 @@ fun Storage(storageManagement: StorageManagement) {
             title = { Text(stringResource(R.string.clear_cache_dialog_title)) },
             text = { Text(stringResource(R.string.clear_cache_dialog_message)) },
             confirmButton = {
-                TextButton(onClick = { showClearCacheDialog = false; storageManagement.clearCache() }) {
+                TextButton(onClick = {
+                    showClearCacheDialog = false
+                    storageManagement.clearCache()
+                }) {
                     Text(stringResource(R.string.delete))
                 }
             },

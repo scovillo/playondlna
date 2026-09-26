@@ -34,6 +34,7 @@ class PlaybackObservation(
     val status: SharedFlow<PlaybackStatus> = _status.asSharedFlow()
 
     private var job: Job? = null
+
     @Volatile
     private var stopOnPlayerStop = false
 
@@ -84,5 +85,4 @@ class PlaybackObservation(
     fun stopOnPlayerStop() {
         stopOnPlayerStop = true
     }
-
 }

@@ -48,24 +48,24 @@ class StorageManagement(
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = _toastEvents.asSharedFlow()
 
-    private val _sizeInGb = MutableStateFlow(0.0)
-    private val _sizeInBytes = MutableStateFlow(0L)
-    val sizeInBytes = _sizeInBytes.asStateFlow()
+    private val sizeInGbState = MutableStateFlow(0.0)
+    private val sizeInBytesState = MutableStateFlow(0L)
+    val sizeInBytes = sizeInBytesState.asStateFlow()
 
-    private val _librarySizeInGb = MutableStateFlow(0.0)
-    private val _librarySizeInBytes = MutableStateFlow(0L)
-    val librarySizeInBytes = _librarySizeInBytes.asStateFlow()
+    private val librarySizeInGbState = MutableStateFlow(0.0)
+    private val librarySizeInBytesState = MutableStateFlow(0L)
+    val librarySizeInBytes = librarySizeInBytesState.asStateFlow()
 
-    private fun calculateSizes() {
+    fun calculateSizes() {
         viewModelScope.launch(Dispatchers.IO) {
             migration?.join()
             val cacheSize = calculateCacheSize(cacheDir) / (1024.0 * 1024 * 1024)
             val librarySize = calculateLibrarySize() / (1024.0 * 1024 * 1024)
             AppLog.i("StorageManagement", "Cache size = $cacheSize GB, library size = $librarySize GB")
-            _sizeInBytes.value = calculateCacheSize(cacheDir)
-            _librarySizeInBytes.value = calculateLibrarySize()
-            _sizeInGb.value = cacheSize
-            _librarySizeInGb.value = librarySize
+            sizeInBytesState.value = calculateCacheSize(cacheDir)
+            librarySizeInBytesState.value = calculateLibrarySize()
+            sizeInGbState.value = cacheSize
+            librarySizeInGbState.value = librarySize
         }
     }
 
@@ -121,7 +121,7 @@ class StorageManagement(
                             !file.name.contains(
                                 currentItem.metadata.id,
                             )
-                        )
+                    )
                 ) {
                     file.delete()
                 }

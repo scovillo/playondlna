@@ -60,7 +60,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaPlaylist
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.preparation.MediaModel

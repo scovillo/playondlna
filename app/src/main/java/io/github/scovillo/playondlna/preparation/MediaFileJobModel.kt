@@ -382,8 +382,8 @@ class MediaModel(
         )
         state.finalizing()
         suspendCancellableCoroutine { continuation ->
-                currentFfmpegSessionState.value =
-                    FFmpegKit.executeAsync(
+            currentFfmpegSessionState.value =
+                FFmpegKit.executeAsync(
                     ffmpegCmd.value(),
                     { session ->
                         if (ReturnCode.isSuccess(session.returnCode)) {
@@ -394,7 +394,7 @@ class MediaModel(
                             )
                             val librarySubtitle =
                                 streamFiles.subtitle?.let { subtitle ->
-                                    val target = File(libraryDir, "${mediaId}.fetchSubtitle.${subtitle.locale().language}.srt")
+                                    val target = File(libraryDir, "$mediaId.fetchSubtitle.${subtitle.locale().language}.srt")
                                     runCatching {
                                         libraryDir.mkdirs()
                                         subtitle.file.copyTo(target, overwrite = true)

@@ -42,9 +42,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
@@ -91,9 +91,10 @@ fun DlnaRemoteControl(
                         .weight(1f),
             ) {
                 Text(
-                    text = currentVideo?.metadata?.title
-                        ?: playlist?.title
-                        ?: stringResource(R.string.no_media_selected),
+                    text =
+                        currentVideo?.metadata?.title
+                            ?: playlist?.title
+                            ?: stringResource(R.string.no_media_selected),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -136,17 +137,19 @@ fun DlnaRemoteControl(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(formatTime(position), style = MaterialTheme.typography.labelMedium)
                 Slider(
-                    value = if (duration > 0.0) {
-                        position.toFloat().coerceIn(0f, duration.toFloat())
-                    } else {
-                        0f
-                    },
+                    value =
+                        if (duration > 0.0) {
+                            position.toFloat().coerceIn(0f, duration.toFloat())
+                        } else {
+                            0f
+                        },
                     onValueChange = { onSeek(it.toDouble()) },
                     valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
                     enabled = !isStopped && duration > 0.0,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
                 )
                 Text(formatTime(duration), style = MaterialTheme.typography.labelMedium)
             }

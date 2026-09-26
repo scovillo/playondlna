@@ -32,10 +32,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -80,6 +80,7 @@ fun LibraryScreen(
     playlistViewModel: PlaylistViewModel,
     mediaModel: MediaModel,
     navController: NavHostController,
+    onLibraryChanged: () -> Unit,
     onVideoSelected: () -> Unit,
     onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<LibraryItem>) -> Unit,
 ) {
@@ -92,7 +93,7 @@ fun LibraryScreen(
         }
         Box(modifier = Modifier.weight(1f)) {
             if (selectedTab == 0) {
-                LibraryVideosScreen(libraryViewModel, playlistViewModel, mediaModel, onVideoSelected)
+                LibraryVideosScreen(libraryViewModel, playlistViewModel, mediaModel, onLibraryChanged, onVideoSelected)
             } else {
                 PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController, onPlayPlaylist)
             }
@@ -209,6 +210,7 @@ private fun LibraryVideosScreen(
     libraryViewModel: LibraryViewModel,
     playlistViewModel: PlaylistViewModel,
     mediaModel: MediaModel,
+    onLibraryChanged: () -> Unit,
     onVideoSelected: () -> Unit,
 ) {
     val items by libraryViewModel.items
@@ -254,14 +256,15 @@ private fun LibraryVideosScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(items) { item ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
-                            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                                videoToDelete = item
-                            }
-                            false
-                        },
-                    )
+                    val dismissState =
+                        rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.StartToEnd) {
+                                    videoToDelete = item
+                                }
+                                false
+                            },
+                        )
                     SwipeToDismissBox(
                         state = dismissState,
                         enableDismissFromStartToEnd = true,
@@ -336,8 +339,11 @@ private fun LibraryVideosScreen(
             title = { Text(stringResource(R.string.delete_video_dialog_title)) },
             text = {
                 Text(
-                    if (containingPlaylists.isEmpty()) stringResource(R.string.delete_video_dialog_message, item.metadata.title)
-                    else stringResource(R.string.delete_video_with_playlists_dialog_message, item.metadata.title, containingPlaylists.joinToString { it.name }),
+                    if (containingPlaylists.isEmpty()) {
+                        stringResource(R.string.delete_video_dialog_message, item.metadata.title)
+                    } else {
+                        stringResource(R.string.delete_video_with_playlists_dialog_message, item.metadata.title, containingPlaylists.joinToString { it.name })
+                    },
                 )
             },
             confirmButton = {
@@ -345,7 +351,10 @@ private fun LibraryVideosScreen(
                     val playlistIds = containingPlaylists.map { it.id }
                     videoToDelete = null
                     libraryViewModel.deleteItem(item, playlistIds) { deleted ->
-                        if (deleted) mediaModel.clearSelectedMediaItem(item.metadata.id)
+                        if (deleted) {
+                            mediaModel.clearSelectedMediaItem(item.metadata.id)
+                            onLibraryChanged()
+                        }
                         libraryViewModel.loadLibrary()
                         playlistViewModel.loadPlaylists()
                     }

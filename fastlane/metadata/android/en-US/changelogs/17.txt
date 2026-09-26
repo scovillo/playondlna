@@ -1,0 +1,7 @@
+New in version 1.16:
+
+- Skip community-reported sponsor segments automatically with SponsorBlock during YouTube playback
+- Enjoy more reliable remote control and smoother playlist playback on compatible players
+- Reorder videos in your playlists to create the perfect viewing sequence
+- Manage storage with a clearer overview of your library, cache, and unused downloads
+- Meet PlayOnDlna with a refreshed themed app icon

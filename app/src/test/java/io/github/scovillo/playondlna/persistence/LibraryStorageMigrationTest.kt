@@ -1,13 +1,13 @@
 package io.github.scovillo.playondlna.persistence
 
-import java.nio.file.Files
-import kotlin.io.path.createDirectories
-import kotlin.io.path.writeText
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.nio.file.Files
+import kotlin.io.path.createDirectories
+import kotlin.io.path.writeText
 
 class LibraryStorageMigrationTest {
     private lateinit var root: java.nio.file.Path

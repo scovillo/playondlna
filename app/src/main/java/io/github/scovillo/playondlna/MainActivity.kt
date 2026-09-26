@@ -90,9 +90,10 @@ class MainActivity : ComponentActivity() {
         val settingsRepository = SettingsRepository(this)
         val libraryDir = filesDir
         val migrationState = LibraryStorageMigration(cacheDir, libraryDir)
-        val migration = lifecycleScope.async(Dispatchers.IO) {
-            migrationState.migrate()
-        }
+        val migration =
+            lifecycleScope.async(Dispatchers.IO) {
+                migrationState.migrate()
+            }
         val libraryManager = LibraryManager(libraryDir)
         val playlistManager = PlaylistManager(libraryDir)
         val libraryViewModel = LibraryViewModel(libraryManager, playlistManager, migration, migrationState.progress)
@@ -152,7 +153,7 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     libraryScreen = { navController ->
-                        LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, {
+                        LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, storageManagement::calculateSizes, {
                             selectedPlaylistVideoFiles = emptyList()
                             selectedPlaylist = null
                             selectedPlaylistStarted = false
