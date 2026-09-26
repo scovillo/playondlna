@@ -132,6 +132,7 @@ Beispiele:\n
     <string name="all_clear">Alles klar</string>
     <string name="add_to_playlist">Zu Wiedergabeliste hinzufügen</string>
     <string name="remove_from_playlist">Aus Wiedergabeliste entfernen</string>
+    <string name="reorder_playlist_video">Video in der Wiedergabeliste verschieben</string>
     <string name="play_playlist">Wiedergabeliste abspielen</string>
     <string name="playlist_no_playable_videos">Diese Wiedergabeliste enthält keine abspielbaren Videos.</string>
     <string name="playlist">Wiedergabeliste</string>

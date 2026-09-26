@@ -58,6 +58,17 @@ class PlaylistManager(private val cacheDir: File) {
             playlist.copy(videoIds = playlist.videoIds.filterNot { it == videoId })
         }
 
+    @Synchronized
+    fun reorderVideos(
+        id: String,
+        videoIds: List<String>,
+    ): Boolean =
+        updatePlaylist(id) { playlist ->
+            val allowed = playlist.videoIds.toSet()
+            val reordered = videoIds.filter { it in allowed }.distinct() + playlist.videoIds.filter { it !in videoIds }
+            playlist.copy(videoIds = reordered)
+        }
+
     private fun updatePlaylist(
         id: String,
         transform: (Playlist) -> Playlist,

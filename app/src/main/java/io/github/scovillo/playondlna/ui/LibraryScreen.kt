@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.SystemClock
+import android.util.LruCache
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -360,35 +361,38 @@ fun ThumbnailImage(
     file: File?,
     modifier: Modifier = Modifier,
 ) {
-    var bitmap by remember(file) { mutableStateOf<Bitmap?>(null) }
+    val thumbnailFile = file?.takeIf { it.isFile }
+    val cacheKey = thumbnailFile?.let { "${it.absolutePath}:${it.lastModified()}:${it.length()}" }
+    var bitmap by remember(cacheKey) { mutableStateOf(cacheKey?.let(thumbnailCache::get)) }
 
-    LaunchedEffect(file) {
-        if (file != null && file.exists()) {
-            withContext(Dispatchers.IO) {
-                try {
-                    bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
+    LaunchedEffect(cacheKey) {
+        if (cacheKey != null && bitmap == null) {
+            val decoded = withContext(Dispatchers.IO) { runCatching { decodeThumbnail(thumbnailFile!!) }.getOrNull() }
+            if (decoded != null) thumbnailCache.put(cacheKey, decoded)
+            bitmap = decoded
         }
     }
 
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap!!.asImageBitmap(),
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Image(
-            painter = painterResource(R.drawable.playondlna_icon),
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Fit,
-        )
+    when {
+        bitmap != null -> Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop)
+        else -> Image(painter = painterResource(R.drawable.playondlna_icon), contentDescription = null, modifier = modifier, contentScale = ContentScale.Fit)
     }
+}
+
+private val thumbnailCache =
+    object : LruCache<String, Bitmap>(16 * 1024) {
+        override fun sizeOf(
+            key: String,
+            value: Bitmap,
+        ): Int = (value.byteCount / 1024).coerceAtLeast(1)
+    }
+
+private fun decodeThumbnail(file: File): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    var sampleSize = 1
+    while (bounds.outWidth / sampleSize > 512 || bounds.outHeight / sampleSize > 512) sampleSize *= 2
+    return BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sampleSize })
 }
 
 private fun formatDuration(seconds: Long): String {

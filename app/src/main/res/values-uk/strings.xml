@@ -132,6 +132,7 @@
     <string name="all_clear">Зрозуміло</string>
     <string name="add_to_playlist">Додати до плейлиста</string>
     <string name="remove_from_playlist">Видалити з плейлиста</string>
+    <string name="reorder_playlist_video">Змінити порядок відео в плейлисті</string>
     <string name="play_playlist">Відтворити плейлист</string>
     <string name="playlist_no_playable_videos">У цьому плейлисті немає відео, які можна відтворити.</string>
     <string name="playlist">Плейлист</string>

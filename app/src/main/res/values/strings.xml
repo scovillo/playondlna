@@ -132,6 +132,7 @@ Examples:\n
     <string name="all_clear">Got it</string>
     <string name="add_to_playlist">Add to playlist</string>
     <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="reorder_playlist_video">Reorder playlist video</string>
     <string name="play_playlist">Play playlist</string>
     <string name="playlist_no_playable_videos">This playlist has no playable videos.</string>
     <string name="playlist">Playlist</string>

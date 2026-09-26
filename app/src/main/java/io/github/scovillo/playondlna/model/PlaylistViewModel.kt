@@ -43,6 +43,11 @@ class PlaylistViewModel(
         videoId: String,
     ) = mutate { playlistManager.removeVideo(id, videoId) }
 
+    fun reorderVideos(
+        id: String,
+        videoIds: List<String>,
+    ) = mutate { playlistManager.reorderVideos(id, videoIds) }
+
     private fun mutate(operation: () -> Boolean) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { operation() }

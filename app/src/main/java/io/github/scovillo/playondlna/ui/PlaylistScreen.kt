@@ -1,17 +1,24 @@
 package io.github.scovillo.playondlna.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -27,12 +34,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryItem
@@ -67,6 +79,7 @@ fun PlaylistsScreen(
             libraryViewModel = libraryViewModel,
             mediaModel = mediaModel,
             onRemove = { playlistViewModel.removeVideo(playlist.id, it) },
+            onReorder = { playlistViewModel.reorderVideos(playlist.id, it) },
             onPlay = onPlayPlaylist,
         )
     } else {
@@ -159,6 +172,7 @@ private fun PlaylistDetails(
     libraryViewModel: LibraryViewModel,
     mediaModel: MediaModel,
     onRemove: (String) -> Unit,
+    onReorder: (List<String>) -> Unit,
     onPlay: (Playlist, List<LibraryItem>) -> Unit,
 ) {
     val itemById = libraryViewModel.items.value.associateBy { it.metadata.id }
@@ -166,6 +180,11 @@ private fun PlaylistDetails(
     val validItems = playlist.videoIds.mapNotNull(itemById::get)
     var startError by remember(playlist.id) { mutableStateOf(false) }
     var isStarting by remember(playlist.id) { mutableStateOf(false) }
+    var orderedItems by remember(playlist.id) { mutableStateOf(validItems) }
+    val listState = rememberLazyListState()
+    var draggingId by remember(playlist.id) { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember(playlist.id) { mutableStateOf(0f) }
+    LaunchedEffect(validItems) { orderedItems = validItems }
     Column(
         modifier =
             Modifier
@@ -187,17 +206,60 @@ private fun PlaylistDetails(
         }
         if (missingCount > 0) Text(stringResource(R.string.playlist_missing_videos, missingCount), style = MaterialTheme.typography.bodySmall)
         if (startError) Text(stringResource(R.string.playlist_no_playable_videos), style = MaterialTheme.typography.bodyMedium)
-        if (validItems.isEmpty()) {
+        if (orderedItems.isEmpty()) {
             Text(stringResource(R.string.no_playlist_videos), modifier = Modifier.padding(top = 24.dp))
         } else {
-            LazyColumn {
-                items(validItems, key = { it.metadata.id }) { item ->
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                items(orderedItems, key = { it.metadata.id }) { item ->
                     val videoId = item.metadata.id
+                    val currentItems = rememberUpdatedState(orderedItems)
                     Card(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 6.dp)
+                                .zIndex(if (draggingId == videoId) 1f else 0f)
+                                .graphicsLayer { translationY = if (draggingId == videoId) dragOffsetY else 0f }
+                                .pointerInput(videoId) {
+                                    var workingItems = emptyList<LibraryItem>()
+                                    var originalItems = emptyList<LibraryItem>()
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            workingItems = currentItems.value
+                                            originalItems = workingItems
+                                            draggingId = videoId
+                                            dragOffsetY = 0f
+                                        },
+                                        onDrag = { _, delta ->
+                                            dragOffsetY += delta.y
+                                            val visible = listState.layoutInfo.visibleItemsInfo
+                                            val dragged =
+                                                visible.firstOrNull { it.key == videoId } ?: return@detectDragGesturesAfterLongPress
+                                            val center = dragged.offset + dragged.size / 2f + dragOffsetY
+                                            val target =
+                                                visible.firstOrNull {
+                                                    it.key != videoId && center >= it.offset && center < it.offset + it.size
+                                                } ?: return@detectDragGesturesAfterLongPress
+                                            val from = workingItems.indexOfFirst { it.metadata.id == videoId }
+                                            val to = target.index
+                                            if (from >= 0 && to in workingItems.indices) {
+                                                dragOffsetY += dragged.offset - target.offset
+                                                workingItems = workingItems.toMutableList().apply { add(to, removeAt(from)) }
+                                                orderedItems = workingItems
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            draggingId = null
+                                            dragOffsetY = 0f
+                                            if (workingItems != originalItems) onReorder(workingItems.map { it.metadata.id })
+                                        },
+                                        onDragCancel = {
+                                            draggingId = null
+                                            dragOffsetY = 0f
+                                            orderedItems = originalItems
+                                        },
+                                    )
+                                }
                                 .clickable { mediaModel.selectMediaItem(item) },
                     ) {
                         Row(
@@ -207,6 +269,8 @@ private fun PlaylistDetails(
                                     .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            ThumbnailImage(file = item.thumbnail, modifier = Modifier.size(100.dp, 70.dp).background(Color.DarkGray))
+                            Spacer(modifier = Modifier.size(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     item.metadata.title,
@@ -214,6 +278,12 @@ private fun PlaylistDetails(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Box(
+                                modifier = Modifier.size(48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Default.DragHandle, stringResource(R.string.reorder_playlist_video))
                             }
                             IconButton(onClick = { onRemove(videoId) }) { Icon(Icons.Default.Delete, stringResource(R.string.remove_from_playlist)) }
                         }

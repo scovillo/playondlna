@@ -61,6 +61,15 @@ class PlaylistManagerTest {
     }
 
     @Test
+    fun reordersVideosAndKeepsUnavailableEntries() {
+        val playlist = manager.createPlaylist("Queue")!!
+        listOf("first", "missing", "last").forEach { assertTrue(manager.addVideo(playlist.id, it)) }
+
+        assertTrue(manager.reorderVideos(playlist.id, listOf("last", "first")))
+        assertEquals(listOf("last", "first", "missing"), PlaylistManager(directory).getPlaylists().single().videoIds)
+    }
+
+    @Test
     fun returnsEmptyListForMissingEmptyOrDamagedFile() {
         assertTrue(manager.getPlaylists().isEmpty())
         File(directory, "playlists.json").writeText("")

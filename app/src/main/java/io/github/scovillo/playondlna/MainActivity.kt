@@ -139,6 +139,7 @@ class MainActivity : ComponentActivity() {
             playOnDlnaTheme {
                 var selectedPlaylistVideoFiles by remember { mutableStateOf(emptyList<LibraryItem>()) }
                 var selectedPlaylist by remember { mutableStateOf<DlnaPlaylist?>(null) }
+                var selectedPlaylistStarted by remember { mutableStateOf(false) }
                 mainScreen(
                     playScreen = {
                         DlnaListScreen(
@@ -146,17 +147,21 @@ class MainActivity : ComponentActivity() {
                             dlnaDevicesListScreenModel,
                             playlistVideoFiles = selectedPlaylistVideoFiles,
                             playlist = selectedPlaylist,
+                            playlistStarted = selectedPlaylistStarted,
+                            onPlaylistPlay = { selectedPlaylistStarted = true },
                         )
                     },
                     libraryScreen = { navController ->
                         LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, {
                             selectedPlaylistVideoFiles = emptyList()
                             selectedPlaylist = null
+                            selectedPlaylistStarted = false
                             navController.navigate("play") {
                                 launchSingleTop = true
                             }
                         }) { playlist, items ->
                             selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
+                            selectedPlaylistStarted = false
                             selectedPlaylist =
                                 DlnaPlaylist(
                                     playlist,
@@ -169,6 +174,7 @@ class MainActivity : ComponentActivity() {
                     playlistsScreen = { navController ->
                         PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController) { playlist, items ->
                             selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
+                            selectedPlaylistStarted = false
                             selectedPlaylist =
                                 DlnaPlaylist(
                                     playlist,
