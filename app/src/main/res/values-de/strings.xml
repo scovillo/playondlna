@@ -150,4 +150,12 @@ Beispiele:\n
     <string name="q_1440p">1440p</string>
     <string name="q_2160p">2160p</string>
     <string name="device_icon">📺</string>
+    <string name="play_on">Abspielen auf …</string>
+    <string name="player_searching">Player werden gesucht …</string>
+    <string name="no_players_found">Keine Player gefunden. Mit Aktualisieren erneut suchen.</string>
+    <string name="playback_running">Wiedergabe läuft</string>
+    <string name="playback_paused">Wiedergabe pausiert</string>
+    <string name="playback_loading">Wiedergabe wird geladen …</string>
+    <string name="playback_idle">Keine Wiedergabe</string>
+    <string name="playback_status_unknown">Wiedergabestatus wird abgefragt …</string>
 </resources>

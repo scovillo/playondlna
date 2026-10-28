@@ -157,4 +157,12 @@ Examples:\n
     <string name="url_paypal" translatable="false">https://paypal.me/muemmelmaus</string>
     <string name="url_releases" translatable="false">https://github.com/scovillo/playondlna/releases</string>
     <string name="url_liberapay" translatable="false">https://liberapay.com/scovillo/donate</string>
+    <string name="play_on">Play on…</string>
+    <string name="player_searching">Searching for players…</string>
+    <string name="no_players_found">No players found. Tap Refresh to search again.</string>
+    <string name="playback_running">Playback in progress</string>
+    <string name="playback_paused">Playback paused</string>
+    <string name="playback_loading">Loading playback…</string>
+    <string name="playback_idle">No playback</string>
+    <string name="playback_status_unknown">Querying playback status…</string>
 </resources>

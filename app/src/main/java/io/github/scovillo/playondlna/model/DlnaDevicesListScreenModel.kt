@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
@@ -69,6 +70,20 @@ class DlnaDevicesListScreenModel(
             sponsorBlockClient = sponsorBlockClient,
         )
 
+    data class MediaSession(val items: List<LibraryItem>, val playlist: DlnaPlaylist? = null) {
+        /** A different renderer URI must never inherit the previous app session's title. */
+        fun currentItem(
+            status: PlaybackStatus?,
+            playlistIndex: Int?,
+        ): LibraryItem? {
+            val uri = status?.trackUri?.takeIf { it.isNotBlank() }
+            return if (uri != null) items.firstOrNull { it.url == uri } else items.getOrNull(playlistIndex ?: 0)
+        }
+    }
+
+    private val _mediaSessions = MutableStateFlow<Map<String, MediaSession>>(emptyMap())
+    val mediaSessions = _mediaSessions.asStateFlow()
+
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
     val playbackStatuses: StateFlow<Map<String, PlaybackStatus>> = remote.playbackStatuses
@@ -89,8 +104,9 @@ class DlnaDevicesListScreenModel(
     }
 
     fun discoverDevices() {
+        if (_isLoading.value) return
+        _isLoading.value = true
         viewModelScope.launch {
-            _isLoading.value = true
             _devices.value = emptyList()
             val jobs =
                 listOf(
@@ -132,17 +148,23 @@ class DlnaDevicesListScreenModel(
 
     fun selectDevice(device: DlnaDevice) {
         _selectedDevice.value = device
+        remote.observeDevice(device)
     }
 
     fun playVideoOnDevice(
         device: DlnaDevice,
         videoFile: LibraryItem,
-    ) = remote.playMedia(device, videoFile)
+    ) {
+        _mediaSessions.update { it + (device.usn to MediaSession(listOf(videoFile))) }
+        remote.playMedia(device, videoFile)
+    }
 
     fun playPlaylistOnDevice(
         device: DlnaDevice,
         videoFiles: List<LibraryItem>,
+        playlist: DlnaPlaylist? = null,
     ) {
+        _mediaSessions.update { it + (device.usn to MediaSession(videoFiles, playlist)) }
         remote.playPlaylist(
             device,
             videoFiles,

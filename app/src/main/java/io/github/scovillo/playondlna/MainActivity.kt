@@ -27,10 +27,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -58,6 +67,7 @@ import io.github.scovillo.playondlna.server.localIpAddress
 import io.github.scovillo.playondlna.server.serverPort
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.LibraryScreen
+import io.github.scovillo.playondlna.ui.PlayerList
 import io.github.scovillo.playondlna.ui.PlaylistsScreen
 import io.github.scovillo.playondlna.ui.SettingsScreen
 import io.github.scovillo.playondlna.ui.mainScreen
@@ -138,51 +148,27 @@ class MainActivity : ComponentActivity() {
             )
         setContent {
             playOnDlnaTheme {
-                var selectedPlaylistVideoFiles by remember { mutableStateOf(emptyList<LibraryItem>()) }
-                var selectedPlaylist by remember { mutableStateOf<DlnaPlaylist?>(null) }
-                var selectedPlaylistStarted by remember { mutableStateOf(false) }
+                var pendingItems by remember { mutableStateOf(emptyList<LibraryItem>()) }
+                var pendingPlaylist by remember { mutableStateOf<DlnaPlaylist?>(null) }
+                var navigateToPlayback by remember { mutableStateOf<(() -> Unit)?>(null) }
                 mainScreen(
-                    playScreen = {
-                        DlnaListScreen(
-                            mediaModel,
-                            dlnaDevicesListScreenModel,
-                            playlistVideoFiles = selectedPlaylistVideoFiles,
-                            playlist = selectedPlaylist,
-                            playlistStarted = selectedPlaylistStarted,
-                            onPlaylistPlay = { selectedPlaylistStarted = true },
-                        )
-                    },
+                    playScreen = { DlnaListScreen(dlnaDevicesListScreenModel) },
                     libraryScreen = { navController ->
                         LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, storageManagement::calculateSizes, {
-                            selectedPlaylistVideoFiles = emptyList()
-                            selectedPlaylist = null
-                            selectedPlaylistStarted = false
-                            navController.navigate("play") {
-                                launchSingleTop = true
-                            }
+                            pendingItems = listOfNotNull(mediaModel.currentVideoFile.value)
+                            pendingPlaylist = null
+                            navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }) { playlist, items ->
-                            selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
-                            selectedPlaylistStarted = false
-                            selectedPlaylist =
-                                DlnaPlaylist(
-                                    playlist,
-                                    items,
-                                    "http://${localIpAddress.value()}:$serverPort",
-                                )
-                            navController.navigate("play") { launchSingleTop = true }
+                            pendingItems = items
+                            pendingPlaylist = DlnaPlaylist(playlist, items, "http://${localIpAddress.value()}:$serverPort")
+                            navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }
                     },
                     playlistsScreen = { navController ->
                         PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController) { playlist, items ->
-                            selectedPlaylistVideoFiles = mediaModel.selectPlaylist(items).let { items }
-                            selectedPlaylistStarted = false
-                            selectedPlaylist =
-                                DlnaPlaylist(
-                                    playlist,
-                                    items,
-                                    "http://${localIpAddress.value()}:$serverPort",
-                                )
-                            navController.navigate("play") { launchSingleTop = true }
+                            pendingItems = items
+                            pendingPlaylist = DlnaPlaylist(playlist, items, "http://${localIpAddress.value()}:$serverPort")
+                            navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }
                     },
                     settingsScreen = {
@@ -193,6 +179,45 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                 )
+                if (pendingItems.isNotEmpty()) {
+                    AlertDialog(
+                        onDismissRequest = { pendingItems = emptyList() },
+                        title = {
+                            Text(
+                                pendingPlaylist?.title ?: pendingItems.first().metadata.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        text = {
+                            Column {
+                                PlayerList(
+                                    dlnaDevicesListScreenModel,
+                                    Modifier.height(360.dp),
+                                    highlightSelectedPlayer = false,
+                                    headingRes = R.string.play_on,
+                                ) { device ->
+                                    val items = pendingItems
+                                    val playlist = pendingPlaylist
+                                    if (playlist != null) {
+                                        mediaModel.selectPlaylist(items)
+                                        dlnaDevicesListScreenModel.playPlaylistOnDevice(device, items, playlist)
+                                    } else {
+                                        mediaModel.selectMediaItem(items.first())
+                                        dlnaDevicesListScreenModel.playVideoOnDevice(device, items.first())
+                                    }
+                                    dlnaDevicesListScreenModel.selectDevice(device)
+                                    pendingItems = emptyList()
+                                    navigateToPlayback?.invoke()
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { pendingItems = emptyList() }) { Text(stringResource(R.string.cancel)) }
+                        },
+                    )
+                }
             }
         }
         handleShareIntent(intent)

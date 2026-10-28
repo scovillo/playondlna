@@ -71,8 +71,6 @@ fun DlnaRemoteControl(
     playlistSize: Int,
     onCommand: (PlaybackCommand) -> Unit,
     onSeek: (Double) -> Unit,
-    onPlay: (DlnaDevice) -> Unit,
-    onPlayerRequired: () -> Unit,
 ) {
     Card(
         modifier =
@@ -98,7 +96,16 @@ fun DlnaRemoteControl(
                     text =
                         currentVideo?.metadata?.title
                             ?: playlist?.title
-                            ?: stringResource(R.string.no_media_selected),
+                            ?: stringResource(
+                                when {
+                                    selectedDevice == null -> R.string.select_player_for_playback
+                                    playbackStatus?.transportState == TransportState.PLAYING -> R.string.playback_running
+                                    playbackStatus?.transportState == TransportState.PAUSED_PLAYBACK -> R.string.playback_paused
+                                    playbackStatus?.transportState == TransportState.TRANSITIONING -> R.string.playback_loading
+                                    playbackStatus?.transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT) -> R.string.playback_idle
+                                    else -> R.string.playback_status_unknown
+                                },
+                            ),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -135,9 +142,7 @@ fun DlnaRemoteControl(
             (playbackStatus?.transportState == TransportState.PLAYING || isPaused) && duration > 0.0
         var seekPreview by remember(selectedDevice?.usn, playbackStatus?.trackUri, canSeek) { mutableStateOf<Float?>(null) }
         val displayedPosition = seekPreview?.toDouble() ?: position
-        val canPlay = currentVideo != null || playlist != null || isPaused
-        val canResumePlaylist =
-            playbackStatus?.transportState == TransportState.STOPPED && playlistIndex != null
+        val canPlay = selectedDevice != null && playbackStatus != null
         val hasPrevious = playlistSize > 0 && (playlistIndex ?: 0) > 0
         val hasNext = playlistSize > 0 && (playlistIndex ?: (playlistSize - 1)) < playlistSize - 1
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -186,13 +191,9 @@ fun DlnaRemoteControl(
                 if (isPlaying) R.string.pause else R.string.play,
                 enabled = canPlay,
             ) {
-                if (isPlaying || isPaused || canResumePlaylist) {
-                    onCommand(if (isPlaying) PlaybackCommand.PAUSE else PlaybackCommand.PLAY)
-                } else {
-                    selectedDevice?.let(onPlay) ?: onPlayerRequired()
-                }
+                onCommand(if (isPlaying) PlaybackCommand.PAUSE else PlaybackCommand.PLAY)
             }
-            RemoteButton(Icons.Default.Stop, R.string.stop, enabled = isPlaying) {
+            RemoteButton(Icons.Default.Stop, R.string.stop, enabled = isPlaying || isPaused) {
                 onCommand(PlaybackCommand.STOP)
             }
             RemoteButton(

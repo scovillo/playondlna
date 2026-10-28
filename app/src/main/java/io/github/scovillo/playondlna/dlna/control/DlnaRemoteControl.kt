@@ -56,6 +56,11 @@ class DlnaRemoteControl(
     private val sponsorBlockClient: SponsorBlockClient,
     private val playbackObservationDelay: Duration = 1.seconds,
 ) {
+    @Volatile
+    private var selectedDeviceId: String? = null
+    private val backgroundPlaylists = ConcurrentHashMap.newKeySet<String>()
+    private val observationRequests = ConcurrentHashMap<String, Job>()
+    private val statusCollectors = ConcurrentHashMap<String, Job>()
     private val playbackJobs = ConcurrentHashMap<String, Job>()
     private val playbackObservations = ConcurrentHashMap<String, PlaybackObservation>()
     private val _playbackStatuses = MutableStateFlow<Map<String, PlaybackStatus>>(emptyMap())
@@ -64,10 +69,36 @@ class DlnaRemoteControl(
     val playlistIndices: StateFlow<Map<String, Int>> = _playlistIndices.asStateFlow()
     private val playbackSessions = MutableStateFlow<Map<String, PlaybackSession>>(emptyMap())
 
+    /** Only managed playlists retain observation when another renderer is selected. */
+    private fun selectObservationDevice(device: DlnaDevice) {
+        selectedDeviceId = device.usn
+        val otherDevices = playbackObservations.keys + playbackJobs.keys + observationRequests.keys
+        otherDevices.filter { it != device.usn && it !in backgroundPlaylists }.forEach { deviceId ->
+            observationRequests.remove(deviceId)?.cancel()
+            playbackJobs.remove(deviceId)?.cancel()
+            playbackObservations[deviceId]?.cancel()
+            statusCollectors.remove(deviceId)?.cancel()
+        }
+    }
+
+    fun observeDevice(device: DlnaDevice) {
+        selectObservationDevice(device)
+        if (device.avTransportUrl == null || playbackJobs[device.usn]?.isActive == true) return
+        observationRequests.remove(device.usn)?.cancel()
+        val request =
+            scope.launch(Dispatchers.IO) {
+                if (selectedDeviceId != device.usn || playbackJobs[device.usn]?.isActive == true) return@launch
+                startPlaybackObservation(device).stopOnPlayerStop()
+            }
+        observationRequests[device.usn] = request
+        request.invokeOnCompletion { observationRequests.remove(device.usn, request) }
+    }
+
     fun playMedia(
         device: DlnaDevice,
         item: LibraryItem,
     ) {
+        selectObservationDevice(device)
         cancelPlayback(device)
         val playbackJob =
             scope.launch(Dispatchers.IO) {
@@ -92,7 +123,9 @@ class DlnaRemoteControl(
         device: DlnaDevice,
         items: List<LibraryItem>,
     ) {
+        selectObservationDevice(device)
         cancelPlayback(device)
+        backgroundPlaylists.add(device.usn)
         val playbackJob =
             scope.launch(Dispatchers.IO) {
                 if (device.avTransportUrl == null) {
@@ -307,6 +340,7 @@ class DlnaRemoteControl(
         startIndex: Int,
     ) {
         var session = playbackSessions.value[deviceId] ?: return
+        backgroundPlaylists.add(deviceId)
         AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.items.size}")
         for (index in startIndex..session.items.lastIndex) {
             currentCoroutineContext().ensureActive()
@@ -318,8 +352,10 @@ class DlnaRemoteControl(
             currentCoroutineContext().ensureActive()
             val observation = startPlaybackObservation(session.device)
             val reachedFileEnd = monitorTrack(session.device, observation, item)
-            markSessionStopped(session.device.usn)
-            if (!reachedFileEnd) return
+            if (!reachedFileEnd || index == session.items.lastIndex) {
+                markSessionStopped(session.device.usn)
+                return
+            }
         }
     }
 
@@ -353,15 +389,18 @@ class DlnaRemoteControl(
         }
 
     private fun markSessionStopped(deviceId: String) {
+        backgroundPlaylists.remove(deviceId)
         playbackSessions.value[deviceId]?.let { setPlaybackSession(it.copy(transportState = TransportState.STOPPED)) }
     }
 
     private suspend fun continueAppPlaylist(session: PlaybackSession) {
+        backgroundPlaylists.add(session.device.usn)
         val observation = startPlaybackObservation(session.device)
         val reachedFileEnd = monitorTrack(session.device, observation, session.items[session.currentIndex])
-        markSessionStopped(session.device.usn)
         if (reachedFileEnd && session.currentIndex < session.items.lastIndex) {
             playAppPlaylistFrom(session.device.usn, session.currentIndex + 1)
+        } else {
+            markSessionStopped(session.device.usn)
         }
     }
 
@@ -408,7 +447,9 @@ class DlnaRemoteControl(
         playbackJob: Job,
     ) {
         playbackJobs[deviceId] = playbackJob
-        playbackJob.invokeOnCompletion { playbackJobs.remove(deviceId, playbackJob) }
+        playbackJob.invokeOnCompletion {
+            if (playbackJobs.remove(deviceId, playbackJob)) backgroundPlaylists.remove(deviceId)
+        }
     }
 
     private fun setPlaybackSession(session: PlaybackSession) {
@@ -421,21 +462,27 @@ class DlnaRemoteControl(
         val deviceId = device.usn
         playbackObservations[deviceId]?.cancelAndJoin()
         currentCoroutineContext().ensureActive()
+        if (selectedDeviceId != deviceId && deviceId !in backgroundPlaylists) throw CancellationException("Renderer no longer selected")
         val observation = PlaybackObservation(scope, device, transport, playbackObservationDelay)
         playbackObservations.put(deviceId, observation)?.cancel()
-        scope.launch {
-            observation.status.collect { status ->
-                _playbackStatuses.update { it + (deviceId to status) }
+        statusCollectors.remove(deviceId)?.cancel()
+        statusCollectors[deviceId] =
+            scope.launch {
+                observation.status.collect { status ->
+                    _playbackStatuses.update { it + (deviceId to status) }
+                }
             }
-        }
         observation.start()
         return observation
     }
 
     private fun cancelPlayback(device: DlnaDevice) {
         val deviceId = device.usn
+        observationRequests.remove(deviceId)?.cancel()
+        backgroundPlaylists.remove(deviceId)
         playbackJobs.remove(deviceId)?.cancel()
         playbackObservations[deviceId]?.cancel()
+        statusCollectors.remove(deviceId)?.cancel()
         _playbackStatuses.update { it - deviceId }
         _playlistIndices.update { it - deviceId }
         playbackSessions.update { it - deviceId }

@@ -310,6 +310,105 @@ class DlnaRemoteControlSessionTest {
         }
     }
 
+    @Test
+    fun switchingPlayerStopsExternalObservationAndReselectingRestartsIt() = verifyObservationSelection("external")
+
+    @Test
+    fun switchingPlayerStopsSingleFileObservationWithoutStoppingPlayback() = verifyObservationSelection("single")
+
+    @Test
+    fun backgroundPlaylistKeepsObservingAndAdvancesWhileAnotherPlayerIsSelected() = verifyObservationSelection("playlist")
+
+    private fun verifyObservationSelection(mode: String) =
+        runBlocking {
+            val first = device("first-player")
+            val second = device("second-player")
+            val items = listOf(videoFile("background-first"), videoFile("background-second"))
+            val polls = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
+            val currentItems = java.util.concurrent.ConcurrentHashMap<String, LibraryItem>()
+            val finishFirst = java.util.concurrent.atomic.AtomicBoolean()
+            val commands = CopyOnWriteArrayList<PlaybackCommand>()
+            val played = CopyOnWriteArrayList<String>()
+            val transport =
+                object : DlnaTransport by RecordingTransport() {
+                    override fun playFile(
+                        device: DlnaDevice,
+                        item: LibraryItem,
+                    ) {
+                        currentItems[device.usn] = item
+                        played += item.metadata.id
+                    }
+
+                    override fun command(
+                        device: DlnaDevice,
+                        command: PlaybackCommand,
+                    ) {
+                        commands += command
+                    }
+
+                    override fun transportState(device: DlnaDevice): TransportState {
+                        polls.computeIfAbsent(device.usn) { java.util.concurrent.atomic.AtomicInteger() }.incrementAndGet()
+                        return if (finishFirst.get() && currentItems[device.usn] == items.first()) TransportState.STOPPED else TransportState.PLAYING
+                    }
+
+                    override fun positionInfo(device: DlnaDevice) =
+                        PlaybackPositionInfo(currentItems[device.usn]?.url ?: "http://external/media", if (finishFirst.get()) 60.0 else 10.0, 1, 60.0)
+                }
+            val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val failures = CopyOnWriteArrayList<Throwable>()
+            val remote =
+                DlnaRemoteControl(
+                    scope = controlScope,
+                    transport = transport,
+                    onPlaybackFailure = { failures += it },
+                    sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                    playbackObservationDelay = 1.milliseconds,
+                )
+
+            suspend fun awaitPolls(
+                device: DlnaDevice,
+                minimum: Int,
+            ) {
+                withTimeout(2_000.milliseconds) {
+                    while ((polls[device.usn]?.get() ?: 0) < minimum) delay(1.milliseconds)
+                }
+            }
+            try {
+                when (mode) {
+                    "playlist" -> remote.playPlaylist(first, items)
+                    "single" -> remote.playMedia(first, items.first())
+                    else -> remote.observeDevice(first)
+                }
+                awaitPolls(first, 3)
+                remote.observeDevice(second)
+                awaitPolls(second, 3)
+                if (mode == "playlist") {
+                    finishFirst.set(true)
+                    withTimeout(2_000.milliseconds) {
+                        while (items.last().metadata.id !in played) delay(1.milliseconds)
+                    }
+                    withTimeout(2_000.milliseconds) {
+                        remote.playbackStatuses.first { it[first.usn]?.trackUri == items.last().url }
+                    }
+                    val before = polls.getValue(first.usn).get()
+                    awaitPolls(first, before + 3)
+                    assertEquals(listOf(items.first().metadata.id, items.last().metadata.id), played.toList())
+                } else {
+                    delay(50.milliseconds)
+                    val stoppedCount = polls.getValue(first.usn).get()
+                    delay(50.milliseconds)
+                    assertEquals(stoppedCount, polls.getValue(first.usn).get())
+                    remote.observeDevice(first)
+                    awaitPolls(first, stoppedCount + 2)
+                    assertEquals(if (mode == "single") listOf(items.first().metadata.id) else emptyList<String>(), played.toList())
+                }
+                assertEquals(emptyList<PlaybackCommand>(), commands.toList())
+                assertEquals(emptyList<Throwable>(), failures.toList())
+            } finally {
+                controlScope.cancel()
+            }
+        }
+
     private fun device(id: String) =
         DlnaDevice(
             usn = id,

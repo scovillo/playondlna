@@ -35,8 +35,6 @@ class SeekSliderTest {
                     playlistSize = 0,
                     onCommand = {},
                     onSeek = { seeks += it },
-                    onPlay = {},
-                    onPlayerRequired = {},
                 )
             }
         }

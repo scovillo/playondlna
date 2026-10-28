@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -303,6 +304,7 @@ private fun LibraryVideosScreen(
                                         fontWeight = FontWeight.Bold,
                                     )
                                     Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row {
                                         Text(item.metadata.qualityName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
@@ -311,6 +313,12 @@ private fun LibraryVideosScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(formatFileSize(item.sizeInBytes), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                                     }
+                                }
+                                IconButton(onClick = {
+                                    mediaModel.selectMediaItem(item)
+                                    onVideoSelected()
+                                }) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_on))
                                 }
                                 IconButton(onClick = { videoToAdd = item.metadata.id }) {
                                     Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist))

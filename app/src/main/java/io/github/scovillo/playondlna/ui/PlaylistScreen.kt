@@ -127,7 +127,7 @@ fun PlaylistsScreen(
                                     onClick = { onPlayPlaylist(item, playableItems) },
                                     enabled = playableItems.isNotEmpty(),
                                 ) {
-                                    Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
+                                    Icon(Icons.Default.PlayArrow, stringResource(R.string.play_on))
                                 }
                                 IconButton(onClick = { renaming = item }) { Icon(Icons.Default.Edit, stringResource(R.string.rename_playlist)) }
                                 IconButton(onClick = { deleting = item }) { Icon(Icons.Default.Delete, stringResource(R.string.delete_playlist)) }
@@ -201,7 +201,7 @@ private fun PlaylistDetails(
                     onPlay(playlist, validItems)
                 }
             }, enabled = !isStarting) {
-                Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
+                Icon(Icons.Default.PlayArrow, stringResource(R.string.play_on))
             }
         }
         if (missingCount > 0) Text(stringResource(R.string.playlist_missing_videos, missingCount), style = MaterialTheme.typography.bodySmall)
