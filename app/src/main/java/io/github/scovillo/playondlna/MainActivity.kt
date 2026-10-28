@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
                 libraryDir,
                 libraryManager,
                 playlistManager,
+                getString(R.string.imported_playlist_name),
             )
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {

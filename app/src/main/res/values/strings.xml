@@ -165,4 +165,5 @@ Examples:\n
     <string name="playback_loading">Loading playback…</string>
     <string name="playback_idle">No playback</string>
     <string name="playback_status_unknown">Querying playback status…</string>
+    <string name="imported_playlist_name">Imported playlist</string>
 </resources>
