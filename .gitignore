@@ -10,3 +10,4 @@ local.properties
 /.idea/
 /.kotlin/
 .vscode
+__pycache__/

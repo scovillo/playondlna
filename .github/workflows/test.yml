@@ -9,6 +9,24 @@ on:
       - main
 
 jobs:
+  fastlane-metadata:
+    name: Validate Fastlane metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test metadata validator
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Validate Fastlane metadata
+        run: python3 scripts/validate_fastlane.py
+
   test:
     name: Run Android Unit Tests
     runs-on: ubuntu-latest
