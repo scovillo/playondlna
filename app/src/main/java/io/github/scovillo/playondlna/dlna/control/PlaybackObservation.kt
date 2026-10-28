@@ -4,7 +4,9 @@ import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
@@ -46,39 +48,39 @@ class PlaybackObservation(
         get() = stopOnPlayerStop
 
     /** Starts a fresh polling run. Calling it again restarts this player's existing observation. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Synchronized
     fun start() {
         AppLog.i("PlaybackObservation", "Starting playback observation for ${device.friendlyName}")
         val previousJob = job
         previousJob?.cancel()
         stopOnPlayerStop = false
-        val playbackJob =
-            scope.launch(Dispatchers.IO) {
-                withContext(NonCancellable) { previousJob?.join() }
-                while (isActive) {
-                    try {
-                        val transportState = transport.transportState(device)
-                        currentCoroutineContext().ensureActive()
-                        val positionInfo = transport.positionInfo(device)
-                        currentCoroutineContext().ensureActive()
-                        _status.emit(
-                            PlaybackStatus(
-                                transportState,
-                                positionInfo.trackUri,
-                                positionInfo.positionSeconds,
-                                positionInfo.trackNumber,
-                                positionInfo.durationSeconds,
-                            ),
-                        )
-                        if (stopOnPlayerStop && transportState == TransportState.STOPPED) break
-                    } catch (exception: Exception) {
-                        if (exception is CancellationException) throw exception
-                        currentCoroutineContext().ensureActive()
-                        AppLog.w("PlaybackObservation", "Could not query ${device.friendlyName}: ${exception.message}")
-                    }
-                    delay(delay)
+        val playbackJob = scope.launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
+            withContext(NonCancellable) { previousJob?.join() }
+            while (isActive) {
+                try {
+                    val transportState = transport.transportState(device)
+                    currentCoroutineContext().ensureActive()
+                    val positionInfo = transport.positionInfo(device)
+                    currentCoroutineContext().ensureActive()
+                    _status.emit(
+                        PlaybackStatus(
+                            transportState,
+                            positionInfo.trackUri,
+                            positionInfo.positionSeconds,
+                            positionInfo.trackNumber,
+                            positionInfo.durationSeconds,
+                        ),
+                    )
+                    if (stopOnPlayerStop && transportState == TransportState.STOPPED) break
+                } catch (exception: Exception) {
+                    if (exception is CancellationException) throw exception
+                    currentCoroutineContext().ensureActive()
+                    AppLog.w("PlaybackObservation", "Could not query ${device.friendlyName}: ${exception.message}")
                 }
+                delay(delay)
             }
+        }
         job = playbackJob
         playbackJob.invokeOnCompletion {
             synchronized(this) {

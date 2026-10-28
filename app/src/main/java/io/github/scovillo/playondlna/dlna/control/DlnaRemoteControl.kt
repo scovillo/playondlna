@@ -238,6 +238,13 @@ class DlnaRemoteControl(
             runCatching {
                 transport.command(device, command)
                 if (command == PlaybackCommand.STOP) playbackObservations[device.usn]?.stopOnPlayerStop()
+                if (
+                    command == PlaybackCommand.PLAY &&
+                    (playbackJobs[device.usn]?.isActive != true || playbackObservations[device.usn]?.isStopRequested == true)
+                ) {
+                    playbackJobs.remove(device.usn)?.cancelAndJoin()
+                    startPlaybackObservation(device).stopOnPlayerStop()
+                }
             }.onFailure { onPlaybackFailure(it) }
         }
     }

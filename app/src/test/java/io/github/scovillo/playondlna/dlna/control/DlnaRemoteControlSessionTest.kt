@@ -232,6 +232,88 @@ class DlnaRemoteControlSessionTest {
     @Test
     fun explicitStopEndsSingleTrackObservation() = verifyStoppedPlayback(playlist = false, atFileEnd = true, explicitStop = true)
 
+    @Test
+    fun restartsSingleTrackObservationAfterStopAndPlay() = verifyRestartedObservation("single")
+
+    @Test
+    fun restartsExternalObservationAfterStopAndPlay() = verifyRestartedObservation("external")
+
+    @Test
+    fun restartsPlaylistObservationAfterStopAndPlay() = verifyRestartedObservation("playlist")
+
+    private fun verifyRestartedObservation(mode: String) =
+        runBlocking {
+            val renderer = device("restart-$mode")
+            val item = videoFile("restart-track")
+            val state = java.util.concurrent.atomic.AtomicReference(TransportState.PLAYING)
+            val polls = java.util.concurrent.atomic.AtomicInteger()
+            val failures = CopyOnWriteArrayList<Throwable>()
+            val transport =
+                object : DlnaTransport by RecordingTransport() {
+                    override fun playFile(
+                        device: DlnaDevice,
+                        item: LibraryItem,
+                    ) {
+                        state.set(TransportState.PLAYING)
+                    }
+
+                    override fun command(
+                        device: DlnaDevice,
+                        command: PlaybackCommand,
+                    ) {
+                        when (command) {
+                            PlaybackCommand.PLAY -> state.set(TransportState.PLAYING)
+                            PlaybackCommand.STOP -> state.set(TransportState.STOPPED)
+                            else -> Unit
+                        }
+                    }
+
+                    override fun transportState(device: DlnaDevice): TransportState {
+                        polls.incrementAndGet()
+                        return state.get()
+                    }
+
+                    override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo(item.url, 20.0, 1, 60.0)
+                }
+            val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val remote =
+                DlnaRemoteControl(
+                    scope = controlScope,
+                    transport = transport,
+                    onPlaybackFailure = { failures += it },
+                    sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                    playbackObservationDelay = 1.milliseconds,
+                )
+            try {
+                when (mode) {
+                    "single" -> remote.playMedia(renderer, item)
+                    "playlist" -> remote.playPlaylist(renderer, listOf(item))
+                    else -> remote.observeDevice(renderer)
+                }
+                withTimeout(2_000.milliseconds) {
+                    remote.playbackStatuses.first { it[renderer.usn]?.transportState == TransportState.PLAYING }
+                }
+                repeat(2) {
+                    remote.command(renderer, PlaybackCommand.STOP)
+                    withTimeout(2_000.milliseconds) {
+                        remote.playbackStatuses.first { it[renderer.usn]?.transportState == TransportState.STOPPED }
+                    }
+                    delay(50.milliseconds)
+                    val stoppedPolls = polls.get()
+                    delay(50.milliseconds)
+                    assertEquals(stoppedPolls, polls.get())
+                    remote.command(renderer, PlaybackCommand.PLAY)
+                    withTimeout(2_000.milliseconds) {
+                        remote.playbackStatuses.first { it[renderer.usn]?.transportState == TransportState.PLAYING }
+                        while (polls.get() < stoppedPolls + 3) delay(1.milliseconds)
+                    }
+                }
+                assertEquals(emptyList<Throwable>(), failures.toList())
+            } finally {
+                controlScope.cancel()
+            }
+        }
+
     private fun verifyStoppedPlayback(
         playlist: Boolean,
         atFileEnd: Boolean,
