@@ -30,10 +30,17 @@ import fi.iki.elonen.NanoHTTPD
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaPlaylist
+import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
+
+internal fun NanoHTTPD.Response.addMediaHeaders(item: LibraryItem) {
+    addHeader("contentFeatures.dlna.org", item.dlnaContentFeatures)
+    addHeader("transferMode.dlna.org", "Streaming")
+    addHeader("Accept-Ranges", "bytes")
+}
 
 class MediaHttpServer(
     private val serverPort: Int,
@@ -146,16 +153,9 @@ class MediaHttpServer(
                         addHeader("Content-Range", "bytes $start-$end/$fileLength")
                     }
                 } else {
-                    newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength).apply {
-                        addHeader(
-                            "contentFeatures.dlna.org",
-                            "DLNA.ORG_PN=${item.dlnaProfile}.;DLNA.ORG_OP=11;" +
-                                "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000",
-                        )
-                        addHeader("transferMode.dlna.org", "Streaming")
-                    }
+                    newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength)
                 }
-            response.addHeader("Accept-Ranges", "bytes")
+            response.addMediaHeaders(item)
             response.addHeader("Connection", "keep-alive")
             Log.i("MediaHttpServer", "<- ${session.uri}")
             return response

@@ -66,6 +66,11 @@ class LibraryItem(
             }
         }
 
+    val dlnaContentFeatures: String
+        get() =
+            "DLNA.ORG_PN=$dlnaProfile;DLNA.ORG_OP=01;" +
+                "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+
     val sizeInBytes: Long
         get() = mediaFile.length()
 
@@ -73,7 +78,7 @@ class LibraryItem(
         get() {
             val mediaClass = if (metadata.isAudioOnly) "object.item.audioItem.musicTrack" else "object.item.videoItem.movie"
             val albumArt = "<upnp:albumArtURI dlna:profileID=\"JPEG_LRG\">${coverUrl.escapeXml()}</upnp:albumArtURI>"
-            return """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${metadata.id.escapeXml()}" parentID="0" restricted="1"><dc:title>${metadata.title.escapeXml()}</dc:title><dc:creator>${metadata.uploader.escapeXml()}</dc:creator><upnp:class>$mediaClass</upnp:class>$albumArt<res protocolInfo="http-get:*:$mimeType:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
+            return """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${metadata.id.escapeXml()}" parentID="0" restricted="1"><dc:title>${metadata.title.escapeXml()}</dc:title><dc:creator>${metadata.uploader.escapeXml()}</dc:creator><upnp:class>$mediaClass</upnp:class>$albumArt<res protocolInfo="http-get:*:$mimeType:$dlnaContentFeatures" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
                 if (subtitle != null) "<res protocolInfo=\"http-get:*:text/srt:*\" xml:lang=\"${subtitle.locale().language}\">${subtitleUrl.escapeXml()}</res>" else ""
             }</item></DIDL-Lite>""".escapeXml()
         }
