@@ -39,6 +39,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -123,11 +127,14 @@ fun DlnaRemoteControl(
         }
         val position = playbackStatus?.positionSeconds?.coerceAtLeast(0.0) ?: 0.0
         val duration = playbackStatus?.durationSeconds?.takeIf { it > 0.0 } ?: 0.0
-        val isStopped = playbackStatus?.transportState == TransportState.STOPPED
         val isPlaying =
             playbackStatus?.transportState == TransportState.PLAYING ||
                 playbackStatus?.transportState == TransportState.TRANSITIONING
         val isPaused = playbackStatus?.transportState == TransportState.PAUSED_PLAYBACK
+        val canSeek =
+            (playbackStatus?.transportState == TransportState.PLAYING || isPaused) && duration > 0.0
+        var seekPreview by remember(selectedDevice?.usn, playbackStatus?.trackUri, canSeek) { mutableStateOf<Float?>(null) }
+        val displayedPosition = seekPreview?.toDouble() ?: position
         val canPlay = currentVideo != null || playlist != null || isPaused
         val canResumePlaylist =
             playbackStatus?.transportState == TransportState.STOPPED && playlistIndex != null
@@ -135,17 +142,23 @@ fun DlnaRemoteControl(
         val hasNext = playlistSize > 0 && (playlistIndex ?: (playlistSize - 1)) < playlistSize - 1
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(position), style = MaterialTheme.typography.labelMedium)
+                Text(formatTime(displayedPosition), style = MaterialTheme.typography.labelMedium)
                 Slider(
                     value =
                         if (duration > 0.0) {
-                            position.toFloat().coerceIn(0f, duration.toFloat())
+                            displayedPosition.toFloat().coerceIn(0f, duration.toFloat())
                         } else {
                             0f
                         },
-                    onValueChange = { onSeek(it.toDouble()) },
+                    onValueChange = { seekPreview = it },
+                    onValueChangeFinished = {
+                        // The Slider owns gesture completion; no separate pointer handler may send a seek.
+                        val target = seekPreview
+                        seekPreview = null
+                        if (canSeek && target != null) onSeek(target.toDouble())
+                    },
                     valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-                    enabled = !isStopped && duration > 0.0,
+                    enabled = canSeek,
                     modifier =
                         Modifier
                             .weight(1f)
@@ -164,7 +177,7 @@ fun DlnaRemoteControl(
             RemoteButton(
                 Icons.Default.FastRewind,
                 R.string.rewind_30_seconds,
-                enabled = isPlaying && duration > 0.0,
+                enabled = canSeek,
             ) {
                 onSeek((position - 30.0).coerceAtLeast(0.0))
             }
@@ -185,7 +198,7 @@ fun DlnaRemoteControl(
             RemoteButton(
                 Icons.Default.FastForward,
                 R.string.forward_30_seconds,
-                enabled = isPlaying && duration > 0.0,
+                enabled = canSeek,
             ) {
                 onSeek((position + 30.0).coerceAtMost(duration))
             }

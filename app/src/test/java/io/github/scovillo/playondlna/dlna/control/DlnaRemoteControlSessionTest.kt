@@ -3,6 +3,7 @@ package io.github.scovillo.playondlna.dlna.control
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.soap.UpnpActionException
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
@@ -11,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -95,6 +97,219 @@ class DlnaRemoteControlSessionTest {
             }
         }
 
+    @Test
+    fun observesSingleTrackAfterPlayTransitionError() =
+        runBlocking {
+            val item = videoFile("transition-track")
+            val renderer = device("samsung")
+            val failures = CopyOnWriteArrayList<Throwable>()
+            val transport =
+                object : DlnaTransport by RecordingTransport() {
+                    override fun playFile(
+                        device: DlnaDevice,
+                        item: LibraryItem,
+                    ) {
+                        throw UpnpActionException("Play", 500, "<errorCode>701</errorCode>")
+                    }
+
+                    override fun transportState(device: DlnaDevice) = TransportState.PLAYING
+
+                    override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo(item.url, 42.0, 1, 60.0)
+                }
+            val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val remote =
+                DlnaRemoteControl(
+                    scope = controlScope,
+                    transport = transport,
+                    onPlaybackFailure = { failures += it },
+                    sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                    playbackObservationDelay = 1.milliseconds,
+                )
+            try {
+                remote.playMedia(renderer, item)
+                val status = withTimeout(2_000) { remote.playbackStatuses.first { renderer.usn in it }.getValue(renderer.usn) }
+                assertEquals(TransportState.PLAYING, status.transportState)
+                assertEquals(42.0, status.positionSeconds)
+                assertEquals(item.url, status.trackUri)
+                assertEquals(emptyList<Throwable>(), failures.toList())
+            } finally {
+                controlScope.cancel()
+            }
+        }
+
+    @Test
+    fun reportsSingleTrackThatNeverStartsAfterPlayTransitionError() =
+        runBlocking {
+            val failures = CopyOnWriteArrayList<Throwable>()
+            val transport =
+                object : DlnaTransport by RecordingTransport() {
+                    override fun playFile(
+                        device: DlnaDevice,
+                        item: LibraryItem,
+                    ) {
+                        throw UpnpActionException("Play", 500, "<errorCode>701</errorCode>")
+                    }
+                }
+            val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val remote =
+                DlnaRemoteControl(
+                    scope = controlScope,
+                    transport = transport,
+                    onPlaybackFailure = { failures += it },
+                    sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                    playbackObservationDelay = 1.milliseconds,
+                )
+            try {
+                remote.playMedia(device("stopped"), videoFile("never-starts"))
+                withTimeout(2_000.milliseconds) {
+                    while (failures.isEmpty()) delay(1.milliseconds)
+                }
+                assertEquals("Renderer did not enter an active playback state", failures.single().message)
+            } finally {
+                controlScope.cancel()
+            }
+        }
+
+    @Test
+    fun seeksOnlyDuringActivePlaybackWithKnownDuration() =
+        runBlocking {
+            for (state in listOf(TransportState.STOPPED, TransportState.TRANSITIONING, TransportState.PLAYING, TransportState.PAUSED_PLAYBACK)) {
+                val seeks = CopyOnWriteArrayList<Double>()
+                val renderer = device("seek-test")
+                val item = videoFile("seek-track")
+                val transport =
+                    object : DlnaTransport by RecordingTransport() {
+                        override fun transportState(device: DlnaDevice) = state
+
+                        override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo(item.url, 0.0, 1, 60.0)
+
+                        override fun seekTo(
+                            device: DlnaDevice,
+                            seconds: Double,
+                        ) {
+                            seeks += seconds
+                        }
+                    }
+                val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+                val remote =
+                    DlnaRemoteControl(
+                        scope = controlScope,
+                        transport = transport,
+                        sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                        playbackObservationDelay = 1.milliseconds,
+                    )
+                try {
+                    remote.playMedia(renderer, item)
+                    withTimeout(2_000.milliseconds) { remote.playbackStatuses.first { renderer.usn in it } }
+                    remote.seekTo(renderer, 90.0)
+                    if (state == TransportState.PLAYING || state == TransportState.PAUSED_PLAYBACK) {
+                        withTimeout(2_000.milliseconds) {
+                            while (seeks.isEmpty()) delay(1.milliseconds)
+                        }
+                        assertEquals(listOf(60.0), seeks.toList())
+                    } else {
+                        delay(50.milliseconds)
+                        assertEquals(emptyList<Double>(), seeks.toList())
+                    }
+                } finally {
+                    controlScope.cancel()
+                }
+            }
+        }
+
+    @Test
+    fun singleTrackStopsObservationBeforeFileEnd() = verifyStoppedPlayback(playlist = false, atFileEnd = false)
+
+    @Test
+    fun playlistStopsObservationWithoutAdvancingBeforeFileEnd() = verifyStoppedPlayback(playlist = true, atFileEnd = false)
+
+    @Test
+    fun playlistAdvancesOnlyAtFileEnd() = verifyStoppedPlayback(playlist = true, atFileEnd = true)
+
+    @Test
+    fun explicitStopAtFileEndDoesNotAdvancePlaylist() = verifyStoppedPlayback(playlist = true, atFileEnd = true, explicitStop = true)
+
+    @Test
+    fun explicitStopEndsSingleTrackObservation() = verifyStoppedPlayback(playlist = false, atFileEnd = true, explicitStop = true)
+
+    private fun verifyStoppedPlayback(
+        playlist: Boolean,
+        atFileEnd: Boolean,
+        explicitStop: Boolean = false,
+    ) = runBlocking {
+        val played = CopyOnWriteArrayList<String>()
+        val polls = java.util.concurrent.atomic.AtomicInteger()
+        val manualStop = java.util.concurrent.atomic.AtomicBoolean()
+        var trackPolls = 0
+        var current: LibraryItem? = null
+        val renderer = device("stopping")
+        val transport =
+            object : DlnaTransport by RecordingTransport() {
+                override fun playFile(
+                    device: DlnaDevice,
+                    item: LibraryItem,
+                ) {
+                    current = item
+                    trackPolls = 0
+                    played += item.metadata.id
+                }
+
+                override fun transportState(device: DlnaDevice): TransportState {
+                    polls.incrementAndGet()
+                    return if (explicitStop) {
+                        if (manualStop.get()) TransportState.STOPPED else TransportState.PLAYING
+                    } else {
+                        if (++trackPolls <= 3) TransportState.PLAYING else TransportState.STOPPED
+                    }
+                }
+
+                override fun command(
+                    device: DlnaDevice,
+                    command: PlaybackCommand,
+                ) {
+                    if (command == PlaybackCommand.STOP) manualStop.set(true)
+                }
+
+                override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo(current!!.url, if (atFileEnd) 60.0 else 20.0, 1, 60.0)
+            }
+        val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val failures = CopyOnWriteArrayList<Throwable>()
+        val remote =
+            DlnaRemoteControl(
+                scope = controlScope,
+                transport = transport,
+                onPlaybackFailure = { failures += it },
+                sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory)),
+                playbackObservationDelay = 1.milliseconds,
+            )
+        val expectedTracks = if (playlist && atFileEnd && !explicitStop) 2 else 1
+        try {
+            val items = listOf(videoFile("stop-first"), videoFile("stop-second"))
+            if (playlist) remote.playPlaylist(renderer, items) else remote.playMedia(renderer, items.first())
+            if (explicitStop) {
+                withTimeout(2_000.milliseconds) {
+                    remote.playbackStatuses.first { it[renderer.usn]?.transportState == TransportState.PLAYING }
+                }
+                remote.command(renderer, PlaybackCommand.STOP)
+            }
+            withTimeout(2_000.milliseconds) {
+                remote.playbackStatuses.first {
+                    played.size == expectedTracks &&
+                        it[renderer.usn]?.trackUri == items[expectedTracks - 1].url &&
+                        it[renderer.usn]?.transportState == TransportState.STOPPED
+                }
+            }
+            delay(50.milliseconds)
+            val stoppedPollCount = polls.get()
+            delay(50.milliseconds)
+            assertEquals(stoppedPollCount, polls.get())
+            assertEquals(expectedTracks, played.size)
+            assertEquals(emptyList<Throwable>(), failures.toList())
+        } finally {
+            controlScope.cancel()
+        }
+    }
+
     private fun device(id: String) =
         DlnaDevice(
             usn = id,
@@ -162,7 +377,7 @@ private class SponsorBlockPlaylistTransport(
         statuses =
             buildList {
                 repeat(3) { add(Status(TransportState.PLAYING, item.url, sponsorPosition)) }
-                add(Status(TransportState.STOPPED, item.url, sponsorPosition + 10.0))
+                add(Status(TransportState.STOPPED, item.url, 60.0))
             }
         statusIndex = 0
         expectedSeekCount = seekPositions.size + 1

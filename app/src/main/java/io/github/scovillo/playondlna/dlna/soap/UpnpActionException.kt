@@ -28,11 +28,6 @@ class UpnpActionException(
     companion object {
         private val errorCodeRegex = Regex("""<(?:[A-Za-z_][\w.-]*:)?errorCode>\s*(\d+)\s*</""")
 
-        fun isUnsupportedPlaylist(exception: Throwable): Boolean =
-            exception is UpnpActionException &&
-                exception.action == "SetAVTransportURI" &&
-                (exception.upnpErrorCode == 714 || exception.responseBody.contains("Illegal MIME-type", ignoreCase = true))
-
         fun isUnsupportedAction(exception: Throwable): Boolean = exception is UpnpActionException && exception.upnpErrorCode == 401
 
         fun isTransitionInProgress(exception: Throwable): Boolean = exception is UpnpActionException && exception.action == "Play" && exception.upnpErrorCode == 701

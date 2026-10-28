@@ -24,7 +24,6 @@ import io.github.scovillo.playondlna.dlna.control.PlaybackMediaInfo
 import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
 import io.github.scovillo.playondlna.dlna.control.PlaybackTransport
 import io.github.scovillo.playondlna.dlna.control.TransportState
-import okhttp3.OkHttpClient
 
 class SoapPlaybackTransport(
     private val serviceUrl: String,
@@ -93,7 +92,7 @@ class SoapPlaybackTransport(
 }
 
 class SoapPlaybackTransportFactory(
-    private val soapClientFactory: () -> SoapClient = { OkHttpSoapClient(OkHttpClient()) },
+    private val soapClientFactory: () -> SoapClient = { OkHttpSoapClient() },
     private val extractorFactory: () -> SoapResponseExtractor = { SoapResponseExtractor() },
 ) {
     fun create(serviceUrl: String): PlaybackTransport =

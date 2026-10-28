@@ -40,8 +40,12 @@ interface SoapClient {
  * OkHttp-based SOAP client for real UPnP communication.
  */
 class OkHttpSoapClient(
-    private val httpClient: OkHttpClient = OkHttpClient(),
+    private val httpClient: OkHttpClient = sharedHttpClient,
 ) : SoapClient {
+    companion object {
+        private val sharedHttpClient = OkHttpClient()
+    }
+
     override fun execute(command: SoapCommand): String {
         val payload = command.createPayload()
         Log.i("SoapClient", "${command.actionName}: $payload")

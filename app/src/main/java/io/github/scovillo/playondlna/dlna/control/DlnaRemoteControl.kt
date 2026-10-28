@@ -77,7 +77,7 @@ class DlnaRemoteControl(
                     return@launch
                 }
                 runCatching {
-                    transport.playFile(device, item)
+                    startMedia(device, item)
                     val observation = startPlaybackObservation(device)
                     monitorTrack(device, observation, item)
                 }.onFailure {
@@ -184,13 +184,11 @@ class DlnaRemoteControl(
         seconds: Double,
     ) {
         scope.launch(Dispatchers.IO) {
-            val duration = _playbackStatuses.value[device.usn]?.durationSeconds
-            val boundedSeconds =
-                if (duration != null && duration > 0.0) {
-                    seconds.coerceIn(0.0, duration)
-                } else {
-                    seconds.coerceAtLeast(0.0)
-                }
+            val status = _playbackStatuses.value[device.usn] ?: return@launch
+            if (status.transportState != TransportState.PLAYING && status.transportState != TransportState.PAUSED_PLAYBACK) return@launch
+            val duration = status.durationSeconds?.takeIf { it.isFinite() && it > 0.0 } ?: return@launch
+            if (!seconds.isFinite()) return@launch
+            val boundedSeconds = seconds.coerceIn(0.0, duration)
             runCatching { transport.seekTo(device, boundedSeconds) }.onFailure { onPlaybackFailure(it) }
         }
     }
@@ -204,7 +202,10 @@ class DlnaRemoteControl(
                 onIncompatibleDevice(device)
                 return@launch
             }
-            runCatching { transport.command(device, command) }.onFailure { onPlaybackFailure(it) }
+            runCatching {
+                transport.command(device, command)
+                if (command == PlaybackCommand.STOP) playbackObservations[device.usn]?.stopOnPlayerStop()
+            }.onFailure { onPlaybackFailure(it) }
         }
     }
 
@@ -309,25 +310,30 @@ class DlnaRemoteControl(
         AppLog.i("AppManagedPlaylist", "Continue from index $startIndex of ${session.items.size}")
         for (index in startIndex..session.items.lastIndex) {
             currentCoroutineContext().ensureActive()
-            session = session.copy(currentIndex = index)
+            session = session.copy(currentIndex = index, transportState = TransportState.PLAYING)
             val item = session.items[index]
             AppLog.i("AppManagedPlaylist", "Start ${index + 1}/${session.items.size}: ${item.metadata.id}")
-            try {
-                transport.playFile(session.device, item)
-            } catch (exception: Exception) {
-                if (
-                    !UpnpActionException.isTransitionInProgress(
-                        exception,
-                    )
-                ) {
-                    throw exception
-                }
-                AppLog.i("AppManagedPlaylist", "Renderer is already transitioning to ${index + 1}/${session.items.size}")
-            }
+            startMedia(session.device, item)
             setPlaybackSession(session)
             currentCoroutineContext().ensureActive()
             val observation = startPlaybackObservation(session.device)
-            monitorTrack(session.device, observation, item)
+            val reachedFileEnd = monitorTrack(session.device, observation, item)
+            markSessionStopped(session.device.usn)
+            if (!reachedFileEnd) return
+        }
+    }
+
+    private fun startMedia(
+        device: DlnaDevice,
+        item: LibraryItem,
+    ) {
+        try {
+            transport.playFile(device, item)
+        } catch (exception: Exception) {
+            if (!UpnpActionException.isTransitionInProgress(exception)) throw exception
+            // Some renderers start loading on SetAVTransportURI and reject the immediate Play.
+            // Keep observing; awaitPlaybackEnd still requires an active playback state.
+            AppLog.i("DlnaRemoteControl", "Play returned 701; checking playback state for ${item.metadata.id}")
         }
     }
 
@@ -335,30 +341,35 @@ class DlnaRemoteControl(
         device: DlnaDevice,
         observation: PlaybackObservation,
         item: LibraryItem,
-    ) {
+    ): Boolean =
         coroutineScope {
             val sponsorBlockJob = launch { monitorSponsorBlock(device, observation) { item } }
             try {
-                awaitPlaybackEnd(observation, item.url)
+                awaitPlaybackEnd(observation, item)
             } finally {
                 sponsorBlockJob.cancelAndJoin()
-                observation.stop()
+                observation.cancel()
             }
         }
+
+    private fun markSessionStopped(deviceId: String) {
+        playbackSessions.value[deviceId]?.let { setPlaybackSession(it.copy(transportState = TransportState.STOPPED)) }
     }
 
     private suspend fun continueAppPlaylist(session: PlaybackSession) {
         val observation = startPlaybackObservation(session.device)
-        monitorTrack(session.device, observation, session.items[session.currentIndex])
-        if (session.currentIndex < session.items.lastIndex) {
+        val reachedFileEnd = monitorTrack(session.device, observation, session.items[session.currentIndex])
+        markSessionStopped(session.device.usn)
+        if (reachedFileEnd && session.currentIndex < session.items.lastIndex) {
             playAppPlaylistFrom(session.device.usn, session.currentIndex + 1)
         }
     }
 
     private suspend fun awaitPlaybackEnd(
         observation: PlaybackObservation,
-        expectedTrackUri: String,
-    ) {
+        item: LibraryItem,
+    ): Boolean {
+        val expectedTrackUri = item.url
         val detector = PlaybackEndDetector()
         var startupPolls = 0
         var previousState: TransportState? = null
@@ -375,14 +386,21 @@ class DlnaRemoteControl(
                     status.trackUri,
                     expectedTrackUri,
                     status.positionSeconds,
-                    status.durationSeconds,
-                ).also { ended ->
+                    status.durationSeconds?.takeIf { it > 0.0 }
+                        ?: item.metadata.durationInSeconds.toDouble().takeIf { it > 0.0 },
+                ).let { ended ->
+                    ended || (
+                        observation.isStopRequested &&
+                            status.transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
+                    )
+                }.also { ended ->
                     if (ended) AppLog.i("AppManagedPlaylist", "Track ended: $expectedTrackUri")
-                    if (!detector.hasObservedPlayback() && ++startupPolls >= 15) {
+                    if (!ended && !detector.hasObservedPlayback() && ++startupPolls >= 15) {
                         error("Renderer did not enter an active playback state")
                     }
                 }
             }
+        return detector.hasReachedFileEnd() && !observation.isStopRequested
     }
 
     private fun registerPlaybackJob(
@@ -399,10 +417,12 @@ class DlnaRemoteControl(
     }
 
     /** Replaces only this renderer's poller; observations for other renderers keep running. */
-    private fun startPlaybackObservation(device: DlnaDevice): PlaybackObservation {
+    private suspend fun startPlaybackObservation(device: DlnaDevice): PlaybackObservation {
         val deviceId = device.usn
+        playbackObservations[deviceId]?.cancelAndJoin()
+        currentCoroutineContext().ensureActive()
         val observation = PlaybackObservation(scope, device, transport, playbackObservationDelay)
-        playbackObservations.put(deviceId, observation)?.stop()
+        playbackObservations.put(deviceId, observation)?.cancel()
         scope.launch {
             observation.status.collect { status ->
                 _playbackStatuses.update { it + (deviceId to status) }
@@ -415,7 +435,7 @@ class DlnaRemoteControl(
     private fun cancelPlayback(device: DlnaDevice) {
         val deviceId = device.usn
         playbackJobs.remove(deviceId)?.cancel()
-        playbackObservations[deviceId]?.stop()
+        playbackObservations[deviceId]?.cancel()
         _playbackStatuses.update { it - deviceId }
         _playlistIndices.update { it - deviceId }
         playbackSessions.update { it - deviceId }

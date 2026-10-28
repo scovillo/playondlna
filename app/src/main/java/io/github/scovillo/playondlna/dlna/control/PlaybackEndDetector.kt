@@ -51,7 +51,6 @@ class PlaybackEndDetector {
 
         val playbackEnded =
             playbackObserved &&
-                (trackEndObserved || durationSeconds == null) &&
                 transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT)
 
         AppLog.i("PlaybackEndDetector", "State: $transportState, URI: $currentTrackUri, Ended: $playbackEnded")
@@ -64,6 +63,9 @@ class PlaybackEndDetector {
      * Used to detect if renderer is responding and playing.
      */
     fun hasObservedPlayback(): Boolean = playbackObserved
+
+    /** Only a confirmed position near the file end permits playlist advancement. */
+    fun hasReachedFileEnd(): Boolean = trackEndObserved
 }
 
 private const val END_TOLERANCE_SECONDS = 2.0

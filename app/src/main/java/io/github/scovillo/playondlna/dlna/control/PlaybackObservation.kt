@@ -6,12 +6,16 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,17 +42,25 @@ class PlaybackObservation(
     @Volatile
     private var stopOnPlayerStop = false
 
+    internal val isStopRequested: Boolean
+        get() = stopOnPlayerStop
+
     /** Starts a fresh polling run. Calling it again restarts this player's existing observation. */
     @Synchronized
     fun start() {
         AppLog.i("PlaybackObservation", "Starting playback observation for ${device.friendlyName}")
-        job?.cancel()
+        val previousJob = job
+        previousJob?.cancel()
+        stopOnPlayerStop = false
         val playbackJob =
             scope.launch(Dispatchers.IO) {
+                withContext(NonCancellable) { previousJob?.join() }
                 while (isActive) {
                     try {
                         val transportState = transport.transportState(device)
+                        currentCoroutineContext().ensureActive()
                         val positionInfo = transport.positionInfo(device)
+                        currentCoroutineContext().ensureActive()
                         _status.emit(
                             PlaybackStatus(
                                 transportState,
@@ -61,6 +73,7 @@ class PlaybackObservation(
                         if (stopOnPlayerStop && transportState == TransportState.STOPPED) break
                     } catch (exception: Exception) {
                         if (exception is CancellationException) throw exception
+                        currentCoroutineContext().ensureActive()
                         AppLog.w("PlaybackObservation", "Could not query ${device.friendlyName}: ${exception.message}")
                     }
                     delay(delay)
@@ -74,10 +87,27 @@ class PlaybackObservation(
         }
     }
 
+    /**
+     * Requests cancellation of polling and returns immediately without waiting for completion.
+     * An in-flight blocking HTTP request may continue until it completes or times out.
+     * Use [cancelAndJoin] before replacing this observation when polling must not overlap.
+     * This does not send a Stop command to the renderer.
+     */
     @Synchronized
-    fun stop() {
+    fun cancel() {
         job?.cancel()
-        job = null
+    }
+
+    /**
+     * Requests cancellation and suspends until the current polling job has finished.
+     * Unlike [cancel], this waits for any in-flight blocking HTTP request to complete or time out,
+     * without blocking the calling thread. Use it before starting a replacement observation.
+     * Waiting is cancellable; cancellation of the caller can end the wait before polling finishes.
+     * This does not send a Stop command to the renderer.
+     */
+    suspend fun cancelAndJoin() {
+        val previousJob = synchronized(this) { job.also { it?.cancel() } }
+        previousJob?.join()
     }
 
     /** Keeps polling through transient states until a requested stop is confirmed. */

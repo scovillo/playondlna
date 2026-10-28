@@ -8,12 +8,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 
 class PlaybackObservationTest {
@@ -32,7 +37,7 @@ class PlaybackObservationTest {
                 observation.start()
                 assertEquals(1.0, withTimeout(1_000.milliseconds) { observation.status.first().positionSeconds })
 
-                observation.stop()
+                observation.cancel()
                 transport.generation = 2.0
                 observation.start()
                 assertEquals(
@@ -42,7 +47,7 @@ class PlaybackObservationTest {
                     },
                 )
             } finally {
-                observation.stop()
+                observation.cancel()
                 scope.cancel()
             }
         }
@@ -57,7 +62,50 @@ class PlaybackObservationTest {
                 withTimeout(1_000.milliseconds) { observation.status.first { it.positionSeconds == 2.0 } }
                 assertEquals(2.0, observation.status.first().positionSeconds)
             } finally {
-                observation.stop()
+                observation.cancel()
+                scope.cancel()
+            }
+        }
+
+    @Test
+    fun restartWaitsForBlockedPollAndDoesNotQueryStalePosition() =
+        runBlocking {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val entered = CountDownLatch(1)
+            val release = CountDownLatch(1)
+            val calls = AtomicInteger()
+            val positions = AtomicInteger()
+            val transport =
+                object : DlnaTransport by GenerationTransport() {
+                    override fun transportState(device: DlnaDevice): TransportState {
+                        if (calls.incrementAndGet() == 1) {
+                            entered.countDown()
+                            check(release.await(2, TimeUnit.SECONDS))
+                        }
+                        return TransportState.PLAYING
+                    }
+
+                    override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
+                        positions.incrementAndGet()
+                        return PlaybackPositionInfo("http://test/media", 2.0)
+                    }
+                }
+            val observation = PlaybackObservation(scope, device(), transport, 1.milliseconds)
+            try {
+                observation.start()
+                assertTrue(entered.await(2, TimeUnit.SECONDS))
+                observation.cancel()
+                observation.start()
+                observation.start()
+                delay(50.milliseconds)
+                assertEquals(1, calls.get())
+                assertEquals(0, positions.get())
+                release.countDown()
+                withTimeout(2_000.milliseconds) { observation.status.first() }
+                assertTrue(calls.get() >= 2)
+            } finally {
+                release.countDown()
+                observation.cancelAndJoin()
                 scope.cancel()
             }
         }
