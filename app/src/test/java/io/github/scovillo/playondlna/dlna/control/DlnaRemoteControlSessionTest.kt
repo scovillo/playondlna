@@ -152,6 +152,7 @@ private class SponsorBlockPlaylistTransport(
     val seekPositions = CopyOnWriteArrayList<Double>()
     private var statuses = emptyList<Status>()
     private var statusIndex = 0
+    private var expectedSeekCount = 0
 
     override fun playFile(
         device: DlnaDevice,
@@ -164,6 +165,7 @@ private class SponsorBlockPlaylistTransport(
                 add(Status(TransportState.STOPPED, item.url, sponsorPosition + 10.0))
             }
         statusIndex = 0
+        expectedSeekCount = seekPositions.size + 1
     }
 
     override fun command(
@@ -179,7 +181,9 @@ private class SponsorBlockPlaylistTransport(
 
     override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
         val status = currentStatus()
-        if (statusIndex < statuses.lastIndex) statusIndex++
+        if (seekPositions.size >= expectedSeekCount && statusIndex < statuses.lastIndex) {
+            statusIndex++
+        }
         return PlaybackPositionInfo(status.uri, status.position, status.trackNumber)
     }
 
