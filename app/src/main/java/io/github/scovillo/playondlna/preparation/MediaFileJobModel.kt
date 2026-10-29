@@ -138,7 +138,7 @@ class MediaModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
-                initialValue = VideoQuality.P720,
+                initialValue = VideoQuality.default,
             )
     private val isSubtitleEnabled: StateFlow<Boolean> =
         settingsRepository.isSubtitleEnabledFlow

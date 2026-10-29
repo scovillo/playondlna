@@ -43,7 +43,7 @@ enum class VideoQuality(
 
     companion object {
         val default: VideoQuality
-            get() = P720
+            get() = P1080
 
         fun byQualityName(name: String): VideoQuality {
             return VideoQuality.entries.find { it.qualityName == name } ?: default
@@ -52,7 +52,7 @@ enum class VideoQuality(
 }
 
 class VideoSettingsState(private val repository: SettingsRepository) : ViewModel() {
-    private val _videoQuality = mutableStateOf(VideoQuality.P720)
+    private val _videoQuality = mutableStateOf(VideoQuality.default)
     private val _isSubtitleEnabled = mutableStateOf(false)
     private val _isInternalSubtitleEnabled = mutableStateOf(false)
     private val _isWlanProtectionEnabled = mutableStateOf(true)

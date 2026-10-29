@@ -28,7 +28,7 @@ class SettingsRepository(private val context: Context) {
             if (name != null) {
                 VideoQuality.valueOf(name)
             } else {
-                VideoQuality.P720
+                VideoQuality.default
             }
         }.distinctUntilChanged()
 
