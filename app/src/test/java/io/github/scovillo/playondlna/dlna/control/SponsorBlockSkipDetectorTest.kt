@@ -13,10 +13,10 @@ class SponsorBlockSkipDetectorTest {
     }
 
     @Test
-    fun `does not seek the same segment twice`() {
+    fun `same detector can be reused by multiple players`() {
         detector.nextSeekPosition(12.0)
 
-        assertNull(detector.nextSeekPosition(15.0))
+        assertEquals(20.0, detector.nextSeekPosition(15.0))
     }
 
     @Test
@@ -25,5 +25,19 @@ class SponsorBlockSkipDetectorTest {
         detector.nextSeekPosition(5.0)
 
         assertEquals(20.0, detector.nextSeekPosition(12.0))
+    }
+
+    @Test
+    fun `does not seek outside the segment or at its exclusive end`() {
+        assertNull(detector.nextSeekPosition(9.0))
+        assertNull(detector.nextSeekPosition(20.0))
+        assertNull(detector.nextSeekPosition(25.0))
+    }
+
+    @Test
+    fun `same position produces the same result on repeated playback`() {
+        repeat(3) {
+            assertEquals(20.0, detector.nextSeekPosition(12.0))
+        }
     }
 }

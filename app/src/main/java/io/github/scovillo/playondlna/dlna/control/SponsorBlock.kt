@@ -13,17 +13,10 @@ import org.json.JSONArray
 data class SponsorSegment(val start: Double, val end: Double)
 
 class SponsorBlockSkipDetector(private val segments: List<SponsorSegment>) {
-    private val skippedSegments = mutableSetOf<SponsorSegment>()
-
-    fun nextSeekPosition(positionSeconds: Double): Double? {
-        skippedSegments.removeAll { positionSeconds < it.start }
-        val segment =
-            segments.firstOrNull {
-                positionSeconds >= it.start && positionSeconds < it.end && it !in skippedSegments
-            } ?: return null
-        skippedSegments += segment
-        return segment.end
-    }
+    fun nextSeekPosition(positionSeconds: Double): Double? =
+        segments.firstOrNull {
+            positionSeconds >= it.start && positionSeconds < it.end
+        }?.end
 }
 
 class SponsorBlockObservation(
@@ -40,20 +33,18 @@ class SponsorBlockObservation(
                 AppLog.d("SponsorBlockObservation", "Session of ${session.device.friendlyName} in state=${session.currentState}, skipping...")
                 return@collect
             }
-            val mediaId = session.currentItem?.metadata?.id
-            if (mediaId == null) {
-                AppLog.d("SponsorBlockObservation", "Session of ${session.device.friendlyName} has no current item, skipping...")
-                return@collect
-            }
+            val item = session.currentItem ?: return@collect
+            if (item.metadata.source.isNotBlank() && !item.metadata.source.equals("YouTube", ignoreCase = true)) return@collect
+            val mediaId = item.metadata.id
             try {
-                val detector = detectors.getOrPut(session.id) {
+                val detector = detectors.getOrPut(mediaId) {
                     SponsorBlockSkipDetector(client.fetchSegments(mediaId))
                 }
                 currentCoroutineContext().ensureActive()
                 val skipPosition = detector.nextSeekPosition(session.currentPosition)
                 if (skipPosition != null) {
                     AppLog.i("SponsorBlockObservation", "Skipping sponsorblock segments for session of ${session.device.friendlyName}")
-                    transport.seekTo(session.device, skipPosition)
+                    transport.seekTo(session.device, skipPosition + 1)
                 } else {
                     AppLog.d("SponsorBlockObservation", "No sponsorblock segments found for session of ${session.device.friendlyName}")
                 }

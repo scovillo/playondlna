@@ -92,8 +92,8 @@ fun DlnaListScreen(dlnaModel: PlaybackScreenModel) {
             if (event is ToastEvent.Show) Toast.makeText(context, context.getString(event.messageResId), Toast.LENGTH_LONG).show()
         }
     }
-    LaunchedEffect(currentVideo?.metadata?.id, isSponsorBlockEnabled) {
-        if (isSponsorBlockEnabled) currentVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
+    LaunchedEffect(currentVideo?.metadata?.id, currentVideo?.metadata?.source, isSponsorBlockEnabled) {
+        if (isSponsorBlockEnabled) currentVideo?.let(dlnaModel::loadSponsorBlockSegmentCount)
     }
     Column(Modifier.fillMaxSize()) {
         DlnaRemoteControl(

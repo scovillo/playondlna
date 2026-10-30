@@ -18,7 +18,6 @@
 
 package io.github.scovillo.playondlna.model
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
@@ -159,7 +158,9 @@ class PlaybackScreenModel(
         item: LibraryItem,
     ) = startOnDevice(device, Playlist("", item.metadata.title, listOf(item)))
 
-    fun loadSponsorBlockSegmentCount(videoId: String) {
+    fun loadSponsorBlockSegmentCount(item: LibraryItem) {
+        if (item.metadata.source.isNotBlank() && !item.metadata.source.equals("YouTube", ignoreCase = true)) return
+        val videoId = item.metadata.id
         if (!isSponsorBlockEnabled.value || _sponsorBlockSegmentCounts.value.containsKey(videoId)) return
         viewModelScope.launch(Dispatchers.IO) {
             if (!isSponsorBlockEnabled.value) return@launch
@@ -201,11 +202,4 @@ class PlaybackScreenModel(
         }
     }
 
-    private suspend fun incompatibleDevice(device: DlnaDevice) {
-        Log.e(
-            "startOnDevice",
-            "No AVTransport URL found for ${device.friendlyName} @ ${device.location}",
-        )
-        _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))
-    }
 }
