@@ -4,7 +4,6 @@ import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.escapeXml
 
 class MediaFileResource(private val localIpAddress: LocalIpAddress, private val serverPort: ServerPort, private val item: LibraryItem) {
-
     val url: String
         get() = "http://${localIpAddress.value()}:${serverPort.value()}/${item.metadata.id}/${item.rendererFileName}"
 

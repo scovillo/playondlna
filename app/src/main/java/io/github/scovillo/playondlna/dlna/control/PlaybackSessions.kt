@@ -23,7 +23,7 @@ data class PlaybackSession(
     val playlist: Playlist,
     val currentIndex: Int,
     val currentState: TransportState = TransportState.PLAYING,
-    val positionInfo: PlaybackPositionInfo
+    val positionInfo: PlaybackPositionInfo,
 ) {
     val id
         get() = device.usn
@@ -51,15 +51,23 @@ data class PlaybackSession(
         }
 
     companion object {
-        fun init(device: DlnaDevice, playlist: Playlist, state: TransportState): PlaybackSession {
+        fun init(
+            device: DlnaDevice,
+            playlist: Playlist,
+            state: TransportState,
+        ): PlaybackSession {
             return PlaybackSession(device, playlist, 0, state, PlaybackPositionInfo())
         }
     }
 
-    fun copy(state: TransportState, positionInfo: PlaybackPositionInfo): PlaybackSession {
-        val index = playlist.items.indexOfFirst {
-            positionInfo.trackUri.contains(it.metadata.id)
-        }
+    fun copy(
+        state: TransportState,
+        positionInfo: PlaybackPositionInfo,
+    ): PlaybackSession {
+        val index =
+            playlist.items.indexOfFirst {
+                positionInfo.trackUri.contains(it.metadata.id)
+            }
         return PlaybackSession(device, playlist, index, state, positionInfo)
     }
 
@@ -77,14 +85,20 @@ class PlaybackSessions(
     val updates = _updates.asSharedFlow()
 
     fun register(session: PlaybackSession) = all.computeIfAbsent(session.id, { session })
-    fun update(id: String, playlist: Playlist) {
+
+    fun update(
+        id: String,
+        playlist: Playlist,
+    ) {
         all.computeIfPresent(id) { _, current ->
             current.copy(playlist = playlist, currentIndex = 0)
         }
     }
 
     fun has(id: String) = all.containsKey(id)
+
     fun get(id: String) = all[id]!!
+
     fun remove(id: String) = all.remove(id)
 
     suspend fun observe() =
@@ -96,9 +110,10 @@ class PlaybackSessions(
                             try {
                                 val info = transport.playbackInfo(session.device)
                                 currentCoroutineContext().ensureActive()
-                                val updated = all.computeIfPresent(session.id) { _, current ->
-                                    current.copy(state = info.state, positionInfo = info.positionInfo)
-                                }
+                                val updated =
+                                    all.computeIfPresent(session.id) { _, current ->
+                                        current.copy(state = info.state, positionInfo = info.positionInfo)
+                                    }
                                 updated?.let { _updates.emit(it) }
                                 AppLog.d("PlaybackSessions", "Updated ${session.device.friendlyName} to $updated")
                             } catch (exception: Exception) {

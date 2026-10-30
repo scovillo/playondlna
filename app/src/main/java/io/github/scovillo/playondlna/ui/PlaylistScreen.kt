@@ -269,9 +269,13 @@ private fun PlaylistDetails(
                                     .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ThumbnailImage(file = item.thumbnail, modifier = Modifier
-                                .size(100.dp, 70.dp)
-                                .background(Color.DarkGray))
+                            ThumbnailImage(
+                                file = item.thumbnail,
+                                modifier =
+                                    Modifier
+                                        .size(100.dp, 70.dp)
+                                        .background(Color.DarkGray),
+                            )
                             Spacer(modifier = Modifier.size(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(

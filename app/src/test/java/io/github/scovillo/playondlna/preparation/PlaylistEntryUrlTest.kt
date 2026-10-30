@@ -3,7 +3,7 @@ package io.github.scovillo.playondlna.preparation
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class PlaylistPersistenceEntryUrlTest {
+class PlaylistEntryUrlTest {
     @Test
     fun `removes duplicate slashes from Bandcamp playlist paths`() {
         assertEquals(

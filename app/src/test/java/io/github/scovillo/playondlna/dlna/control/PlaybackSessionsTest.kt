@@ -3,19 +3,21 @@ package io.github.scovillo.playondlna.dlna.control
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.server.MediaFileResource
-import kotlinx.coroutines.Dispatchers
+import io.github.scovillo.playondlna.model.Playlist
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 
 class PlaybackSessionsTest {
@@ -25,146 +27,124 @@ class PlaybackSessionsTest {
     }
 
     @Test
-    fun publishesRegistrationAndRemovalToNewSubscribers() =
-        runBlocking {
-            val sessions = PlaybackSessions()
-            val session = session()
-            sessions.register(session)
-            assertEquals(session, sessions.sessions.first()[session.id])
-            sessions.remove(session.id)
-            assertTrue(sessions.sessions.first().isEmpty())
-        }
+    fun registeringExistingPlayerPreservesItsSession() {
+        val sessions = PlaybackSessions()
+        val original = testSession()
+        sessions.register(original)
+        sessions.register(original.copy(playlist = Playlist.empty()))
+        assertSame(original, sessions.get(original.id))
+        sessions.remove(original.id)
+        assertFalse(sessions.has(original.id))
+    }
 
     @Test
-    fun concurrentUpdatesDoNotLoseChanges() =
+    fun replacingPlaylistResetsIndexAndLeavesOtherPlayersUntouched() {
+        val sessions = PlaybackSessions()
+        sessions.register(testSession().copy(currentIndex = 2))
+        val other = testSession("other")
+        sessions.register(other)
+        val queue = Playlist("new", "New", listOf(testItem("new")))
+        sessions.update("test", queue)
+        assertSame(queue, sessions.get("test").playlist)
+        assertEquals(0, sessions.get("test").currentIndex)
+        assertSame(other, sessions.get("other"))
+        sessions.update("missing", queue)
+        assertFalse(sessions.has("missing"))
+    }
+
+    @Test
+    fun pollPublishesMeasuredStateWithoutLosingPlaylistChangedDuringRequest() =
         runBlocking {
-            val sessions = PlaybackSessions()
-            sessions.register(session())
-            val jobs =
-                List(8) {
-                    launch(Dispatchers.Default) {
-                        repeat(100) {
-                            sessions.update("test") { it.copy(currentIndex = it.currentIndex + 1) }
-                        }
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val transport =
+                object : StubDlnaTransport() {
+                    override suspend fun playbackInfo(device: DlnaDevice): PlaybackInfo {
+                        entered.complete(Unit)
+                        release.await()
+                        return PlaybackInfo(TransportState.PAUSED_PLAYBACK, PlaybackPositionInfo("http://media/new/video.mp4", 18.0))
                     }
                 }
-            jobs.forEach { it.join() }
-            assertEquals(800, sessions.sessions.value.getValue("test").currentIndex)
-        }
-
-    @Test
-    fun observationPreservesConcurrentEditsAndSessionsOnCancellation() =
-        runBlocking {
-            val entered = CountDownLatch(1)
-            val release = CountDownLatch(1)
-            val sessions = PlaybackSessions(transport(entered, release), 1.milliseconds)
-            sessions.register(session())
+            val sessions = PlaybackSessions(transport, 1.milliseconds)
+            sessions.register(testSession())
+            val update = async(start = CoroutineStart.UNDISPATCHED) { sessions.updates.first() }
             val job = launch { sessions.observe() }
             try {
-                kotlinx.coroutines.withContext(Dispatchers.IO) {
-                    assertTrue(entered.await(2, TimeUnit.SECONDS))
-                }
-                sessions.update("test") { it.copy(unsupportedCommands = setOf(PlaybackCommand.PAUSE)) }
-                release.countDown()
-                val updated =
-                    withTimeout(2_000) {
-                        sessions.sessions.first { it["test"]?.currentPosition == 12.0 }.getValue("test")
-                    }
-                assertEquals(TransportState.PAUSED_PLAYBACK, updated.currentState)
-                assertEquals(setOf(PlaybackCommand.PAUSE), updated.unsupportedCommands)
+                withTimeout(2_000) { entered.await() }
+                val queue = Playlist("new", "New", listOf(testItem("new")))
+                sessions.update("test", queue)
+                release.complete(Unit)
+                val result = withTimeout(2_000) { update.await() }
+                assertSame(queue, result.playlist)
+                assertEquals(0, result.currentIndex)
+                assertEquals(18.0, result.currentPosition, 0.0)
+                assertEquals(TransportState.PAUSED_PLAYBACK, result.currentState)
             } finally {
-                release.countDown()
+                job.cancelAndJoin()
+                update.cancelAndJoin()
+            }
+            assertEquals("new", sessions.get("test").playlist.id)
+        }
+
+    @Test
+    fun transientFailureIsRetriedWithoutBlockingOtherPlayers() =
+        runBlocking {
+            val attempts = AtomicInteger()
+            val transport =
+                object : StubDlnaTransport() {
+                    override suspend fun playbackInfo(device: DlnaDevice): PlaybackInfo {
+                        if (device.usn == "test" && attempts.incrementAndGet() == 1) error("Temporary network failure")
+                        return PlaybackInfo(TransportState.PLAYING, positionInfo(device))
+                    }
+                }
+            val sessions = PlaybackSessions(transport, 1.milliseconds)
+            sessions.register(testSession())
+            sessions.register(testSession("other"))
+            val first = async(start = CoroutineStart.UNDISPATCHED) { sessions.updates.first { it.id == "test" } }
+            val other = async(start = CoroutineStart.UNDISPATCHED) { sessions.updates.first { it.id == "other" } }
+            val job = launch { sessions.observe() }
+            try {
+                withTimeout(2_000) {
+                    assertEquals("other", other.await().id)
+                    assertEquals("test", first.await().id)
+                }
+            } finally {
+                job.cancelAndJoin()
+                first.cancelAndJoin()
+                other.cancelAndJoin()
+            }
+        }
+
+    @Test
+    fun removingSessionDuringRequestDoesNotReinsertIt() =
+        runBlocking {
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val nextRound = CompletableDeferred<Unit>()
+            val transport =
+                object : StubDlnaTransport() {
+                    override suspend fun playbackInfo(device: DlnaDevice): PlaybackInfo {
+                        if (device.usn == "test") {
+                            entered.complete(Unit)
+                            release.await()
+                        } else if (release.isCompleted) {
+                            nextRound.complete(Unit)
+                        }
+                        return PlaybackInfo(TransportState.PLAYING, positionInfo(device))
+                    }
+                }
+            val sessions = PlaybackSessions(transport, 1.milliseconds)
+            sessions.register(testSession())
+            sessions.register(testSession("other"))
+            val job = launch { sessions.observe() }
+            try {
+                withTimeout(2_000) { entered.await() }
+                sessions.remove("test")
+                release.complete(Unit)
+                withTimeout(2_000) { nextRound.await() }
+                assertFalse(sessions.has("test"))
+            } finally {
                 job.cancelAndJoin()
             }
-            assertTrue(sessions.sessions.value.containsKey("test"))
         }
-
-    @Test
-    fun latePollCannotOverwriteReplacementSession() =
-        runBlocking {
-            val secondPoll = CountDownLatch(1)
-            val release = CountDownLatch(1)
-            val calls = java.util.concurrent.atomic.AtomicInteger()
-            val replacement = session()
-            lateinit var sessions: PlaybackSessions
-            val transport =
-                object : DlnaTransport by transport(CountDownLatch(0), CountDownLatch(0)) {
-                    override fun transportState(device: DlnaDevice): TransportState {
-                        if (calls.incrementAndGet() == 2) {
-                            secondPoll.countDown()
-                            check(release.await(2, TimeUnit.SECONDS))
-                        }
-                        return TransportState.PAUSED_PLAYBACK
-                    }
-
-                    override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
-                        sessions.remove("test")
-                        sessions.register(replacement)
-                        return PlaybackPositionInfo("http://test/media", 12.0)
-                    }
-                }
-            sessions = PlaybackSessions(transport, 1.milliseconds)
-            sessions.register(session())
-            val job = launch { sessions.observe() }
-            try {
-                kotlinx.coroutines.withContext(Dispatchers.IO) {
-                    assertTrue(secondPoll.await(2, TimeUnit.SECONDS))
-                }
-                assertEquals(replacement, sessions.sessions.value["test"])
-            } finally {
-                job.cancel()
-                release.countDown()
-                job.join()
-            }
-        }
-
-    private fun session() =
-        PlaybackSession(
-            device =
-                DlnaDevice(
-                    usn = "test",
-                    st = "MediaRenderer",
-                    location = "http://test/device.xml",
-                    friendlyName = "test",
-                    manufacturer = "Test",
-                    modelName = "Test",
-                    deviceType = "MediaRenderer",
-                    avTransportUrl = "http://test/avtransport",
-                    renderingControlUrl = null,
-                ),
-            queue = emptyList(),
-            currentIndex = 0,
-        )
-
-    private fun transport(
-        entered: CountDownLatch,
-        release: CountDownLatch,
-    ) = object : DlnaTransport {
-        override fun playFile(
-            device: DlnaDevice,
-            resource: MediaFileResource,
-        ) = Unit
-
-        override fun command(
-            device: DlnaDevice,
-            command: PlaybackCommand,
-        ) = Unit
-
-        override fun transportState(device: DlnaDevice) = TransportState.PAUSED_PLAYBACK
-
-        override fun currentTrackUri(device: DlnaDevice): String? = null
-
-        override fun currentPositionSeconds(device: DlnaDevice): Double? = null
-
-        override fun seekTo(
-            device: DlnaDevice,
-            seconds: Double,
-        ) = Unit
-
-        override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
-            entered.countDown()
-            check(release.await(2, TimeUnit.SECONDS))
-            return PlaybackPositionInfo("http://test/media", 12.0)
-        }
-    }
 }

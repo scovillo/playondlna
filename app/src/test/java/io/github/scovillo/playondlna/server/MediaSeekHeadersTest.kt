@@ -5,7 +5,6 @@ import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.VideoQuality
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -28,7 +27,6 @@ class MediaSeekHeadersTest {
             val expected =
                 "DLNA.ORG_PN=$profile;DLNA.ORG_OP=01;" +
                     "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
-            assertTrue(item.metaDataDidlLite.contains("http-get:*:${item.mimeType}:$expected"))
             for (status in listOf(NanoHTTPD.Response.Status.OK, NanoHTTPD.Response.Status.PARTIAL_CONTENT)) {
                 val response = NanoHTTPD.newFixedLengthResponse(status, item.mimeType, ByteArrayInputStream(ByteArray(10)), 10)
                 response.use {

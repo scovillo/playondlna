@@ -172,11 +172,12 @@ class MediaServerService : Service() {
     override fun onCreate() {
         AppLog.i("MediaServerService", "onCreate")
         super.onCreate()
-        playlistObservation = PlaylistObservation(
-            playOnDlnaApp.playbackSessions.updates,
-            playOnDlnaApp.localIpAddress,
-            playOnDlnaApp.serverPort,
-        )
+        playlistObservation =
+            PlaylistObservation(
+                playOnDlnaApp.playbackSessions.updates,
+                playOnDlnaApp.localIpAddress,
+                playOnDlnaApp.serverPort,
+            )
         playOnDlnaApp.localIpAddress.initialize(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
         mediaServerNotification.createNotificationChannel(this)
         sponsorBlockObservation = SponsorBlockObservation(playOnDlnaApp.playbackSessions.updates, SponsorBlockCache(cacheDir))

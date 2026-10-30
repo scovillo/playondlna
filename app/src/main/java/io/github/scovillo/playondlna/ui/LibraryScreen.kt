@@ -293,14 +293,19 @@ private fun LibraryVideosScreen(
                                     },
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .padding(8.dp)
-                                    .fillMaxWidth(),
+                                modifier =
+                                    Modifier
+                                        .padding(8.dp)
+                                        .fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                ThumbnailImage(file = item.thumbnail, modifier = Modifier
-                                    .size(100.dp, 70.dp)
-                                    .background(Color.DarkGray))
+                                ThumbnailImage(
+                                    file = item.thumbnail,
+                                    modifier =
+                                        Modifier
+                                            .size(100.dp, 70.dp)
+                                            .background(Color.DarkGray),
+                                )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(

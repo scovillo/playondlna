@@ -137,7 +137,7 @@ class PlaybackScreenModel(
 
     fun startOnDevice(
         device: DlnaDevice,
-        playlist: Playlist
+        playlist: Playlist,
     ) {
         onPlaybackRequested()
         if (!playbackSessions.has(device.usn)) {
@@ -148,7 +148,8 @@ class PlaybackScreenModel(
         val session = playbackSessions.get(device.usn)
         viewModelScope.launch(Dispatchers.IO) {
             dlnaClient.playFile(
-                device, MediaFileResource(localIpAddress, serverPort, session.currentItem!!)
+                device,
+                MediaFileResource(localIpAddress, serverPort, session.currentItem!!),
             )
         }
     }
@@ -201,5 +202,4 @@ class PlaybackScreenModel(
             viewModelScope.launch(Dispatchers.IO) { dlnaClient.seekTo(it, seconds) }
         }
     }
-
 }

@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.filter
 
 class PlaylistObservation(private val updates: SharedFlow<PlaybackSession>, private val localIpAddress: LocalIpAddress, private val serverPort: ServerPort) {
-
     private val client = SoapDlnaTransport()
 
     private val marks = mutableMapOf<String, Int>()

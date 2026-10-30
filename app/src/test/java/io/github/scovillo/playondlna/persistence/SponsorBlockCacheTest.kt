@@ -1,5 +1,7 @@
 package io.github.scovillo.playondlna.persistence
 
+import io.github.scovillo.playondlna.AppLog
+import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.control.SponsorSegment
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -16,6 +18,7 @@ class SponsorBlockCacheTest {
 
     @Before
     fun setUp() {
+        AppLog.setStream(PlayOnDlnaLogStream.Console)
         directory = Files.createTempDirectory("sponsorblock-cache-test").toFile()
         cache = SponsorBlockCache(directory, currentTimeMillis = { currentTime })
     }

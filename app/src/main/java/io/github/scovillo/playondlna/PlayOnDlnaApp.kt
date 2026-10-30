@@ -6,9 +6,7 @@ import io.github.scovillo.playondlna.server.LocalIpAddress
 import io.github.scovillo.playondlna.server.ServerPort
 
 class PlayOnDlnaApp : Application() {
-
     val playbackSessions = PlaybackSessions()
     val localIpAddress = LocalIpAddress()
     val serverPort = ServerPort()
-
 }

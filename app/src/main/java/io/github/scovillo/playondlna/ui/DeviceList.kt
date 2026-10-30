@@ -101,7 +101,7 @@ fun DlnaListScreen(dlnaModel: PlaybackScreenModel) {
             sponsorBlockSegmentCount = if (isSponsorBlockEnabled) currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get) else null,
             session = session,
             onCommand = dlnaModel::remoteControlCommand,
-            onSeek = dlnaModel::seekTo
+            onSeek = dlnaModel::seekTo,
         )
         PlayerList(dlnaModel, Modifier.weight(1f), onSelected = dlnaModel::selectDevice)
     }
@@ -164,7 +164,8 @@ internal fun PlayerListContent(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(headingRes), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             IconButton(onClick = onRefresh, enabled = !isLoading) {

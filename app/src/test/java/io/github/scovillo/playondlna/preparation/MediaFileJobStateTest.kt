@@ -3,7 +3,7 @@ package io.github.scovillo.playondlna.preparation
 import org.junit.Assert
 import org.junit.Test
 
-class VideoJobStateTest {
+class MediaFileJobStateTest {
     @Test
     fun preparing() {
         val classUnderTest = MediaFileJobState()

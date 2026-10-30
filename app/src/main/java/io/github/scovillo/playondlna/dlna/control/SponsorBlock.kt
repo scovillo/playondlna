@@ -37,9 +37,10 @@ class SponsorBlockObservation(
             if (item.metadata.source.isNotBlank() && !item.metadata.source.equals("YouTube", ignoreCase = true)) return@collect
             val mediaId = item.metadata.id
             try {
-                val detector = detectors.getOrPut(mediaId) {
-                    SponsorBlockSkipDetector(client.fetchSegments(mediaId))
-                }
+                val detector =
+                    detectors.getOrPut(mediaId) {
+                        SponsorBlockSkipDetector(client.fetchSegments(mediaId))
+                    }
                 currentCoroutineContext().ensureActive()
                 val skipPosition = detector.nextSeekPosition(session.currentPosition)
                 if (skipPosition != null) {

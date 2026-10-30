@@ -10,7 +10,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-class PlaylistPersistenceManagerTest {
+class PlaylistManagerTest {
     private lateinit var directory: File
     private lateinit var manager: PlaylistManager
 

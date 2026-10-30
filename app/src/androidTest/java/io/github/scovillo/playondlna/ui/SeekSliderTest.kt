@@ -7,7 +7,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.performTouchInput
-import io.github.scovillo.playondlna.dlna.control.PlaybackStatus
+import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
 import io.github.scovillo.playondlna.dlna.control.TransportState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -20,19 +20,14 @@ class SeekSliderTest {
 
     @Test
     fun draggingSendsOneSeekOnlyAfterReleaseDespitePlaybackUpdates() {
-        val status = mutableStateOf(PlaybackStatus(TransportState.PLAYING, "http://test/video.mp4", 8.0, 1, 193.0))
+        val status = mutableStateOf(uiSession(TransportState.PLAYING).copy(positionInfo = PlaybackPositionInfo("http://test/video.mp4", 8.0, 1, 193.0)))
         val seeks = mutableListOf<Double>()
         compose.setContent {
             MaterialTheme {
                 DlnaRemoteControl(
-                    currentVideo = null,
                     currentThumbnail = null,
-                    playlist = null,
                     sponsorBlockSegmentCount = null,
-                    selectedDevice = null,
                     session = status.value,
-                    playlistIndex = null,
-                    playlistSize = 0,
                     onCommand = {},
                     onSeek = { seeks += it },
                 )
@@ -45,7 +40,7 @@ class SeekSliderTest {
         }
         compose.runOnIdle {
             assertTrue(seeks.isEmpty())
-            status.value = status.value.copy(positionSeconds = 9.0)
+            status.value = status.value.copy(positionInfo = status.value.positionInfo.copy(positionSeconds = 9.0))
         }
         slider.performTouchInput {
             moveTo(Offset(width * 0.5f, centerY), 100)
@@ -56,7 +51,7 @@ class SeekSliderTest {
         compose.runOnIdle {
             assertEquals(1, seeks.size)
             assertTrue(seeks.single() > 100.0)
-            status.value = status.value.copy(positionSeconds = seeks.single())
+            status.value = status.value.copy(positionInfo = status.value.positionInfo.copy(positionSeconds = seeks.single()))
         }
         compose.runOnIdle { assertEquals(1, seeks.size) }
     }

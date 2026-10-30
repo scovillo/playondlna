@@ -22,12 +22,17 @@ class StreamDownloadUserAgentTest {
     }
 
     @Test
-    fun `other services and unknown clients use Android identity`() {
+    fun `missing or unknown clients use Android identity`() {
         listOf(
-            "https://example.com/media?c=VISIONOS",
-            "https://googlevideo.com.example.com/media?c=VISIONOS",
             "https://rr5.googlevideo.com/videoplayback?c=UNKNOWN",
             "https://rr5.googlevideo.com/videoplayback",
         ).forEach { assertEquals(YoutubeParsingHelper.getAndroidUserAgent(null), StreamDownloadUserAgent(it).value()) }
+    }
+
+    @Test
+    fun `client query selects identity independently of host`() {
+        listOf("https://example.com/media?c=VISIONOS", "https://googlevideo.com.example.com/media?c=VISIONOS").forEach {
+            assertEquals(YoutubeParsingHelper.getVisionOsUserAgent(null), StreamDownloadUserAgent(it).value())
+        }
     }
 }

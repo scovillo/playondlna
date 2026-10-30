@@ -44,7 +44,6 @@ class LibraryItem(
             return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, secs)
         }
 
-
     val dlnaProfile: String
         get() {
             return if (metadata.isAudioOnly) {
@@ -61,5 +60,4 @@ class LibraryItem(
 
     val sizeInBytes: Long
         get() = mediaFile.length()
-
 }

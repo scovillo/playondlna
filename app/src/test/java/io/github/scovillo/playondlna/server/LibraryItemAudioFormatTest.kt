@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 
-class VideoFileAudioFormatTest {
+class LibraryItemAudioFormatTest {
     @Test
     fun `advertises native mp3 consistently`() {
         val media = audioFile(File("track.mp3"))
