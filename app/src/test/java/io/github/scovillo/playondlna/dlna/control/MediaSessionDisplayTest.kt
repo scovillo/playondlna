@@ -1,8 +1,8 @@
 package io.github.scovillo.playondlna.dlna.control
 
-import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel.MediaSession
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
+import io.github.scovillo.playondlna.model.PlaybackScreenModel.MediaSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -27,5 +27,5 @@ class MediaSessionDisplayTest {
         assertEquals(item, session.currentItem(status(null), 0))
     }
 
-    private fun status(uri: String?) = PlaybackStatus(TransportState.PLAYING, uri, 2.0, 1, 60.0)
+    private fun status(uri: String?) = PlaybackStatus("test", TransportState.PLAYING, uri, 2.0, 1, 60.0)
 }

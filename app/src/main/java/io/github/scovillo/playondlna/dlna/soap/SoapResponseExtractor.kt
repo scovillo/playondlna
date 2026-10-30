@@ -40,23 +40,23 @@ class SoapResponseExtractor {
     /**
      * Extract current track URI from GetPositionInfo response.
      */
-    fun parseCurrentTrackUri(responseBody: String): String? =
+    fun parseCurrentTrackUri(responseBody: String): String =
         Regex("""<(?:[A-Za-z_][\w.-]*:)?TrackURI>\s*([^<]*)\s*</""")
             .find(responseBody)
             ?.groupValues
             ?.get(1)
             ?.trim()
             ?.replace("&amp;", "&")
-            ?.takeIf { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() } ?: ""
 
-    fun parseCurrentTrackNumber(responseBody: String): Int? =
+    fun parseCurrentTrackNumber(responseBody: String): Int =
         Regex("""<(?:[A-Za-z_][\w.-]*:)?Track>\s*([^<]+)\s*</""")
             .find(responseBody)
             ?.groupValues
             ?.get(1)
             ?.trim()
             ?.toIntOrNull()
-            ?.takeIf { it > 0 }
+            ?.takeIf { it > 0 } ?: 0
 
     fun parseNumberOfTracks(responseBody: String): Int? = parseIntElement(responseBody, "NrTracks")
 
@@ -81,29 +81,29 @@ class SoapResponseExtractor {
             ?.replace("&amp;", "&")
             ?.takeIf { it.isNotEmpty() }
 
-    fun parseRelativeTimeSeconds(responseBody: String): Double? {
-        val value = Regex("""<(?:[A-Za-z_][\w.-]*:)?RelTime>\s*([^<]+)\s*</""").find(responseBody)?.groupValues?.get(1) ?: return null
+    fun parseRelativeTimeSeconds(responseBody: String): Double {
+        val value = Regex("""<(?:[A-Za-z_][\w.-]*:)?RelTime>\s*([^<]+)\s*</""").find(responseBody)?.groupValues?.get(1) ?: return 0.0
         val parts = value.trim().split(":")
-        if (parts.size != 3) return null
-        val hours = parts[0].toDoubleOrNull() ?: return null
-        val minutes = parts[1].toDoubleOrNull() ?: return null
-        val seconds = parts[2].toDoubleOrNull() ?: return null
+        if (parts.size != 3) return 0.0
+        val hours = parts[0].toDoubleOrNull() ?: return 0.0
+        val minutes = parts[1].toDoubleOrNull() ?: return 0.0
+        val seconds = parts[2].toDoubleOrNull() ?: return 0.0
         return hours * 3600 + minutes * 60 + seconds
     }
 
-    fun parseTrackDurationSeconds(responseBody: String): Double? {
+    fun parseTrackDurationSeconds(responseBody: String): Double {
         val value =
             Regex("""<(?:[A-Za-z_][\w.-]*:)?TrackDuration>\s*([^<]+)\s*</""")
                 .find(responseBody)
                 ?.groupValues
                 ?.get(1)
                 ?.trim()
-                ?: return null
+                ?: return 0.0
         val parts = value.split(":")
-        if (parts.size != 3) return null
-        val hours = parts[0].toDoubleOrNull() ?: return null
-        val minutes = parts[1].toDoubleOrNull() ?: return null
-        val seconds = parts[2].toDoubleOrNull() ?: return null
+        if (parts.size != 3) return 0.0
+        val hours = parts[0].toDoubleOrNull() ?: return 0.0
+        val minutes = parts[1].toDoubleOrNull() ?: return 0.0
+        val seconds = parts[2].toDoubleOrNull() ?: return 0.0
         return hours * 3600 + minutes * 60 + seconds
     }
 }

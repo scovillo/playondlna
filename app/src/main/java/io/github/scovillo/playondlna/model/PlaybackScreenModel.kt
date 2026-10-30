@@ -23,14 +23,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
-import io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackStatus
+import io.github.scovillo.playondlna.dlna.control.PlaybackSession
+import io.github.scovillo.playondlna.dlna.control.PlaybackSessions
+import io.github.scovillo.playondlna.dlna.control.SoapDlnaTransport
 import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
+import io.github.scovillo.playondlna.dlna.control.TransportState
 import io.github.scovillo.playondlna.persistence.SettingsRepository
-import io.github.scovillo.playondlna.persistence.SponsorBlockCache
+import io.github.scovillo.playondlna.server.LocalIpAddress
+import io.github.scovillo.playondlna.server.MediaFileResource
+import io.github.scovillo.playondlna.server.ServerPort
 import io.github.scovillo.playondlna.ui.ToastEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -42,13 +45,16 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import java.io.File
 
-class DlnaDevicesListScreenModel(
+class PlaybackScreenModel(
     private val deviceDiscoveryModel: DeviceDiscoveryModel,
+    private val localIpAddress: LocalIpAddress,
+    private val serverPort: ServerPort,
     val favoriteDevices: FavoriteDevices,
+    val playbackSessions: PlaybackSessions,
     private val settingsRepository: SettingsRepository,
-    cacheDir: File,
+    private val sponsorBlockClient: SponsorBlockClient,
+    private val onPlaybackRequested: () -> Unit = {},
 ) : ViewModel() {
     private val _devices = MutableStateFlow<List<DlnaDevice>>(emptyList())
     val devices: StateFlow<List<DlnaDevice>> = _devices.asStateFlow()
@@ -56,38 +62,15 @@ class DlnaDevicesListScreenModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val isSponsorBlockEnabled = MutableStateFlow(false)
-    private val sponsorBlockClient = SponsorBlockClient(cache = SponsorBlockCache(cacheDir))
+    private val _isSponsorBlockEnabled = MutableStateFlow(false)
+    val isSponsorBlockEnabled: StateFlow<Boolean> = _isSponsorBlockEnabled.asStateFlow()
     private val _sponsorBlockSegmentCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val sponsorBlockSegmentCounts: StateFlow<Map<String, Int>> = _sponsorBlockSegmentCounts.asStateFlow()
 
-    private val remote =
-        DlnaRemoteControl(
-            scope = viewModelScope,
-            onIncompatibleDevice = ::incompatibleDevice,
-            onPlaybackFailure = { _toastEvents.emit(ToastEvent.Show(R.string.playback_failed)) },
-            isSponsorBlockEnabled = { isSponsorBlockEnabled.value },
-            sponsorBlockClient = sponsorBlockClient,
-        )
-
-    data class MediaSession(val items: List<LibraryItem>, val playlist: DlnaPlaylist? = null) {
-        /** A different renderer URI must never inherit the previous app session's title. */
-        fun currentItem(
-            status: PlaybackStatus?,
-            playlistIndex: Int?,
-        ): LibraryItem? {
-            val uri = status?.trackUri?.takeIf { it.isNotBlank() }
-            return if (uri != null) items.firstOrNull { it.url == uri } else items.getOrNull(playlistIndex ?: 0)
-        }
-    }
-
-    private val _mediaSessions = MutableStateFlow<Map<String, MediaSession>>(emptyMap())
-    val mediaSessions = _mediaSessions.asStateFlow()
+    private val dlnaClient = SoapDlnaTransport()
 
     private val _selectedDevice = MutableStateFlow<DlnaDevice?>(null)
     val selectedDevice: StateFlow<DlnaDevice?> = _selectedDevice.asStateFlow()
-    val playbackStatuses: StateFlow<Map<String, PlaybackStatus>> = remote.playbackStatuses
-    val playlistIndices: StateFlow<Map<String, Int>> = remote.playlistIndices
 
     private val _toastEvents = MutableSharedFlow<ToastEvent>()
     val toastEvents = merge(_toastEvents.asSharedFlow(), deviceDiscoveryModel.toastEvents)
@@ -99,7 +82,7 @@ class DlnaDevicesListScreenModel(
             }
         }
         viewModelScope.launch {
-            settingsRepository.isSponsorBlockEnabledFlow.collect { isSponsorBlockEnabled.value = it }
+            settingsRepository.isSponsorBlockEnabledFlow.collect { _isSponsorBlockEnabled.value = it }
         }
     }
 
@@ -148,41 +131,62 @@ class DlnaDevicesListScreenModel(
 
     fun selectDevice(device: DlnaDevice) {
         _selectedDevice.value = device
-        remote.observeDevice(device)
+        if (!playbackSessions.has(device.usn)) {
+            playbackSessions.register(PlaybackSession.init(device, Playlist.empty(), TransportState.UNKNOWN))
+        }
     }
 
-    fun playVideoOnDevice(
+    fun startOnDevice(
         device: DlnaDevice,
-        videoFile: LibraryItem,
+        playlist: Playlist
     ) {
-        _mediaSessions.update { it + (device.usn to MediaSession(listOf(videoFile))) }
-        remote.playMedia(device, videoFile)
+        onPlaybackRequested()
+        if (!playbackSessions.has(device.usn)) {
+            playbackSessions.register(PlaybackSession.init(device, playlist, TransportState.UNKNOWN))
+        } else {
+            playbackSessions.update(device.usn, playlist)
+        }
+        val session = playbackSessions.get(device.usn)
+        viewModelScope.launch(Dispatchers.IO) {
+            dlnaClient.playFile(
+                device, MediaFileResource(localIpAddress, serverPort, session.currentItem!!)
+            )
+        }
     }
 
-    fun playPlaylistOnDevice(
+    fun startOnDevice(
         device: DlnaDevice,
-        videoFiles: List<LibraryItem>,
-        playlist: DlnaPlaylist? = null,
-    ) {
-        _mediaSessions.update { it + (device.usn to MediaSession(videoFiles, playlist)) }
-        remote.playPlaylist(
-            device,
-            videoFiles,
-        )
-    }
+        item: LibraryItem,
+    ) = startOnDevice(device, Playlist("", item.metadata.title, listOf(item)))
 
     fun loadSponsorBlockSegmentCount(videoId: String) {
-        if (_sponsorBlockSegmentCounts.value.containsKey(videoId)) return
+        if (!isSponsorBlockEnabled.value || _sponsorBlockSegmentCounts.value.containsKey(videoId)) return
         viewModelScope.launch(Dispatchers.IO) {
+            if (!isSponsorBlockEnabled.value) return@launch
             val segmentCount =
-                runCatching { sponsorBlockClient.sponsorSegments(videoId).size }.getOrNull()
+                runCatching { sponsorBlockClient.fetchSegments(videoId).size }.getOrNull()
                     ?: return@launch
             _sponsorBlockSegmentCounts.update { it + (videoId to segmentCount) }
         }
     }
 
-    fun remoteCommand(command: PlaybackCommand) {
-        _selectedDevice.value?.let { remote.command(it, command) }
+    fun remoteControlCommand(command: PlaybackCommand) {
+        val device = _selectedDevice.value ?: return
+        when (command) {
+            PlaybackCommand.NEXT, PlaybackCommand.PREVIOUS -> {
+                val session = playbackSessions.get(device.usn)
+                val nextIndex = playbackSessions.get(device.usn).predictIndex(command)
+                viewModelScope.launch(Dispatchers.IO) {
+                    dlnaClient.playFile(device, MediaFileResource(localIpAddress, serverPort, session.playlist[nextIndex]))
+                }
+            }
+
+            else -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    dlnaClient.command(device, command)
+                }
+            }
+        }
     }
 
     fun notifyPlayerRequired() {
@@ -192,12 +196,14 @@ class DlnaDevicesListScreenModel(
     }
 
     fun seekTo(seconds: Double) {
-        _selectedDevice.value?.let { remote.seekTo(it, seconds) }
+        _selectedDevice.value?.let {
+            viewModelScope.launch(Dispatchers.IO) { dlnaClient.seekTo(it, seconds) }
+        }
     }
 
     private suspend fun incompatibleDevice(device: DlnaDevice) {
         Log.e(
-            "playVideoOnDevice",
+            "startOnDevice",
             "No AVTransport URL found for ${device.friendlyName} @ ${device.location}",
         )
         _toastEvents.emit(ToastEvent.Show(R.string.player_incompatible))

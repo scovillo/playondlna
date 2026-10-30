@@ -22,14 +22,14 @@ class PlaybackSessionTest {
                     avTransportUrl = "http://test/avtransport",
                     renderingControlUrl = null,
                 ),
-            items = listOf("one", "two", "three").map(::item),
+            queue = listOf("one", "two", "three").map(::item),
             currentIndex = 1,
         )
 
     @Test
     fun movesWithinPlaylistBounds() {
-        assertEquals(2, session.nextIndex(PlaybackCommand.NEXT))
-        assertEquals(0, session.nextIndex(PlaybackCommand.PREVIOUS))
+        assertEquals(2, session.predictIndex(PlaybackCommand.NEXT))
+        assertEquals(0, session.predictIndex(PlaybackCommand.PREVIOUS))
     }
 
     @Test

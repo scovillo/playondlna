@@ -2,6 +2,9 @@ package io.github.scovillo.playondlna.dlna.control
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.SharedFlow
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,11 +26,51 @@ class SponsorBlockSkipDetector(private val segments: List<SponsorSegment>) {
     }
 }
 
+class SponsorBlockObservation(
+    private val playbackSessions: SharedFlow<PlaybackSession>,
+    cache: SponsorBlockCache,
+    private val transport: DlnaTransport = SoapDlnaTransport(),
+) {
+    private val client = SponsorBlockClient(cache)
+
+    suspend fun observe() {
+        val detectors = mutableMapOf<String, SponsorBlockSkipDetector>()
+        playbackSessions.collect { session ->
+            if (session.currentState != TransportState.PLAYING) {
+                AppLog.d("SponsorBlockObservation", "Session of ${session.device.friendlyName} in state=${session.currentState}, skipping...")
+                return@collect
+            }
+            val mediaId = session.currentItem?.metadata?.id
+            if (mediaId == null) {
+                AppLog.d("SponsorBlockObservation", "Session of ${session.device.friendlyName} has no current item, skipping...")
+                return@collect
+            }
+            try {
+                val detector = detectors.getOrPut(session.id) {
+                    SponsorBlockSkipDetector(client.fetchSegments(mediaId))
+                }
+                currentCoroutineContext().ensureActive()
+                val skipPosition = detector.nextSeekPosition(session.currentPosition)
+                if (skipPosition != null) {
+                    AppLog.i("SponsorBlockObservation", "Skipping sponsorblock segments for session of ${session.device.friendlyName}")
+                    transport.seekTo(session.device, skipPosition)
+                } else {
+                    AppLog.d("SponsorBlockObservation", "No sponsorblock segments found for session of ${session.device.friendlyName}")
+                }
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                AppLog.w("SponsorBlock", "Could not monitor ${session.device.friendlyName}: ${error.message}")
+            }
+        }
+    }
+}
+
 class SponsorBlockClient(
     private val cache: SponsorBlockCache,
     private val client: OkHttpClient = OkHttpClient(),
 ) {
-    fun sponsorSegments(videoId: String): List<SponsorSegment> {
+    fun fetchSegments(videoId: String): List<SponsorSegment> {
         if (!videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) return emptyList()
         cache.load(videoId)?.let { return it }
         val url =

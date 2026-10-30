@@ -4,8 +4,8 @@ import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
-import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.VideoQuality
+import io.github.scovillo.playondlna.persistence.PlaylistPersistence
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,7 +14,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 
-class DlnaPlaylistTest {
+class DlnaPlaylistPersistenceTest {
     @Before
     fun useConsoleLogger() {
         AppLog.setStream(PlayOnDlnaLogStream.Console)
@@ -22,29 +22,29 @@ class DlnaPlaylistTest {
 
     @Test
     fun advertisesAudioPlaylistAsAudio() {
-        val playlist = DlnaPlaylist(Playlist("id", "Audio", listOf("track")), listOf(audioItem("track", "Track", null)), "http://server")
+        val playlistPersistence = DlnaPlaylist(PlaylistPersistence("id", "Audio", listOf("track")), listOf(audioItem("track", "Track", null)), "http://server")
 
-        assertTrue(playlist.metadataDidlLite().contains("http-get:*:audio/x-mpegurl:*"))
-        assertTrue(playlist.metadataDidlLite().contains("http://server/playlists/id/cover.jpg"))
-        assertTrue(playlist.url.endsWith("/playlist.m3u"))
+        assertTrue(playlistPersistence.metadataDidlLite().contains("http-get:*:audio/x-mpegurl:*"))
+        assertTrue(playlistPersistence.metadataDidlLite().contains("http://server/playlists/id/cover.jpg"))
+        assertTrue(playlistPersistence.url.endsWith("/playlist.m3u"))
     }
 
     @Test
     fun advertisesMixedPlaylistAsVideo() {
-        val playlist =
+        val playlistPersistence =
             DlnaPlaylist(
-                Playlist("id", "Mixed", listOf("track", "video")),
+                PlaylistPersistence("id", "Mixed", listOf("track", "video")),
                 listOf(audioItem("track", "Track", null), videoItem("video", "Video", null)),
                 "http://server",
             )
 
-        assertTrue(playlist.metadataDidlLite().contains("http-get:*:application/x-mpegurl:*"))
+        assertTrue(playlistPersistence.metadataDidlLite().contains("http-get:*:application/x-mpegurl:*"))
     }
 
     @Test
     fun createsAudioPayloadWithoutExtraMetadata() {
-        val playlist = Playlist("list", "Audio", listOf("track"))
-        val payload = DlnaPlaylist(playlist, listOf(audioItem("track", "Track", File("cover.jpg"))), "http://server").toPayload()!!
+        val playlistPersistence = PlaylistPersistence("list", "Audio", listOf("track"))
+        val payload = DlnaPlaylist(playlistPersistence, listOf(audioItem("track", "Track", File("cover.jpg"))), "http://server").toPayload()!!
 
         assertEquals("audio/x-mpegurl", payload.mimeType)
         assertFalse(payload.content.contains("#EXTALBUMARTURL"))
@@ -54,8 +54,8 @@ class DlnaPlaylistTest {
 
     @Test
     fun omitsCoverMetadataForAudioEntriesWithoutThumbnail() {
-        val playlist = Playlist("list", "Audio", listOf("track"))
-        val payload = DlnaPlaylist(playlist, listOf(audioItem("track", "Track", null)), "http://server").toPayload()!!
+        val playlistPersistence = PlaylistPersistence("list", "Audio", listOf("track"))
+        val payload = DlnaPlaylist(playlistPersistence, listOf(audioItem("track", "Track", null)), "http://server").toPayload()!!
 
         assertFalse(payload.content.contains("#EXTALBUMARTURL"))
         assertFalse(payload.content.contains("tvg-logo"))
@@ -63,11 +63,11 @@ class DlnaPlaylistTest {
 
     @Test
     fun createsOrderedPayloadWithAbsoluteVideoUrlsAndSafeTitles() {
-        val playlist = Playlist("list", "My list", listOf("two", "missing", "one"))
+        val playlistPersistence = PlaylistPersistence("list", "My list", listOf("two", "missing", "one"))
         val one = videoItem("one", "First\nvideo", thumbnail = null)
         val two = videoItem("two", "Second", thumbnail = null)
 
-        val payload = DlnaPlaylist(playlist, listOf(one, two), "http://192.168.1.2:8080").toPayload()!!
+        val payload = DlnaPlaylist(playlistPersistence, listOf(one, two), "http://192.168.1.2:8080").toPayload()!!
 
         assertEquals(
             "#EXTM3U\r\n" +
@@ -81,19 +81,19 @@ class DlnaPlaylistTest {
 
     @Test
     fun returnsNullWhenNoPlaylistEntryExists() {
-        val playlist = DlnaPlaylist(Playlist("list", "Empty", listOf("gone")), emptyList(), "http://host:1")
+        val playlistPersistence = DlnaPlaylist(PlaylistPersistence("list", "Empty", listOf("gone")), emptyList(), "http://host:1")
 
-        assertNull(playlist.toPayload())
+        assertNull(playlistPersistence.toPayload())
     }
 
     @Test
     fun createsVideoAndMixedPayloads() {
         val videoPayload =
-            DlnaPlaylist(Playlist("video-list", "Video", listOf("video")), listOf(videoItem("video", "Video", null)), "http://server")
+            DlnaPlaylist(PlaylistPersistence("video-list", "Video", listOf("video")), listOf(videoItem("video", "Video", null)), "http://server")
                 .toPayload()!!
         val mixedPayload =
             DlnaPlaylist(
-                Playlist("mixed-list", "Mixed", listOf("track", "video")),
+                PlaylistPersistence("mixed-list", "Mixed", listOf("track", "video")),
                 listOf(audioItem("track", "Track", null), videoItem("video", "Video", null)),
                 "http://server",
             ).toPayload()!!
@@ -109,7 +109,7 @@ class DlnaPlaylistTest {
     fun omitsTrackCoverForVideoPayloads() {
         val payload =
             DlnaPlaylist(
-                Playlist("list", "Video", listOf("video")),
+                PlaylistPersistence("list", "Video", listOf("video")),
                 listOf(videoItem("video", "Video", File("cover.jpg"))),
                 "http://server",
             ).toPayload()!!

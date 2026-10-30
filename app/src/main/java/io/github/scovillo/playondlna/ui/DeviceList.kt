@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -59,40 +60,48 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
+import io.github.scovillo.playondlna.dlna.control.PlaybackSession
+import io.github.scovillo.playondlna.model.PlaybackScreenModel
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.onSubscription
 
 @Composable
-fun DlnaListScreen(dlnaModel: DlnaDevicesListScreenModel) {
+fun DlnaListScreen(dlnaModel: PlaybackScreenModel) {
     val selectedDevice by dlnaModel.selectedDevice.collectAsState()
-    val playbackStatuses by dlnaModel.playbackStatuses.collectAsState()
-    val playlistIndices by dlnaModel.playlistIndices.collectAsState()
-    val sessions by dlnaModel.mediaSessions.collectAsState()
     val sponsorBlockSegmentCounts by dlnaModel.sponsorBlockSegmentCounts.collectAsState()
-    val session = selectedDevice?.let { sessions[it.usn] }
-    val status = selectedDevice?.let { playbackStatuses[it.usn] }
-    val playlistIndex = selectedDevice?.let { playlistIndices[it.usn] }
-    val currentVideo = session?.currentItem(status, playlistIndex)
+    val isSponsorBlockEnabled by dlnaModel.isSponsorBlockEnabled.collectAsState()
+    val playbackSessions = dlnaModel.playbackSessions
+    val deviceId = selectedDevice?.usn
+    val session by produceState<PlaybackSession?>(
+        initialValue = null,
+        key1 = playbackSessions,
+        key2 = deviceId,
+    ) {
+        value = null
+        playbackSessions.updates
+            .onSubscription {
+                value = deviceId?.let { playbackSessions.all[it] }
+            }
+            .filter { it.id == deviceId }
+            .collect { value = it }
+    }
+    val currentVideo = session?.currentItem
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         dlnaModel.toastEvents.collect { event ->
             if (event is ToastEvent.Show) Toast.makeText(context, context.getString(event.messageResId), Toast.LENGTH_LONG).show()
         }
     }
-    LaunchedEffect(currentVideo?.metadata?.id) {
-        currentVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
+    LaunchedEffect(currentVideo?.metadata?.id, isSponsorBlockEnabled) {
+        if (isSponsorBlockEnabled) currentVideo?.metadata?.id?.let(dlnaModel::loadSponsorBlockSegmentCount)
     }
     Column(Modifier.fillMaxSize()) {
         DlnaRemoteControl(
-            currentVideo = currentVideo,
             currentThumbnail = currentVideo?.thumbnail,
-            playlist = if (currentVideo != null) session?.playlist else null,
-            sponsorBlockSegmentCount = currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get),
-            selectedDevice = selectedDevice,
-            playbackStatus = status,
-            playlistIndex = playlistIndex,
-            playlistSize = if (currentVideo != null && session?.playlist != null) session.items.size else 0,
-            onCommand = dlnaModel::remoteCommand,
-            onSeek = dlnaModel::seekTo,
+            sponsorBlockSegmentCount = if (isSponsorBlockEnabled) currentVideo?.metadata?.id?.let(sponsorBlockSegmentCounts::get) else null,
+            session = session,
+            onCommand = dlnaModel::remoteControlCommand,
+            onSeek = dlnaModel::seekTo
         )
         PlayerList(dlnaModel, Modifier.weight(1f), onSelected = dlnaModel::selectDevice)
     }
@@ -100,7 +109,7 @@ fun DlnaListScreen(dlnaModel: DlnaDevicesListScreenModel) {
 
 @Composable
 fun PlayerList(
-    dlnaModel: DlnaDevicesListScreenModel,
+    dlnaModel: PlaybackScreenModel,
     modifier: Modifier = Modifier,
     highlightSelectedPlayer: Boolean = true,
     @StringRes headingRes: Int = R.string.available_players,
@@ -152,7 +161,11 @@ internal fun PlayerListContent(
         label = "rotation",
     )
     Column(modifier) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(stringResource(headingRes), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             IconButton(onClick = onRefresh, enabled = !isLoading) {
                 Icon(Icons.Default.Refresh, stringResource(R.string.refresh), Modifier.rotate(if (isLoading) rotation else 0f))

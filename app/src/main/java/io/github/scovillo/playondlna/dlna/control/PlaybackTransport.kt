@@ -2,12 +2,12 @@ package io.github.scovillo.playondlna.dlna.control
 
 /**
  * Abstraction for playback-related transport operations.
- * Can be replaced with mock implementations for testing.
+ * Can be replaced copy mock implementations for testing.
  * Used by playback strategies and controllers.
  */
 interface PlaybackTransport {
     /**
-     * Set the transport URI and its DIDL-Lite metadata, then start playback.
+     * Set the transport URI and its DIDL-Lite metadata, then observe playback.
      */
     fun play(
         url: String,
@@ -27,16 +27,16 @@ interface PlaybackTransport {
     /**
      * Get the URI of the currently playing track.
      */
-    fun currentTrackUri(): String?
+    fun currentTrackUri(): String
 
-    fun currentPositionSeconds(): Double?
+    fun currentPositionSeconds(): Double
 
     /** Read URI and position from one GetPositionInfo request where possible. */
     fun positionInfo(): PlaybackPositionInfo =
         PlaybackPositionInfo(
             trackUri = currentTrackUri(),
             positionSeconds = currentPositionSeconds(),
-            durationSeconds = null,
+            durationSeconds = 0.0,
         )
 
     fun mediaInfo(): PlaybackMediaInfo? = null
@@ -45,14 +45,20 @@ interface PlaybackTransport {
 }
 
 data class PlaybackPositionInfo(
-    val trackUri: String?,
-    val positionSeconds: Double?,
-    val trackNumber: Int? = null,
-    val durationSeconds: Double? = null,
+    val trackUri: String = "",
+    val positionSeconds: Double = 0.0,
+    val trackNumber: Int = 0,
+    val durationSeconds: Double = 0.0,
 )
 
 data class PlaybackMediaInfo(
     val numberOfTracks: Int?,
     val currentUri: String?,
     val nextUri: String?,
+)
+
+/** Combined result of GetTransportInfo and GetPositionInfo. */
+data class PlaybackInfo(
+    val state: TransportState,
+    val positionInfo: PlaybackPositionInfo,
 )

@@ -46,13 +46,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
+import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
 import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.DeviceDiscoveryModel
-import io.github.scovillo.playondlna.model.DlnaDevicesListScreenModel
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
+import io.github.scovillo.playondlna.model.PlaybackScreenModel
+import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.PlaylistViewModel
 import io.github.scovillo.playondlna.model.StorageManagement
 import io.github.scovillo.playondlna.model.VideoSettingsState
@@ -60,11 +61,10 @@ import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.LibraryStorageMigration
 import io.github.scovillo.playondlna.persistence.PlaylistManager
 import io.github.scovillo.playondlna.persistence.SettingsRepository
+import io.github.scovillo.playondlna.persistence.SponsorBlockCache
 import io.github.scovillo.playondlna.preparation.MediaModel
 import io.github.scovillo.playondlna.preparation.WifiConnectionState
 import io.github.scovillo.playondlna.server.MediaServerService
-import io.github.scovillo.playondlna.server.localIpAddress
-import io.github.scovillo.playondlna.server.serverPort
 import io.github.scovillo.playondlna.ui.DlnaListScreen
 import io.github.scovillo.playondlna.ui.LibraryScreen
 import io.github.scovillo.playondlna.ui.PlayerList
@@ -78,6 +78,8 @@ import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.NewPipe
 
 class MainActivity : ComponentActivity() {
+    private val playOnDlnaApp: PlayOnDlnaApp
+        get() = application as PlayOnDlnaApp
     private lateinit var mediaModel: MediaModel
     private var isPermissionRequestInProgress = false
 
@@ -96,7 +98,8 @@ class MainActivity : ComponentActivity() {
         NewPipe.init(OkHttpDownloadClient())
 
         val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-        localIpAddress.initialize(connectivityManager)
+        playOnDlnaApp.localIpAddress.initialize(connectivityManager)
+        playOnDlnaApp.serverPort.value()
         val settingsRepository = SettingsRepository(this)
         val libraryDir = filesDir
         val migrationState = LibraryStorageMigration(cacheDir, libraryDir)
@@ -140,20 +143,24 @@ class MainActivity : ComponentActivity() {
                 mediaModel.onLibraryChange,
             )
         val favoriteDevices = FavoriteDevices(settingsRepository)
-        val dlnaDevicesListScreenModel =
-            DlnaDevicesListScreenModel(
+        val playbackScreenModel =
+            PlaybackScreenModel(
                 ViewModelProvider(this)[DeviceDiscoveryModel::class.java],
+                playOnDlnaApp.localIpAddress,
+                playOnDlnaApp.serverPort,
                 favoriteDevices,
+                playOnDlnaApp.playbackSessions,
                 settingsRepository,
-                cacheDir,
+                SponsorBlockClient(SponsorBlockCache(cacheDir)),
+                onPlaybackRequested = ::startWebServerServiceWithNotificationPermission,
             )
         setContent {
             playOnDlnaTheme {
                 var pendingItems by remember { mutableStateOf(emptyList<LibraryItem>()) }
-                var pendingPlaylist by remember { mutableStateOf<DlnaPlaylist?>(null) }
+                var pendingPlaylist by remember { mutableStateOf<Playlist?>(null) }
                 var navigateToPlayback by remember { mutableStateOf<(() -> Unit)?>(null) }
                 mainScreen(
-                    playScreen = { DlnaListScreen(dlnaDevicesListScreenModel) },
+                    playScreen = { DlnaListScreen(playbackScreenModel) },
                     libraryScreen = { navController ->
                         LibraryScreen(libraryViewModel, playlistViewModel, mediaModel, navController, storageManagement::calculateSizes, {
                             pendingItems = listOfNotNull(mediaModel.currentVideoFile.value)
@@ -161,14 +168,14 @@ class MainActivity : ComponentActivity() {
                             navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }) { playlist, items ->
                             pendingItems = items
-                            pendingPlaylist = DlnaPlaylist(playlist, items, "http://${localIpAddress.value()}:$serverPort")
+                            pendingPlaylist = Playlist(playlist.id, playlist.name, items)
                             navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }
                     },
                     playlistsScreen = { navController ->
                         PlaylistsScreen(playlistViewModel, libraryViewModel, mediaModel, navController) { playlist, items ->
                             pendingItems = items
-                            pendingPlaylist = DlnaPlaylist(playlist, items, "http://${localIpAddress.value()}:$serverPort")
+                            pendingPlaylist = Playlist(playlist.id, playlist.name, items)
                             navigateToPlayback = { navController.navigate("play") { launchSingleTop = true } }
                         }
                     },
@@ -185,7 +192,7 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest = { pendingItems = emptyList() },
                         title = {
                             Text(
-                                pendingPlaylist?.title ?: pendingItems.first().metadata.title,
+                                pendingPlaylist?.name ?: pendingItems.first().metadata.title,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -193,7 +200,7 @@ class MainActivity : ComponentActivity() {
                         text = {
                             Column {
                                 PlayerList(
-                                    dlnaDevicesListScreenModel,
+                                    playbackScreenModel,
                                     Modifier.height(360.dp),
                                     highlightSelectedPlayer = false,
                                     headingRes = R.string.play_on,
@@ -202,12 +209,12 @@ class MainActivity : ComponentActivity() {
                                     val playlist = pendingPlaylist
                                     if (playlist != null) {
                                         mediaModel.selectPlaylist(items)
-                                        dlnaDevicesListScreenModel.playPlaylistOnDevice(device, items, playlist)
+                                        playbackScreenModel.startOnDevice(device, playlist)
                                     } else {
                                         mediaModel.selectMediaItem(items.first())
-                                        dlnaDevicesListScreenModel.playVideoOnDevice(device, items.first())
+                                        playbackScreenModel.startOnDevice(device, items.first())
                                     }
-                                    dlnaDevicesListScreenModel.selectDevice(device)
+                                    playbackScreenModel.selectDevice(device)
                                     pendingItems = emptyList()
                                     navigateToPlayback?.invoke()
                                 }
@@ -222,6 +229,10 @@ class MainActivity : ComponentActivity() {
             }
         }
         handleShareIntent(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {

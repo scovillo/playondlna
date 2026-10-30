@@ -30,7 +30,7 @@ class SeekSliderTest {
                     playlist = null,
                     sponsorBlockSegmentCount = null,
                     selectedDevice = null,
-                    playbackStatus = status.value,
+                    session = status.value,
                     playlistIndex = null,
                     playlistSize = 0,
                     onCommand = {},

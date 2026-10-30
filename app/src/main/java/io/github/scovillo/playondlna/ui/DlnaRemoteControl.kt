@@ -51,24 +51,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackStatus
+import io.github.scovillo.playondlna.dlna.control.PlaybackSession
 import io.github.scovillo.playondlna.dlna.control.TransportState
-import io.github.scovillo.playondlna.model.LibraryItem
 import java.io.File
 
 @Composable
 fun DlnaRemoteControl(
-    currentVideo: LibraryItem?,
     currentThumbnail: File?,
-    playlist: DlnaPlaylist?,
     sponsorBlockSegmentCount: Int?,
-    selectedDevice: DlnaDevice?,
-    playbackStatus: PlaybackStatus?,
-    playlistIndex: Int?,
-    playlistSize: Int,
+    session: PlaybackSession?,
     onCommand: (PlaybackCommand) -> Unit,
     onSeek: (Double) -> Unit,
 ) {
@@ -94,15 +86,14 @@ fun DlnaRemoteControl(
             ) {
                 Text(
                     text =
-                        currentVideo?.metadata?.title
-                            ?: playlist?.title
+                        session?.playlist?.name
                             ?: stringResource(
                                 when {
-                                    selectedDevice == null -> R.string.select_player_for_playback
-                                    playbackStatus?.transportState == TransportState.PLAYING -> R.string.playback_running
-                                    playbackStatus?.transportState == TransportState.PAUSED_PLAYBACK -> R.string.playback_paused
-                                    playbackStatus?.transportState == TransportState.TRANSITIONING -> R.string.playback_loading
-                                    playbackStatus?.transportState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT) -> R.string.playback_idle
+                                    session?.device == null -> R.string.select_player_for_playback
+                                    session.currentState == TransportState.PLAYING -> R.string.playback_running
+                                    session.currentState == TransportState.PAUSED_PLAYBACK -> R.string.playback_paused
+                                    session.currentState == TransportState.TRANSITIONING -> R.string.playback_loading
+                                    session.currentState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT) -> R.string.playback_idle
                                     else -> R.string.playback_status_unknown
                                 },
                             ),
@@ -110,14 +101,16 @@ fun DlnaRemoteControl(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                playlist?.let {
-                    Text(
-                        text = stringResource(R.string.playlist_title, it.title),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                session?.playlist?.items?.size?.let {
+                    if (it > 1) {
+                        Text(
+                            text = stringResource(R.string.playlist_title, session.playlist.name),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
-                selectedDevice?.let {
-                    Text(it.friendlyName, style = MaterialTheme.typography.bodyMedium)
+                if (session?.device != null) {
+                    Text(session.device.friendlyName, style = MaterialTheme.typography.bodyMedium)
                 }
                 sponsorBlockSegmentCount?.let { count ->
                     Text(
@@ -132,19 +125,19 @@ fun DlnaRemoteControl(
                 }
             }
         }
-        val position = playbackStatus?.positionSeconds?.coerceAtLeast(0.0) ?: 0.0
-        val duration = playbackStatus?.durationSeconds?.takeIf { it > 0.0 } ?: 0.0
+        val position = session?.currentPosition?.coerceAtLeast(0.0) ?: 0.0
+        val duration = session?.positionInfo?.durationSeconds?.takeIf { it > 0.0 } ?: 0.0
         val isPlaying =
-            playbackStatus?.transportState == TransportState.PLAYING ||
-                playbackStatus?.transportState == TransportState.TRANSITIONING
-        val isPaused = playbackStatus?.transportState == TransportState.PAUSED_PLAYBACK
+            session?.currentState == TransportState.PLAYING ||
+                session?.currentState == TransportState.TRANSITIONING
+        val isPaused = session?.currentState == TransportState.PAUSED_PLAYBACK
         val canSeek =
-            (playbackStatus?.transportState == TransportState.PLAYING || isPaused) && duration > 0.0
-        var seekPreview by remember(selectedDevice?.usn, playbackStatus?.trackUri, canSeek) { mutableStateOf<Float?>(null) }
+            (session?.currentState == TransportState.PLAYING || isPaused) && duration > 0.0
+        var seekPreview by remember(session?.device?.usn, session?.positionInfo?.trackUri, canSeek) { mutableStateOf<Float?>(null) }
         val displayedPosition = seekPreview?.toDouble() ?: position
-        val canPlay = selectedDevice != null && playbackStatus != null
-        val hasPrevious = playlistSize > 0 && (playlistIndex ?: 0) > 0
-        val hasNext = playlistSize > 0 && (playlistIndex ?: (playlistSize - 1)) < playlistSize - 1
+        val canPlay = session != null
+        val hasPrevious = session?.hasPrevious ?: false
+        val hasNext = session?.hasNext ?: false
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(formatTime(displayedPosition), style = MaterialTheme.typography.labelMedium)
@@ -157,7 +150,6 @@ fun DlnaRemoteControl(
                         },
                     onValueChange = { seekPreview = it },
                     onValueChangeFinished = {
-                        // The Slider owns gesture completion; no separate pointer handler may send a seek.
                         val target = seekPreview
                         seekPreview = null
                         if (canSeek && target != null) onSeek(target.toDouble())

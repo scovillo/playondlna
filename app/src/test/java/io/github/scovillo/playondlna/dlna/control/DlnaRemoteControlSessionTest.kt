@@ -13,8 +13,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +39,26 @@ class DlnaRemoteControlSessionTest {
     @After
     fun deleteCacheDirectory() {
         cacheDirectory.deleteRecursively()
+    }
+
+    private fun DlnaRemoteControl(
+        scope: CoroutineScope,
+        transport: DlnaTransport,
+        sponsorBlockClient: SponsorBlockClient,
+        playbackObservationDelay: kotlin.time.Duration = 1.milliseconds,
+        isSponsorBlockEnabled: () -> Boolean = { false },
+        onPlaybackFailure: suspend (Throwable) -> Unit = {},
+    ): DlnaRemoteControl {
+        val observation = PlaybackSessions(transport, java.util.concurrent.ConcurrentHashMap(), playbackObservationDelay)
+        scope.launch { observation.observe() }
+        return io.github.scovillo.playondlna.dlna.control.DlnaRemoteControl(
+            scope = scope,
+            transport = transport,
+            sponsorBlockClient = sponsorBlockClient,
+            isSponsorBlockEnabled = isSponsorBlockEnabled,
+            onPlaybackFailure = onPlaybackFailure,
+            observation = { observation },
+        )
     }
 
     @Test
@@ -96,6 +118,126 @@ class DlnaRemoteControlSessionTest {
                 controlScope.cancel()
             }
         }
+
+    @Test
+    fun skipsSponsorsAfterSingleTrackStopAndPlay() = verifySponsorBlockLifecycle(initiallyEnabled = true, restart = true)
+
+    @Test
+    fun enablingSponsorBlockDuringPlaybackStartsSkipping() = verifySponsorBlockLifecycle(initiallyEnabled = false, enableDuringPlayback = true)
+
+    @Test
+    fun disabledSponsorBlockDoesNotFetchOrSkip() = verifySponsorBlockLifecycle(initiallyEnabled = false)
+
+    @Test
+    fun disablingSponsorBlockDuringFetchPreventsSeek() = verifySponsorBlockLifecycle(initiallyEnabled = true, disableDuringFetch = true)
+
+    private fun verifySponsorBlockLifecycle(
+        initiallyEnabled: Boolean,
+        restart: Boolean = false,
+        enableDuringPlayback: Boolean = false,
+        disableDuringFetch: Boolean = false,
+    ) = runBlocking {
+        val item = videoFile("eeeeeeeeeee")
+        val renderer = device("sponsor-lifecycle")
+        val enabled = java.util.concurrent.atomic.AtomicBoolean(initiallyEnabled)
+        val state = java.util.concurrent.atomic.AtomicReference(TransportState.PLAYING)
+        val position = java.util.concurrent.atomic.AtomicReference(12.0)
+        val polls = java.util.concurrent.atomic.AtomicInteger()
+        val requests = java.util.concurrent.atomic.AtomicInteger()
+        val seeks = CopyOnWriteArrayList<Double>()
+        val client =
+            okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
+                requests.incrementAndGet()
+                if (disableDuringFetch) enabled.set(false)
+                okhttp3.Response.Builder()
+                    .request(chain.request())
+                    .protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("[{\"segment\":[10.0,20.0]}]".toResponseBody())
+                    .build()
+            }.build()
+        val transport =
+            object : DlnaTransport by RecordingTransport() {
+                override fun transportState(device: DlnaDevice): TransportState {
+                    polls.incrementAndGet()
+                    return state.get()
+                }
+
+                override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo(item.url, position.get(), 1, 60.0)
+
+                override fun command(
+                    device: DlnaDevice,
+                    command: PlaybackCommand,
+                ) {
+                    when (command) {
+                        PlaybackCommand.STOP -> state.set(TransportState.STOPPED)
+                        PlaybackCommand.PLAY -> {
+                            position.set(12.0)
+                            state.set(TransportState.PLAYING)
+                        }
+
+                        else -> Unit
+                    }
+                }
+
+                override fun seekTo(
+                    device: DlnaDevice,
+                    seconds: Double,
+                ) {
+                    position.set(seconds)
+                    seeks += seconds
+                }
+            }
+        val controlScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val remote =
+            DlnaRemoteControl(
+                scope = controlScope,
+                transport = transport,
+                isSponsorBlockEnabled = { enabled.get() },
+                sponsorBlockClient = SponsorBlockClient(SponsorBlockCache(cacheDirectory), client),
+                playbackObservationDelay = 1.milliseconds,
+            )
+        try {
+            remote.playMedia(renderer, item)
+            withTimeout(2_000.milliseconds) {
+                while (polls.get() < 5) delay(1.milliseconds)
+            }
+            if (!initiallyEnabled) {
+                assertEquals(0, requests.get())
+                assertEquals(emptyList<Double>(), seeks.toList())
+            }
+            if (enableDuringPlayback) enabled.set(true)
+            if (disableDuringFetch) {
+                withTimeout(2_000.milliseconds) {
+                    while (requests.get() == 0) delay(1.milliseconds)
+                }
+                delay(50.milliseconds)
+                assertEquals(emptyList<Double>(), seeks.toList())
+            }
+            if ((initiallyEnabled && !disableDuringFetch) || enableDuringPlayback) {
+                withTimeout(2_000.milliseconds) {
+                    while (seeks.isEmpty()) delay(1.milliseconds)
+                }
+                assertEquals(listOf(20.0), seeks.toList())
+            }
+            if (restart) {
+                remote.command(renderer, PlaybackCommand.STOP)
+                withTimeout(2_000.milliseconds) {
+                    remote.playbackStatuses.first { it[renderer.usn]?.transportState == TransportState.STOPPED }
+                }
+                delay(50.milliseconds)
+                remote.command(renderer, PlaybackCommand.PLAY)
+                withTimeout(2_000.milliseconds) {
+                    while (seeks.size < 2) delay(1.milliseconds)
+                }
+                assertEquals(listOf(20.0, 20.0), seeks.toList())
+                assertEquals(1, requests.get())
+            }
+        } finally {
+            controlScope.cancel()
+        }
+    }
 
     @Test
     fun observesSingleTrackAfterPlayTransitionError() =

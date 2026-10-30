@@ -70,7 +70,7 @@ class SessionPlaybackTest {
                     playlist = null,
                     sponsorBlockSegmentCount = null,
                     selectedDevice = renderer,
-                    playbackStatus = PlaybackStatus(oldState, "http://test/old-playlist-track.mp4", 20.0, 3, 60.0),
+                    session = PlaybackStatus(oldState, "http://test/old-playlist-track.mp4", 20.0, 3, 60.0),
                     playlistIndex = 2,
                     playlistSize = 0,
                     onCommand = { commands += it },

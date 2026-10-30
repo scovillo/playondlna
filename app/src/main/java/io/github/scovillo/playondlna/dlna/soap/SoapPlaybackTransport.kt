@@ -54,9 +54,9 @@ class SoapPlaybackTransport(
         return state
     }
 
-    override fun currentTrackUri(): String? = extractor.parseCurrentTrackUri(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
+    override fun currentTrackUri(): String = extractor.parseCurrentTrackUri(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
 
-    override fun currentPositionSeconds(): Double? = extractor.parseRelativeTimeSeconds(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
+    override fun currentPositionSeconds(): Double = extractor.parseRelativeTimeSeconds(soapClient.execute(GetPositionInfoCommand(serviceUrl)))
 
     override fun positionInfo(): PlaybackPositionInfo {
         val response = soapClient.execute(GetPositionInfoCommand(serviceUrl))

@@ -2,13 +2,16 @@ package io.github.scovillo.playondlna.dlna.control
 
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.soap.SoapPlaybackTransportFactory
-import io.github.scovillo.playondlna.model.LibraryItem
+import io.github.scovillo.playondlna.server.MediaFileResource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 
 /** Transport boundary used by [io.github.scovillo.playondlna.ui.DlnaRemoteControl] - provides legacy compatibility layer */
 interface DlnaTransport {
     fun playFile(
         device: DlnaDevice,
-        item: LibraryItem,
+        resource: MediaFileResource,
     )
 
     fun command(
@@ -18,11 +21,19 @@ interface DlnaTransport {
 
     fun transportState(device: DlnaDevice): TransportState
 
-    fun currentTrackUri(device: DlnaDevice): String?
+    fun currentTrackUri(device: DlnaDevice): String
 
-    fun currentPositionSeconds(device: DlnaDevice): Double?
+    fun currentPositionSeconds(device: DlnaDevice): Double
 
     fun positionInfo(device: DlnaDevice): PlaybackPositionInfo = PlaybackPositionInfo(currentTrackUri(device), currentPositionSeconds(device))
+
+    /** Reads both SOAP responses concurrently. They are not an atomic renderer snapshot. */
+    suspend fun playbackInfo(device: DlnaDevice): PlaybackInfo =
+        withContext(Dispatchers.IO) {
+            val state = async { transportState(device) }
+            val position = async { positionInfo(device) }
+            PlaybackInfo(state.await(), position.await())
+        }
 
     fun seekTo(
         device: DlnaDevice,
@@ -32,7 +43,7 @@ interface DlnaTransport {
 
 /**
  * Adapter from DlnaTransport to PlaybackTransport.
- * Creates appropriate PlaybackTransport implementations for communication with a device.
+ * Creates appropriate PlaybackTransport implementations for communication copy a device.
  */
 class SoapDlnaTransport : DlnaTransport {
     private val transportFactory = SoapPlaybackTransportFactory()
@@ -41,9 +52,9 @@ class SoapDlnaTransport : DlnaTransport {
 
     override fun playFile(
         device: DlnaDevice,
-        item: LibraryItem,
+        resource: MediaFileResource,
     ) {
-        transportFor(device).play(item.url, item.metaDataDidlLite)
+        transportFor(device).play(resource.url, resource.metaDataDidlLite)
     }
 
     override fun command(
@@ -55,9 +66,9 @@ class SoapDlnaTransport : DlnaTransport {
 
     override fun transportState(device: DlnaDevice): TransportState = transportFor(device).transportState()
 
-    override fun currentTrackUri(device: DlnaDevice): String? = transportFor(device).currentTrackUri()
+    override fun currentTrackUri(device: DlnaDevice): String = transportFor(device).currentTrackUri()
 
-    override fun currentPositionSeconds(device: DlnaDevice): Double? = transportFor(device).currentPositionSeconds()
+    override fun currentPositionSeconds(device: DlnaDevice): Double = transportFor(device).currentPositionSeconds()
 
     override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo = transportFor(device).positionInfo()
 
