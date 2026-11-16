@@ -11,15 +11,22 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.filter
 
-class PlaylistObservation(private val updates: SharedFlow<PlaybackSession>, private val localIpAddress: LocalIpAddress, private val serverPort: ServerPort) {
+class PlaylistObservation(
+    private val updates: SharedFlow<PlaybackSession>,
+    private val localIpAddress: LocalIpAddress,
+    private val serverPort: ServerPort,
+) {
     private val client = SoapDlnaTransport()
-
     private val marks = mutableMapOf<String, Int>()
 
     suspend fun observe() {
         updates.filter { it.playlist.size > 1 }.collect {
+            if (it.isExternalPlayback) {
+                marks.remove(it.id)
+                return@collect
+            }
             if (it.currentState == TransportState.PLAYING) {
-                val isFilePlaybackEnd = it.hasNext && it.positionInfo.durationSeconds > 0 && it.positionInfo.positionSeconds >= it.positionInfo.durationSeconds - 2
+                val isFilePlaybackEnd = it.hasNext && it.positionInfo.durationSeconds > 0 && it.positionInfo.positionSeconds >= it.positionInfo.durationSeconds - 5
                 AppLog.d("PlaylistObservation", "Session of ${it.device.friendlyName} isFilePlaybackEnd=$isFilePlaybackEnd")
                 if (isFilePlaybackEnd) {
                     marks[it.id] = it.predictIndex(PlaybackCommand.NEXT)

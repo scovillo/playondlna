@@ -86,7 +86,7 @@ fun DlnaRemoteControl(
             ) {
                 Text(
                     text =
-                        session?.playlist?.name
+                        session?.takeUnless { it.isExternalPlayback }?.currentItem?.metadata?.title
                             ?: stringResource(
                                 when {
                                     session?.device == null -> R.string.select_player_for_playback
@@ -101,10 +101,11 @@ fun DlnaRemoteControl(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                session?.playlist?.items?.size?.let {
+                val displayPlaylist = session?.takeUnless { it.isExternalPlayback }?.playlist
+                displayPlaylist?.items?.size?.let {
                     if (it > 1) {
                         Text(
-                            text = stringResource(R.string.playlist_title, session.playlist.name),
+                            text = stringResource(R.string.playlist_title, displayPlaylist.name),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }

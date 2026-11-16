@@ -41,20 +41,26 @@ class PlaybackSessionTest {
 
     @Test
     fun observationFindsQueueIndexFromTrackUriAndPreservesPlaylist() {
-        val position = PlaybackPositionInfo("http://media/two/video.mp4", 18.0, 1, 60.0)
+        val position = PlaybackPositionInfo("/two/alternate/other-name.mp4", 18.0, 1, 60.0)
         val updated = session.copy(state = TransportState.PAUSED_PLAYBACK, positionInfo = position)
         assertEquals(1, updated.currentIndex)
         assertEquals("two", updated.currentItem!!.metadata.id)
         assertEquals(18.0, updated.currentPosition, 0.0)
         assertEquals(TransportState.PAUSED_PLAYBACK, updated.currentState)
         assertSame(session.playlist, updated.playlist)
+        assertFalse(updated.isExternalPlayback)
+        assertTrue(updated.copy(playlist = Playlist.empty(), currentIndex = -1).isExternalPlayback)
         assertEquals(0, session.currentIndex)
     }
 
     @Test
     fun foreignTrackUriHasNoQueueIndex() {
-        val updated = session.copy(state = TransportState.PLAYING, positionInfo = PlaybackPositionInfo("plugin://foreign/track"))
+        val updated = session.copy(state = TransportState.PLAYING, positionInfo = PlaybackPositionInfo("http://foreign/media/video.mp4?item=foreign"))
         assertEquals(-1, updated.currentIndex)
+        assertTrue(updated.isExternalPlayback)
+        assertFalse(updated.copy(currentState = TransportState.STOPPED).isExternalPlayback)
+        assertTrue(updated.copy(currentState = TransportState.PAUSED_PLAYBACK).isExternalPlayback)
+        assertFalse(updated.copy(positionInfo = PlaybackPositionInfo()).isExternalPlayback)
     }
 
     @Test

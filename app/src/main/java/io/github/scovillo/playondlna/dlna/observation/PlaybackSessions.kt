@@ -48,6 +48,11 @@ data class PlaybackSession(
     val currentPosition: Double
         get() = positionInfo.positionSeconds
 
+    val isExternalPlayback: Boolean
+        get() =
+            (currentState == TransportState.PLAYING || currentState == TransportState.PAUSED_PLAYBACK) &&
+                positionInfo.trackUri.isNotBlank() && findTrackIndex(positionInfo.trackUri) < 0
+
     fun predictIndex(command: PlaybackCommand): Int =
         when (command) {
             PlaybackCommand.NEXT -> (currentIndex + 1).takeIf { it <= lastIndex } ?: currentIndex
@@ -59,11 +64,14 @@ data class PlaybackSession(
         state: TransportState,
         positionInfo: PlaybackPositionInfo,
     ): PlaybackSession {
-        val index =
-            playlist.items.indexOfFirst {
-                positionInfo.trackUri.contains(it.metadata.id)
-            }
-        return PlaybackSession(device, playlist, index, state, positionInfo)
+        return copy(currentIndex = findTrackIndex(positionInfo.trackUri), currentState = state, positionInfo = positionInfo)
+    }
+
+    private fun findTrackIndex(trackUri: String): Int {
+        if (trackUri.isBlank()) {
+            return -1
+        }
+        return playlist.items.indexOfFirst { trackUri.contains(it.metadata.id) }
     }
 
     override fun toString(): String {
