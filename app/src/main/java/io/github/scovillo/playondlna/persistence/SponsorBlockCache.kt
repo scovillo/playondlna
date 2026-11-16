@@ -1,7 +1,7 @@
 package io.github.scovillo.playondlna.persistence
 
 import io.github.scovillo.playondlna.AppLog
-import io.github.scovillo.playondlna.dlna.control.SponsorSegment
+import io.github.scovillo.playondlna.dlna.observation.SponsorSegment
 import org.json.JSONArray
 import java.io.File
 import java.util.concurrent.TimeUnit

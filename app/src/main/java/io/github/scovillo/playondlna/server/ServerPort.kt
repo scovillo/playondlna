@@ -15,5 +15,3 @@ class ServerPort {
             socket.localPort
         }
 }
-
-val serverPort = ServerPort().value()

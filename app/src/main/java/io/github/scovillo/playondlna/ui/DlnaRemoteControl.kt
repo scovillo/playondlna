@@ -39,6 +39,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,28 +51,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackStatus
-import io.github.scovillo.playondlna.dlna.control.TransportState
-import io.github.scovillo.playondlna.model.LibraryItem
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 import java.io.File
 
 @Composable
 fun DlnaRemoteControl(
-    currentVideo: LibraryItem?,
     currentThumbnail: File?,
-    playlist: DlnaPlaylist?,
     sponsorBlockSegmentCount: Int?,
-    selectedDevice: DlnaDevice?,
-    playbackStatus: PlaybackStatus?,
-    playlistIndex: Int?,
-    playlistSize: Int,
+    session: PlaybackSession?,
     onCommand: (PlaybackCommand) -> Unit,
     onSeek: (Double) -> Unit,
-    onPlay: (DlnaDevice) -> Unit,
-    onPlayerRequired: () -> Unit,
 ) {
     Card(
         modifier =
@@ -92,21 +86,32 @@ fun DlnaRemoteControl(
             ) {
                 Text(
                     text =
-                        currentVideo?.metadata?.title
-                            ?: playlist?.title
-                            ?: stringResource(R.string.no_media_selected),
+                        session?.takeUnless { it.isExternalPlayback }?.currentItem?.metadata?.title
+                            ?: stringResource(
+                                when {
+                                    session?.device == null -> R.string.select_player_for_playback
+                                    session.currentState == TransportState.PLAYING -> R.string.playback_running
+                                    session.currentState == TransportState.PAUSED_PLAYBACK -> R.string.playback_paused
+                                    session.currentState == TransportState.TRANSITIONING -> R.string.playback_loading
+                                    session.currentState in setOf(TransportState.STOPPED, TransportState.NO_MEDIA_PRESENT) -> R.string.playback_idle
+                                    else -> R.string.playback_status_unknown
+                                },
+                            ),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                playlist?.let {
-                    Text(
-                        text = stringResource(R.string.playlist_title, it.title),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                val displayPlaylist = session?.takeUnless { it.isExternalPlayback }?.playlist
+                displayPlaylist?.items?.size?.let {
+                    if (it > 1) {
+                        Text(
+                            text = stringResource(R.string.playlist_title, displayPlaylist.name),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
-                selectedDevice?.let {
-                    Text(it.friendlyName, style = MaterialTheme.typography.bodyMedium)
+                if (session?.device != null) {
+                    Text(session.device.friendlyName, style = MaterialTheme.typography.bodyMedium)
                 }
                 sponsorBlockSegmentCount?.let { count ->
                     Text(
@@ -121,31 +126,37 @@ fun DlnaRemoteControl(
                 }
             }
         }
-        val position = playbackStatus?.positionSeconds?.coerceAtLeast(0.0) ?: 0.0
-        val duration = playbackStatus?.durationSeconds?.takeIf { it > 0.0 } ?: 0.0
-        val isStopped = playbackStatus?.transportState == TransportState.STOPPED
+        val position = session?.currentPosition?.coerceAtLeast(0.0) ?: 0.0
+        val duration = session?.positionInfo?.durationSeconds?.takeIf { it > 0.0 } ?: 0.0
         val isPlaying =
-            playbackStatus?.transportState == TransportState.PLAYING ||
-                playbackStatus?.transportState == TransportState.TRANSITIONING
-        val isPaused = playbackStatus?.transportState == TransportState.PAUSED_PLAYBACK
-        val canPlay = currentVideo != null || playlist != null || isPaused
-        val canResumePlaylist =
-            playbackStatus?.transportState == TransportState.STOPPED && playlistIndex != null
-        val hasPrevious = playlistSize > 0 && (playlistIndex ?: 0) > 0
-        val hasNext = playlistSize > 0 && (playlistIndex ?: (playlistSize - 1)) < playlistSize - 1
+            session?.currentState == TransportState.PLAYING ||
+                session?.currentState == TransportState.TRANSITIONING
+        val isPaused = session?.currentState == TransportState.PAUSED_PLAYBACK
+        val canSeek =
+            (session?.currentState == TransportState.PLAYING || isPaused) && duration > 0.0
+        var seekPreview by remember(session?.device?.usn, session?.positionInfo?.trackUri, canSeek) { mutableStateOf<Float?>(null) }
+        val displayedPosition = seekPreview?.toDouble() ?: position
+        val canPlay = session != null
+        val hasPrevious = session?.hasPrevious ?: false
+        val hasNext = session?.hasNext ?: false
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(position), style = MaterialTheme.typography.labelMedium)
+                Text(formatTime(displayedPosition), style = MaterialTheme.typography.labelMedium)
                 Slider(
                     value =
                         if (duration > 0.0) {
-                            position.toFloat().coerceIn(0f, duration.toFloat())
+                            displayedPosition.toFloat().coerceIn(0f, duration.toFloat())
                         } else {
                             0f
                         },
-                    onValueChange = { onSeek(it.toDouble()) },
+                    onValueChange = { seekPreview = it },
+                    onValueChangeFinished = {
+                        val target = seekPreview
+                        seekPreview = null
+                        if (canSeek && target != null) onSeek(target.toDouble())
+                    },
                     valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-                    enabled = !isStopped && duration > 0.0,
+                    enabled = canSeek,
                     modifier =
                         Modifier
                             .weight(1f)
@@ -164,7 +175,7 @@ fun DlnaRemoteControl(
             RemoteButton(
                 Icons.Default.FastRewind,
                 R.string.rewind_30_seconds,
-                enabled = isPlaying && duration > 0.0,
+                enabled = canSeek,
             ) {
                 onSeek((position - 30.0).coerceAtLeast(0.0))
             }
@@ -173,19 +184,15 @@ fun DlnaRemoteControl(
                 if (isPlaying) R.string.pause else R.string.play,
                 enabled = canPlay,
             ) {
-                if (isPlaying || isPaused || canResumePlaylist) {
-                    onCommand(if (isPlaying) PlaybackCommand.PAUSE else PlaybackCommand.PLAY)
-                } else {
-                    selectedDevice?.let(onPlay) ?: onPlayerRequired()
-                }
+                onCommand(if (isPlaying) PlaybackCommand.PAUSE else PlaybackCommand.PLAY)
             }
-            RemoteButton(Icons.Default.Stop, R.string.stop, enabled = isPlaying) {
+            RemoteButton(Icons.Default.Stop, R.string.stop, enabled = isPlaying || isPaused) {
                 onCommand(PlaybackCommand.STOP)
             }
             RemoteButton(
                 Icons.Default.FastForward,
                 R.string.forward_30_seconds,
-                enabled = isPlaying && duration > 0.0,
+                enabled = canSeek,
             ) {
                 onSeek((position + 30.0).coerceAtMost(duration))
             }

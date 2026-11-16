@@ -1,7 +1,6 @@
 package io.github.scovillo.playondlna.persistence
 
 import android.util.Log
-import io.github.scovillo.playondlna.model.Playlist
 import org.json.JSONArray
 import java.io.File
 import java.util.UUID
@@ -10,15 +9,15 @@ class PlaylistManager(private val cacheDir: File) {
     private val file = File(cacheDir, "playlists.json")
 
     @Synchronized
-    fun getPlaylists(): List<Playlist> = readPlaylists()
+    fun getPlaylists(): List<PlaylistPersistence> = readPlaylists()
 
     @Synchronized
-    fun createPlaylist(name: String): Playlist? {
+    fun createPlaylist(name: String): PlaylistPersistence? {
         val normalizedName = name.trim()
         if (normalizedName.isEmpty()) return null
-        val playlist = Playlist(UUID.randomUUID().toString(), normalizedName, emptyList())
-        val playlists = readPlaylists() + playlist
-        return playlist.takeIf { savePlaylists(playlists) }
+        val playlistPersistence = PlaylistPersistence(UUID.randomUUID().toString(), normalizedName, emptyList())
+        val playlists = readPlaylists() + playlistPersistence
+        return playlistPersistence.takeIf { savePlaylists(playlists) }
     }
 
     @Synchronized
@@ -71,7 +70,7 @@ class PlaylistManager(private val cacheDir: File) {
 
     private fun updatePlaylist(
         id: String,
-        transform: (Playlist) -> Playlist,
+        transform: (PlaylistPersistence) -> PlaylistPersistence,
     ): Boolean {
         val playlists = readPlaylists()
         val old = playlists.find { it.id == id } ?: return false
@@ -79,14 +78,14 @@ class PlaylistManager(private val cacheDir: File) {
         return updated != old && savePlaylists(playlists.map { if (it.id == id) updated else it })
     }
 
-    private fun readPlaylists(): List<Playlist> {
+    private fun readPlaylists(): List<PlaylistPersistence> {
         if (!file.exists() || file.length() == 0L) return emptyList()
         return try {
             val array = JSONArray(file.readText())
             buildList {
                 for (index in 0 until array.length()) {
                     val value = array.optJSONObject(index) ?: continue
-                    runCatching { Playlist.fromJson(value) }.getOrNull()?.let(::add)
+                    runCatching { PlaylistPersistence.fromJson(value) }.getOrNull()?.let(::add)
                 }
             }.distinctBy { it.id }
         } catch (e: Exception) {
@@ -95,11 +94,11 @@ class PlaylistManager(private val cacheDir: File) {
         }
     }
 
-    private fun savePlaylists(playlists: List<Playlist>): Boolean =
+    private fun savePlaylists(playlistPersistences: List<PlaylistPersistence>): Boolean =
         try {
             cacheDir.mkdirs()
             val temporaryFile = File(cacheDir, "playlists.json.tmp")
-            temporaryFile.writeText(JSONArray(playlists.map { it.toJson() }).toString())
+            temporaryFile.writeText(JSONArray(playlistPersistences.map { it.toJson() }).toString())
             if (!temporaryFile.renameTo(file)) {
                 temporaryFile.copyTo(file, overwrite = true)
                 temporaryFile.delete()

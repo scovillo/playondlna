@@ -28,14 +28,33 @@ import android.os.IBinder
 import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import io.github.scovillo.playondlna.AppLog
+import io.github.scovillo.playondlna.PlayOnDlnaApp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.DlnaPlaylist
+import io.github.scovillo.playondlna.dlna.observation.PlaylistObservation
+import io.github.scovillo.playondlna.dlna.observation.SponsorBlockObservation
+import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager
+import io.github.scovillo.playondlna.persistence.SettingsRepository
+import io.github.scovillo.playondlna.persistence.SponsorBlockCache
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
 
+internal fun NanoHTTPD.Response.addMediaHeaders(item: LibraryItem) {
+    addHeader("contentFeatures.dlna.org", item.dlnaContentFeatures)
+    addHeader("transferMode.dlna.org", "Streaming")
+    addHeader("Accept-Ranges", "bytes")
+}
+
 class MediaHttpServer(
+    private val localIpAddress: LocalIpAddress,
     private val serverPort: Int,
     private val libraryManager: LibraryManager,
     private val playlistManager: PlaylistManager,
@@ -48,30 +67,6 @@ class MediaHttpServer(
             session.headers.map { "${it.key}: ${it.value}" }.joinToString(System.lineSeparator()),
         )
         val uriParts = session.uri.split("/")
-        if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "playlist.m3u") {
-            val id = uriParts[2]
-            AppLog.i("MediaHttpServer", "Playlist request for $id")
-            val playlist =
-                playlistManager.getPlaylists().find { it.id == id }
-                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist not found")
-            val payload =
-                DlnaPlaylist(
-                    playlist,
-                    libraryManager.fetchAllItems(),
-                    "http://${localIpAddress.value()}:$serverPort",
-                ).toPayload()
-                    ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Playlist is empty")
-            return newFixedLengthResponse(Response.Status.OK, "${payload.mimeType}; charset=UTF-8", payload.content)
-        }
-        if (uriParts.size == 4 && uriParts[1] == "playlists" && uriParts[3] == "cover.jpg") {
-            AppLog.i("MediaHttpServer", "Cover request for playlists")
-            return newFixedLengthResponse(
-                Response.Status.OK,
-                "image/jpeg",
-                ByteArrayInputStream(defaultCover),
-                defaultCover.size.toLong(),
-            )
-        }
         val id = uriParts.getOrNull(1) ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
         val item = runCatching { libraryManager.fetchOneItem(id) }.getOrNull()
 
@@ -111,7 +106,7 @@ class MediaHttpServer(
             ?: return newFixedLengthResponse(
                 Response.Status.NOT_FOUND,
                 MIME_PLAINTEXT,
-                "Media file with id $id not found!",
+                "Media file copy id $id not found!",
             )
         val file = item.mediaFile
         val fileLength = file.length()
@@ -146,16 +141,9 @@ class MediaHttpServer(
                         addHeader("Content-Range", "bytes $start-$end/$fileLength")
                     }
                 } else {
-                    newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength).apply {
-                        addHeader(
-                            "contentFeatures.dlna.org",
-                            "DLNA.ORG_PN=${item.dlnaProfile}.;DLNA.ORG_OP=11;" +
-                                "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000",
-                        )
-                        addHeader("transferMode.dlna.org", "Streaming")
-                    }
+                    newFixedLengthResponse(Response.Status.OK, mimeType, fis, contentLength)
                 }
-            response.addHeader("Accept-Ranges", "bytes")
+            response.addMediaHeaders(item)
             response.addHeader("Connection", "keep-alive")
             Log.i("MediaHttpServer", "<- ${session.uri}")
             return response
@@ -171,19 +159,28 @@ class MediaHttpServer(
 }
 
 class MediaServerService : Service() {
+    private val playOnDlnaApp: PlayOnDlnaApp
+        get() = application as PlayOnDlnaApp
+    private lateinit var sponsorBlockObservation: SponsorBlockObservation
+
+    private val observationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mediaServerNotification = MediaServerNotification()
+    private lateinit var playlistObservation: PlaylistObservation
     private var mediaHttpServer: MediaHttpServer? = null
     private var isServerStarted = false
 
     override fun onCreate() {
         AppLog.i("MediaServerService", "onCreate")
         super.onCreate()
-        localIpAddress.initialize(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
+        playlistObservation =
+            PlaylistObservation(
+                playOnDlnaApp.playbackSessions.updates,
+                playOnDlnaApp.localIpAddress,
+                playOnDlnaApp.serverPort,
+            )
+        playOnDlnaApp.localIpAddress.initialize(getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
         mediaServerNotification.createNotificationChannel(this)
-        isServerStarted = startMediaFileServer()
-        if (!isServerStarted) {
-            stopSelf()
-        }
+        sponsorBlockObservation = SponsorBlockObservation(playOnDlnaApp.playbackSessions.updates, SponsorBlockCache(cacheDir))
     }
 
     private fun startMediaFileServer(): Boolean =
@@ -191,13 +188,14 @@ class MediaServerService : Service() {
             val defaultCover = resources.openRawResource(R.raw.playlist_album_cover).use { it.readBytes() }
             mediaHttpServer =
                 MediaHttpServer(
-                    serverPort,
+                    playOnDlnaApp.localIpAddress,
+                    playOnDlnaApp.serverPort.value(),
                     LibraryManager(filesDir),
                     PlaylistManager(filesDir),
                     defaultCover,
                 ).also { it.start() }
             promoteToForeground(
-                mediaServerNotification.build(this, getString(R.string.notification_text, localIpAddress.value(), serverPort)),
+                mediaServerNotification.build(this, getString(R.string.notification_text, playOnDlnaApp.localIpAddress.value(), playOnDlnaApp.serverPort.value())),
             )
             Log.i("MediaServerService", "HTTP server started")
             true
@@ -211,7 +209,7 @@ class MediaServerService : Service() {
     private fun promoteToForeground(notification: Notification) {
         val isSdkModern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         if (isSdkModern) {
-            AppLog.i("MediaServerService", "startForeground modern with FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK")
+            AppLog.i("MediaServerService", "startForeground modern copy FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK")
             startForeground(mediaServerNotification.id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
             return
         } else {
@@ -227,13 +225,28 @@ class MediaServerService : Service() {
     ): Int {
         if (intent?.action == mediaServerNotification.actionStopServer) {
             AppLog.i("MediaServerService", "Stopping service cause of notification action")
+            stopServing()
             stopSelf()
             return START_NOT_STICKY
         }
         if (!isServerStarted) {
-            AppLog.i("MediaServerService", "Stopping service because server failed to start")
-            stopSelf()
-            return START_NOT_STICKY
+            isServerStarted = startMediaFileServer()
+            if (isServerStarted) {
+                observationScope.launch { playOnDlnaApp.playbackSessions.observe() }
+                observationScope.launch { playlistObservation.observe() }
+                val settings = SettingsRepository(this)
+                observationScope.launch {
+                    settings.isSponsorBlockEnabledFlow.collectLatest { enabled ->
+                        if (enabled) {
+                            sponsorBlockObservation.observe()
+                        }
+                    }
+                }
+            } else {
+                AppLog.i("MediaServerService", "Stopping service because server failed to start")
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         AppLog.i("MediaServerService", "Start sticky")
         return START_STICKY
@@ -241,8 +254,16 @@ class MediaServerService : Service() {
 
     override fun onDestroy() {
         AppLog.i("MediaServerService", "onDestroy")
+        observationScope.cancel()
+        stopServing()
+        super.onDestroy()
+    }
+
+    private fun stopServing() {
+        observationScope.coroutineContext.cancelChildren()
         mediaHttpServer?.stop()
         mediaHttpServer = null
+        isServerStarted = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }

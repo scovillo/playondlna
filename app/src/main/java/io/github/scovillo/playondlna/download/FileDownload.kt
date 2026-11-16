@@ -27,19 +27,21 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 val okHttpClient =
     OkHttpClient.Builder()
@@ -70,8 +72,22 @@ class PlayOnDlnaFileDownload(
     suspend fun start(onProgress: (totalDownloaded: Long) -> Unit): File =
         coroutineScope {
             outputFile = File.createTempFile(filePrefix, fileSuffix, cacheDir)
-            _totalSize = getContentLengthViaRange(url)
-            if (_totalSize <= 0L) throw IOException("Invalid content length")
+            _totalSize =
+                try {
+                    probeDownloadLength()
+                } catch (error: Exception) {
+                    outputFile.delete()
+                    throw error
+                }
+            if (_totalSize <= 0L) {
+                try {
+                    downloadWithoutRange(onProgress)
+                    return@coroutineScope outputFile
+                } catch (error: Exception) {
+                    outputFile.delete()
+                    throw error
+                }
+            }
 
             val chunks = chunkCalculation.chunks(totalSize)
             Log.d(
@@ -151,22 +167,51 @@ class PlayOnDlnaFileDownload(
         }
     }
 
-    private fun getContentLengthViaRange(url: String): Long {
+    private suspend fun downloadWithoutRange(onProgress: (Long) -> Unit) {
         val request =
             Request.Builder()
                 .url(url)
                 .header("User-Agent", userAgent)
+                .header("Accept-Encoding", "identity")
+                .build()
+        client.newCall(request).execute().use { response ->
+            requireSuccessfulHttpStatus(response.code, response.message, response.request.url.toString())
+            if (response.code != 200) throw IOException("Expected full download, received HTTP ${response.code}")
+            val body = response.body ?: throw IOException("Empty body")
+            _totalSize = body.contentLength().takeIf { it > 0 } ?: 1L
+            var downloaded = 0L
+            body.byteStream().use { input ->
+                outputFile.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        onProgress(downloaded)
+                    }
+                }
+            }
+            if (downloaded == 0L) throw IOException("Empty download")
+            _totalSize = downloaded
+        }
+    }
+
+    internal fun probeDownloadLength(): Long {
+        val request =
+            Request.Builder()
+                .url(url)
+                .header("User-Agent", userAgent)
+                .header("Accept-Encoding", "identity")
                 .header("Range", "bytes=0-0")
                 .build()
         client.newCall(request).execute().use { response ->
-            val range = response.header("Content-Range")
-            if (range != null) {
-                val total = range.substringAfter("/").toLongOrNull()
-                if (total != null) return total
+            requireSuccessfulHttpStatus(response.code, response.message, response.request.url.toString())
+            if (response.code == 206) {
+                return response.header("Content-Range")?.substringAfter("/")?.toLongOrNull() ?: -1L
             }
-            val length = response.header("Content-Length")?.toLongOrNull()
-            if (length != null) return length
-            return -1
+            return response.body?.contentLength() ?: -1L
         }
     }
 
@@ -198,7 +243,6 @@ class PlayOnDlnaStreamDownload(
     private val cacheDir: File,
     private val state: MediaFileJobState,
     val logTimeInMillis: Int = 3000,
-    val userAgent: String = YoutubeParsingHelper.getAndroidUserAgent(null),
 ) {
     val downloads: MutableMap<String, PlayOnDlnaFileDownload> = mutableMapOf()
 
@@ -209,7 +253,7 @@ class PlayOnDlnaStreamDownload(
                     "${id}_video_",
                     ".tmp",
                     videoUrl,
-                    userAgent,
+                    StreamDownloadUserAgent(videoUrl).value(),
                     ChunkCalculation(16, 8 * 1024 * 1024),
                     okHttpClient,
                     cacheDir,
@@ -223,7 +267,7 @@ class PlayOnDlnaStreamDownload(
                 "${id}_audio_",
                 ".tmp",
                 audioUrl,
-                userAgent,
+                StreamDownloadUserAgent(audioUrl).value(),
                 ChunkCalculation(6, 4 * 1024 * 1024),
                 okHttpClient,
                 cacheDir,
@@ -236,7 +280,7 @@ class PlayOnDlnaStreamDownload(
                 "${id}_subtitle_",
                 ".${subtitleStream.locale.language}.srt",
                 subtitleStream.content,
-                userAgent,
+                StreamDownloadUserAgent(subtitleStream.content).value(),
                 ChunkCalculation(2, 4 * 1024 * 1024),
                 okHttpClient,
                 cacheDir,
@@ -253,12 +297,12 @@ class PlayOnDlnaStreamDownload(
                     var lastLogTime = startTime
 
                     while (isActive) {
-                        delay(20L)
+                        delay(20L.milliseconds)
 
                         val totalDownloaded = progress.sum()
                         val totalSize = downloads.values.sumOf { it.totalSize }
                         val progressPercent =
-                            (totalDownloaded.toDouble() * 100 / totalSize).toFloat().coerceIn(0.0f, 100.0f)
+                            downloadProgressPercent(totalDownloaded, totalSize)
 
                         state.updateDownloadProgress(progressPercent)
 
@@ -291,6 +335,7 @@ class PlayOnDlnaStreamDownload(
                 }
             jobs.awaitAll()
             progressJob.cancelAndJoin()
+            state.updateDownloadProgress(100.0f)
             if (downloads.isEmpty()) {
                 Log.d("Download", "No local downloads required; FFmpeg will read the remote stream directly")
             } else {
@@ -306,4 +351,9 @@ class PlayOnDlnaStreamDownload(
                 subtitle = if (downloads.containsKey("fetchSubtitle")) Subtitle(downloads["fetchSubtitle"]!!.result) else null,
             )
         }
+
+    private fun downloadProgressPercent(
+        downloaded: Long,
+        total: Long,
+    ): Float = if (total <= 0L) 0f else (downloaded.toDouble() * 100 / total).toFloat().coerceIn(0f, 99f)
 }

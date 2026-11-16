@@ -1,33 +1,30 @@
 package io.github.scovillo.playondlna.model
 
-import org.json.JSONArray
-import org.json.JSONObject
-
-data class Playlist(
+class Playlist(
     val id: String,
     val name: String,
-    val videoIds: List<String>,
+    val items: List<LibraryItem>,
 ) {
-    fun toJson(): JSONObject =
-        JSONObject().apply {
-            put("id", id)
-            put("name", name)
-            put("videoIds", JSONArray(videoIds))
-        }
+    val size: Int
+        get() = items.size
+
+    val isEmpty: Boolean
+        get() = items.isEmpty()
+
+    val isNotEmpty: Boolean
+        get() = items.isNotEmpty()
+
+    operator fun get(index: Int): LibraryItem {
+        return items[index]
+    }
 
     companion object {
-        fun fromJson(json: JSONObject): Playlist {
-            val ids = json.optJSONArray("videoIds") ?: JSONArray()
-            return Playlist(
-                id = json.getString("id"),
-                name = json.getString("name"),
-                videoIds =
-                    buildList {
-                        for (index in 0 until ids.length()) {
-                            ids.optString(index).takeIf { it.isNotBlank() }?.let(::add)
-                        }
-                    }.distinct(),
-            )
+        fun empty(): Playlist {
+            return Playlist("", "", emptyList())
         }
+    }
+
+    override fun toString(): String {
+        return "Playlist(id=$id, name=$name, size=$size)"
     }
 }

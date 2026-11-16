@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -67,6 +68,7 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
 import io.github.scovillo.playondlna.model.PlaylistViewModel
+import io.github.scovillo.playondlna.persistence.PlaylistPersistence
 import io.github.scovillo.playondlna.preparation.MediaFileJobStatus
 import io.github.scovillo.playondlna.preparation.MediaModel
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +84,7 @@ fun LibraryScreen(
     navController: NavHostController,
     onLibraryChanged: () -> Unit,
     onVideoSelected: () -> Unit,
-    onPlayPlaylist: (io.github.scovillo.playondlna.model.Playlist, List<LibraryItem>) -> Unit,
+    onPlayPlaylist: (PlaylistPersistence, List<LibraryItem>) -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -271,7 +273,9 @@ private fun LibraryVideosScreen(
                         enableDismissFromEndToStart = false,
                         backgroundContent = {
                             Box(
-                                Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 24.dp),
                                 contentAlignment = Alignment.CenterStart,
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
@@ -289,10 +293,19 @@ private fun LibraryVideosScreen(
                                     },
                         ) {
                             Row(
-                                modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                modifier =
+                                    Modifier
+                                        .padding(8.dp)
+                                        .fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                ThumbnailImage(file = item.thumbnail, modifier = Modifier.size(100.dp, 70.dp).background(Color.DarkGray))
+                                ThumbnailImage(
+                                    file = item.thumbnail,
+                                    modifier =
+                                        Modifier
+                                            .size(100.dp, 70.dp)
+                                            .background(Color.DarkGray),
+                                )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -303,6 +316,7 @@ private fun LibraryVideosScreen(
                                         fontWeight = FontWeight.Bold,
                                     )
                                     Text(item.metadata.uploader, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row {
                                         Text(item.metadata.qualityName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
@@ -311,6 +325,12 @@ private fun LibraryVideosScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(formatFileSize(item.sizeInBytes), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                                     }
+                                }
+                                IconButton(onClick = {
+                                    mediaModel.selectMediaItem(item)
+                                    onVideoSelected()
+                                }) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_on))
                                 }
                                 IconButton(onClick = { videoToAdd = item.metadata.id }) {
                                     Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist))
@@ -324,7 +344,7 @@ private fun LibraryVideosScreen(
     }
     videoToAdd?.let { videoId ->
         AddToPlaylistDialog(
-            playlists = playlists,
+            playlistPersistences = playlists,
             onDismiss = { videoToAdd = null },
             onPlaylistSelected = {
                 playlistViewModel.addVideo(it, videoId)

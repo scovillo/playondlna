@@ -12,6 +12,7 @@
     <string name="wlan_disconnected">Wi-Fi відключено! Завантаження скасовано для захисту мобільного трафіку 🔒</string>
     <string name="multicast_disabled">Помилка сканування! Multicast недоступний у вашій мережі</string>
     <string name="playback_failed">Не вдалося відтворити!</string>
+    <string name="seek_failed">Не вдалося змінити позицію відтворення.</string>
     <string name="player_incompatible">Медіаплеєр наразі несумісний!</string>
     <string name="select_player_for_playback">Виберіть програвач для відтворення.</string>
     <string name="cache_cleared">Кеш очищено!</string>
@@ -150,4 +151,13 @@
     <string name="q_1440p">1440p</string>
     <string name="q_2160p">2160p</string>
     <string name="device_icon">📺</string>
+    <string name="play_on">Відтворити на…</string>
+    <string name="player_searching">Пошук програвачів…</string>
+    <string name="no_players_found">Програвачів не знайдено. Натисніть «Оновити», щоб повторити пошук.</string>
+    <string name="playback_running">Відтворення триває</string>
+    <string name="playback_paused">Відтворення призупинено</string>
+    <string name="playback_loading">Завантаження відтворення…</string>
+    <string name="playback_idle">Немає відтворення</string>
+    <string name="playback_status_unknown">Отримання стану відтворення…</string>
+    <string name="imported_playlist_name">Імпортований список відтворення</string>
 </resources>

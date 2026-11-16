@@ -49,8 +49,8 @@ import androidx.navigation.NavHostController
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryViewModel
-import io.github.scovillo.playondlna.model.Playlist
 import io.github.scovillo.playondlna.model.PlaylistViewModel
+import io.github.scovillo.playondlna.persistence.PlaylistPersistence
 import io.github.scovillo.playondlna.preparation.MediaModel
 
 @Composable
@@ -59,14 +59,14 @@ fun PlaylistsScreen(
     libraryViewModel: LibraryViewModel,
     mediaModel: MediaModel,
     navController: NavHostController,
-    onPlayPlaylist: (Playlist, List<LibraryItem>) -> Unit,
+    onPlayPlaylist: (PlaylistPersistence, List<LibraryItem>) -> Unit,
 ) {
     val playlists by playlistViewModel.playlists
     val libraryItems by libraryViewModel.items
     val playlistId = navController.currentBackStackEntry?.arguments?.getString("playlistId")
     var creating by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<Playlist?>(null) }
-    var deleting by remember { mutableStateOf<Playlist?>(null) }
+    var renaming by remember { mutableStateOf<PlaylistPersistence?>(null) }
+    var deleting by remember { mutableStateOf<PlaylistPersistence?>(null) }
 
     LaunchedEffect(Unit) {
         playlistViewModel.loadPlaylists()
@@ -75,7 +75,7 @@ fun PlaylistsScreen(
     val playlist = playlists.find { it.id == playlistId }
     if (playlistId != null && playlist != null) {
         PlaylistDetails(
-            playlist = playlist,
+            playlistPersistence = playlist,
             libraryViewModel = libraryViewModel,
             mediaModel = mediaModel,
             onRemove = { playlistViewModel.removeVideo(playlist.id, it) },
@@ -127,7 +127,7 @@ fun PlaylistsScreen(
                                     onClick = { onPlayPlaylist(item, playableItems) },
                                     enabled = playableItems.isNotEmpty(),
                                 ) {
-                                    Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
+                                    Icon(Icons.Default.PlayArrow, stringResource(R.string.play_on))
                                 }
                                 IconButton(onClick = { renaming = item }) { Icon(Icons.Default.Edit, stringResource(R.string.rename_playlist)) }
                                 IconButton(onClick = { deleting = item }) { Icon(Icons.Default.Delete, stringResource(R.string.delete_playlist)) }
@@ -168,22 +168,22 @@ fun PlaylistsScreen(
 
 @Composable
 private fun PlaylistDetails(
-    playlist: Playlist,
+    playlistPersistence: PlaylistPersistence,
     libraryViewModel: LibraryViewModel,
     mediaModel: MediaModel,
     onRemove: (String) -> Unit,
     onReorder: (List<String>) -> Unit,
-    onPlay: (Playlist, List<LibraryItem>) -> Unit,
+    onPlay: (PlaylistPersistence, List<LibraryItem>) -> Unit,
 ) {
     val itemById = libraryViewModel.items.value.associateBy { it.metadata.id }
-    val missingCount = playlist.videoIds.count { it !in itemById }
-    val validItems = playlist.videoIds.mapNotNull(itemById::get)
-    var startError by remember(playlist.id) { mutableStateOf(false) }
-    var isStarting by remember(playlist.id) { mutableStateOf(false) }
-    var orderedItems by remember(playlist.id) { mutableStateOf(validItems) }
+    val missingCount = playlistPersistence.videoIds.count { it !in itemById }
+    val validItems = playlistPersistence.videoIds.mapNotNull(itemById::get)
+    var startError by remember(playlistPersistence.id) { mutableStateOf(false) }
+    var isStarting by remember(playlistPersistence.id) { mutableStateOf(false) }
+    var orderedItems by remember(playlistPersistence.id) { mutableStateOf(validItems) }
     val listState = rememberLazyListState()
-    var draggingId by remember(playlist.id) { mutableStateOf<String?>(null) }
-    var dragOffsetY by remember(playlist.id) { mutableStateOf(0f) }
+    var draggingId by remember(playlistPersistence.id) { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember(playlistPersistence.id) { mutableStateOf(0f) }
     LaunchedEffect(validItems) { orderedItems = validItems }
     Column(
         modifier =
@@ -192,16 +192,16 @@ private fun PlaylistDetails(
                 .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(playlist.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            Text(playlistPersistence.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = {
                 if (validItems.isEmpty()) {
                     startError = true
                 } else if (!isStarting) {
                     isStarting = true
-                    onPlay(playlist, validItems)
+                    onPlay(playlistPersistence, validItems)
                 }
             }, enabled = !isStarting) {
-                Icon(Icons.Default.PlayArrow, stringResource(R.string.play_playlist))
+                Icon(Icons.Default.PlayArrow, stringResource(R.string.play_on))
             }
         }
         if (missingCount > 0) Text(stringResource(R.string.playlist_missing_videos, missingCount), style = MaterialTheme.typography.bodySmall)
@@ -269,7 +269,13 @@ private fun PlaylistDetails(
                                     .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ThumbnailImage(file = item.thumbnail, modifier = Modifier.size(100.dp, 70.dp).background(Color.DarkGray))
+                            ThumbnailImage(
+                                file = item.thumbnail,
+                                modifier =
+                                    Modifier
+                                        .size(100.dp, 70.dp)
+                                        .background(Color.DarkGray),
+                            )
                             Spacer(modifier = Modifier.size(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -319,16 +325,16 @@ private fun PlaylistNameDialog(
 
 @Composable
 fun AddToPlaylistDialog(
-    playlists: List<Playlist>,
+    playlistPersistences: List<PlaylistPersistence>,
     onDismiss: () -> Unit,
     onPlaylistSelected: (String) -> Unit,
 ) {
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.add_to_playlist)) }, text = {
-        if (playlists.isEmpty()) {
+        if (playlistPersistences.isEmpty()) {
             Text(stringResource(R.string.no_playlists_to_add))
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                playlists.forEach { playlist ->
+                playlistPersistences.forEach { playlist ->
                     Button(onClick = { onPlaylistSelected(playlist.id) }, modifier = Modifier.fillMaxWidth()) { Text(playlist.name) }
                 }
             }

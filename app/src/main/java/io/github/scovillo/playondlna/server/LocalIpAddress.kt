@@ -107,5 +107,3 @@ private fun LinkProperties.ipv4Address(): Inet4Address? =
         .map { it.address }
         .filterIsInstance<Inet4Address>()
         .firstOrNull { !it.isLoopbackAddress }
-
-val localIpAddress = LocalIpAddress()

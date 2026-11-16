@@ -30,7 +30,6 @@ import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.download.HttpStatusException
 import io.github.scovillo.playondlna.download.PlayOnDlnaStreamDownload
 import io.github.scovillo.playondlna.download.PlayOnDlnaVideoInput
-import io.github.scovillo.playondlna.download.okHttpClient
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Subtitle
@@ -59,7 +58,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import okhttp3.Request
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.NewPipe
@@ -69,11 +67,10 @@ import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamExtractor
+import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import java.io.File
-import java.io.IOException
-import java.net.URI
 import java.security.MessageDigest
 import java.util.Collections
 import java.util.Locale
@@ -122,8 +119,9 @@ class MediaModel(
     private val libraryDir: File,
     private val libraryManager: LibraryManager,
     private val playlistManager: PlaylistManager,
+    private val importedPlaylistDefaultName: String,
 ) : ViewModel() {
-    private val youtubeUrl = YoutubeUrl()
+    private val mediaUrl = MediaUrl()
     private val currentVideoFileState = mutableStateOf<LibraryItem?>(null)
     private val currentThumbnailFileState = mutableStateOf<File?>(null)
     private val currentFfmpegSessionState = mutableStateOf<Session?>(null)
@@ -140,7 +138,7 @@ class MediaModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
-                initialValue = VideoQuality.P720,
+                initialValue = VideoQuality.default,
             )
     private val isSubtitleEnabled: StateFlow<Boolean> =
         settingsRepository.isSubtitleEnabledFlow
@@ -208,7 +206,7 @@ class MediaModel(
     }
 
     fun import(url: String) {
-        val normalizedUrl = youtubeUrl.normalize(url)
+        val normalizedUrl = mediaUrl.normalize(url)
         val job =
             viewModelScope.launch(Dispatchers.IO) {
                 try {
@@ -217,12 +215,21 @@ class MediaModel(
                     currentThumbnailFileState.value = null
                     currentFfmpegSessionState.value = null
                     titleState.value = normalizedUrl
-                    val resolvedUrl = resolveSoundCloudShortUrl(normalizedUrl)
-                    val service = NewPipe.getServiceByUrl(resolvedUrl)
-                    if (service.getLinkTypeByUrl(resolvedUrl) == StreamingService.LinkType.PLAYLIST) {
-                        importPlaylist(service, resolvedUrl)
+                    val resolvedUrl =
+                        if (mediaUrl.isSoundCloudShortUrl(normalizedUrl)) {
+                            mediaUrl.resolveSoundCloudShortUrl(normalizedUrl)
+                        } else {
+                            normalizedUrl
+                        }
+                    if (mediaUrl.hasExplicitPlaylistEntries(resolvedUrl)) {
+                        importPlaylistEntries(importedPlaylistDefaultName, mediaUrl.explicitPlaylistEntries(resolvedUrl))
                     } else {
-                        importSingleMediaFile(resolvedUrl)
+                        val service = NewPipe.getServiceByUrl(resolvedUrl)
+                        if (service.getLinkTypeByUrl(resolvedUrl) == StreamingService.LinkType.PLAYLIST) {
+                            importPlaylist(service, resolvedUrl)
+                        } else {
+                            importSingleMediaFile(service, resolvedUrl)
+                        }
                     }
                     if (state.status.value != MediaFileJobStatus.ERROR) {
                         titleState.value = "idle"
@@ -273,13 +280,20 @@ class MediaModel(
         val entries = playlistInfo.relatedItems.toMutableList()
         var nextPage: Page? = playlistInfo.nextPage
         while (Page.isValid(nextPage)) {
-            val page: ListExtractor.InfoItemsPage<org.schabi.newpipe.extractor.stream.StreamInfoItem> =
+            val page: ListExtractor.InfoItemsPage<StreamInfoItem> =
                 PlaylistInfo.getMoreItems(service, playlistUrl, nextPage!!)
             entries += page.items
             nextPage = page.nextPage
         }
+        importPlaylistEntries(playlistInfo.name, entries.map { it.url })
+    }
+
+    private suspend fun importPlaylistEntries(
+        name: String,
+        entries: List<String>,
+    ) {
         val playlist =
-            playlistManager.createPlaylist(playlistInfo.name)
+            playlistManager.createPlaylist(name)
                 ?: throw IllegalStateException("Could not create playlist")
         var addedEntries = 0
         var skippedEntries = 0
@@ -287,18 +301,19 @@ class MediaModel(
             entries.forEachIndexed { index, entry ->
                 playlistPositionState.value = PlaylistPosition(index + 1, entries.size)
                 try {
-                    val entryUrl = normalizePlaylistEntryUrl(entry.url)
-                    check(playlistManager.addVideo(playlist.id, importSingleMediaFile(entryUrl))) {
+                    val entryUrl = normalizePlaylistEntryUrl(entry)
+                    val service = NewPipe.getServiceByUrl(entryUrl)
+                    check(playlistManager.addVideo(playlist.id, importSingleMediaFile(service, entryUrl))) {
                         "Could not add playlist entry"
                     }
                     addedEntries++
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: DownloadFailedException) {
-                    Log.e("MediaModel", "Download failed for playlist entry ${entry.url}", error)
+                    Log.e("MediaModel", "Download failed for playlist entry $entry", error)
                     skippedEntries++
                 } catch (error: Exception) {
-                    Log.e("MediaModel", "Could not prepare playlist entry ${entry.url}", error)
+                    Log.e("MediaModel", "Could not prepare playlist entry $entry", error)
                     skippedEntries++
                 }
             }
@@ -412,6 +427,7 @@ class MediaModel(
                                         durationInSeconds = extractor.length,
                                         qualityName = if (bestVideo == null) "Audio" else "${bestVideo.height}p",
                                         isAudioOnly = bestVideo == null,
+                                        source = extractor.service.serviceInfo.name,
                                     ),
                                     mediaFile,
                                     mediaCover,
@@ -472,6 +488,7 @@ class MediaModel(
                     durationInSeconds = extractor.length,
                     qualityName = "Audio",
                     isAudioOnly = true,
+                    source = extractor.service.serviceInfo.name,
                 ),
                 mediaFile,
                 cover,
@@ -482,22 +499,11 @@ class MediaModel(
         return libraryItem
     }
 
-    private fun resolveSoundCloudShortUrl(url: String): String {
-        if (runCatching { URI(url).host }.getOrNull() != "on.soundcloud.com") return url
-        return try {
-            okHttpClient.newCall(Request.Builder().url(url).head().build()).execute().use { response ->
-                response.request.url.toString().also { resolvedUrl ->
-                    Log.i("MediaModel", "Resolved SoundCloud share URL to $resolvedUrl")
-                }
-            }
-        } catch (error: IOException) {
-            Log.w("MediaModel", "Could not resolve SoundCloud share URL, using original URL", error)
-            url
-        }
-    }
-
-    private suspend fun importSingleMediaFile(url: String): String {
-        val extractor = NewPipe.getServiceByUrl(url).getStreamExtractor(url)
+    private suspend fun importSingleMediaFile(
+        service: StreamingService,
+        url: String,
+    ): String {
+        val extractor = service.getStreamExtractor(url)
         extractor.fetchPage()
         titleState.value = extractor.name
         val mediaId = extractor.safeId()

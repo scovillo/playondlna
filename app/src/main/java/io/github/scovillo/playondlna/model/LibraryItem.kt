@@ -1,7 +1,5 @@
 package io.github.scovillo.playondlna.model
 
-import io.github.scovillo.playondlna.server.localIpAddress
-import io.github.scovillo.playondlna.server.serverPort
 import java.io.File
 import java.util.Locale
 
@@ -46,17 +44,6 @@ class LibraryItem(
             return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, secs)
         }
 
-    val url: String
-        get() = "http://${localIpAddress.value()}:$serverPort/${metadata.id}/$rendererFileName"
-
-    val coverUrl: String
-        get() = "http://${localIpAddress.value()}:$serverPort/${metadata.id}/cover.jpg"
-
-    val subtitleUrl: String
-        get() {
-            return "http://${localIpAddress.value()}:$serverPort/${metadata.id}/video.${subtitle!!.locale().language}.srt"
-        }
-
     val dlnaProfile: String
         get() {
             return if (metadata.isAudioOnly) {
@@ -66,15 +53,11 @@ class LibraryItem(
             }
         }
 
+    val dlnaContentFeatures: String
+        get() =
+            "DLNA.ORG_PN=$dlnaProfile;DLNA.ORG_OP=01;" +
+                "DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+
     val sizeInBytes: Long
         get() = mediaFile.length()
-
-    val metaDataDidlLite: String
-        get() {
-            val mediaClass = if (metadata.isAudioOnly) "object.item.audioItem.musicTrack" else "object.item.videoItem.movie"
-            val albumArt = "<upnp:albumArtURI dlna:profileID=\"JPEG_LRG\">${coverUrl.escapeXml()}</upnp:albumArtURI>"
-            return """<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="${metadata.id.escapeXml()}" parentID="0" restricted="1"><dc:title>${metadata.title.escapeXml()}</dc:title><dc:creator>${metadata.uploader.escapeXml()}</dc:creator><upnp:class>$mediaClass</upnp:class>$albumArt<res protocolInfo="http-get:*:$mimeType:*" duration="${duration.escapeXml()}">${url.escapeXml()}</res>${
-                if (subtitle != null) "<res protocolInfo=\"http-get:*:text/srt:*\" xml:lang=\"${subtitle.locale().language}\">${subtitleUrl.escapeXml()}</res>" else ""
-            }</item></DIDL-Lite>""".escapeXml()
-        }
 }

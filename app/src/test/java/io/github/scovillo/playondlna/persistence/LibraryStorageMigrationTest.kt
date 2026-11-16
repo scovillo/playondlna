@@ -1,5 +1,7 @@
 package io.github.scovillo.playondlna.persistence
 
+import io.github.scovillo.playondlna.AppLog
+import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,6 +16,7 @@ class LibraryStorageMigrationTest {
 
     @Before
     fun setUp() {
+        AppLog.setStream(PlayOnDlnaLogStream.Console)
         root = Files.createTempDirectory("library-migration-test")
     }
 
