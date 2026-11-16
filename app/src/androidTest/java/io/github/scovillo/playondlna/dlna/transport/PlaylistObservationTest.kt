@@ -127,7 +127,7 @@ class PlaylistObservationTest {
             Playlist("queue", "Queue", items),
             0,
             TransportState.PLAYING,
-            PlaybackPositionInfo("", 99.0, 1, 100.0)
+            PlaybackPositionInfo("", 99.0, 1, 100.0),
         )
     }
 }
