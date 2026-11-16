@@ -12,6 +12,7 @@
     <string name="wlan_disconnected">WLAN getrennt! Downloads abgebrochen, um dein mobiles Datenvolumen zu schützen 🔒</string>
     <string name="multicast_disabled">Suche fehlgeschlagen! Multicast ist in deinem aktuellen Netzwerk nicht möglich</string>
     <string name="playback_failed">Wiedergabe fehlgeschlagen!</string>
+    <string name="seek_failed">Die Wiedergabeposition konnte nicht geändert werden.</string>
     <string name="player_incompatible">Media Player derzeit inkompatibel!</string>
     <string name="select_player_for_playback">Wähle einen Player für die Wiedergabe aus.</string>
     <string name="cache_cleared">Cache geleert!</string>

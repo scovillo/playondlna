@@ -51,23 +51,23 @@ class MediaSourceTest {
             val skipped = CompletableDeferred<Unit>()
             val transport =
                 object : DlnaTransport {
-                    override fun playFile(
+                    override suspend fun playFile(
                         device: DlnaDevice,
                         resource: MediaFileResource,
                     ) = Unit
 
-                    override fun command(
+                    override suspend fun command(
                         device: DlnaDevice,
                         command: PlaybackCommand,
                     ) = Unit
 
-                    override fun transportState(device: DlnaDevice) = TransportState.PLAYING
+                    override suspend fun transportState(device: DlnaDevice) = TransportState.PLAYING
 
-                    override fun currentTrackUri(device: DlnaDevice) = ""
+                    override suspend fun currentTrackUri(device: DlnaDevice) = ""
 
-                    override fun currentPositionSeconds(device: DlnaDevice) = 12.0
+                    override suspend fun currentPositionSeconds(device: DlnaDevice) = 12.0
 
-                    override fun seekTo(
+                    override suspend fun seekTo(
                         device: DlnaDevice,
                         seconds: Double,
                     ) {

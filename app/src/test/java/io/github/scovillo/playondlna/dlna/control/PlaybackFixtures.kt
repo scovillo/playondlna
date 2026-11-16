@@ -21,25 +21,25 @@ internal fun testSession(id: String = "test") =
     )
 
 internal open class StubDlnaTransport : DlnaTransport {
-    override fun playFile(
+    override suspend fun playFile(
         device: DlnaDevice,
         resource: MediaFileResource,
     ): Unit = error("Unexpected Play")
 
-    override fun command(
+    override suspend fun command(
         device: DlnaDevice,
         command: PlaybackCommand,
     ): Unit = error("Unexpected command")
 
-    override fun transportState(device: DlnaDevice) = TransportState.PLAYING
+    override suspend fun transportState(device: DlnaDevice) = TransportState.PLAYING
 
-    override fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo("http://media/one/video.mp4", 12.0, 1, 60.0)
+    override suspend fun positionInfo(device: DlnaDevice) = PlaybackPositionInfo("http://media/one/video.mp4", 12.0, 1, 60.0)
 
-    override fun currentTrackUri(device: DlnaDevice): String = error("Use positionInfo")
+    override suspend fun currentTrackUri(device: DlnaDevice): String = error("Use positionInfo")
 
-    override fun currentPositionSeconds(device: DlnaDevice): Double = error("Use positionInfo")
+    override suspend fun currentPositionSeconds(device: DlnaDevice): Double = error("Use positionInfo")
 
-    override fun seekTo(
+    override suspend fun seekTo(
         device: DlnaDevice,
         seconds: Double,
     ): Unit = error("Unexpected seek")

@@ -1,9 +1,11 @@
 package io.github.scovillo.playondlna.dlna.control
 
 import io.github.scovillo.playondlna.AppLog
+import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.server.LocalIpAddress
 import io.github.scovillo.playondlna.server.MediaFileResource
 import io.github.scovillo.playondlna.server.ServerPort
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.filter
 
@@ -22,8 +24,15 @@ class PlaylistObservation(private val updates: SharedFlow<PlaybackSession>, priv
                 }
             } else if (it.currentState == TransportState.STOPPED && it.id in marks) {
                 AppLog.i("PlaylistObservation", "Playlist end reached for ${it.device.friendlyName}, playing next...")
-                val index = marks.remove(it.id)
-                client.playFile(it.device, MediaFileResource(localIpAddress, serverPort, it.playlist.items[index!!]))
+                val index = marks.remove(it.id) ?: return@collect
+                val item = it.playlist.items.getOrNull(index) ?: return@collect
+                try {
+                    client.playFile(it.device, MediaFileResource(localIpAddress, serverPort, item))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    AppLog.w("PlaylistObservation", "Could not advance playlist for ${it.device.friendlyName}: ${error.message}")
+                }
             }
         }
     }

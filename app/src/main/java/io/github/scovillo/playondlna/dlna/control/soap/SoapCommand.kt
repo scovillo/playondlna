@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.dlna.soap
+package io.github.scovillo.playondlna.dlna.control.soap
 
 /**
  * Template for SOAP commands sent to UPnP devices.
@@ -33,7 +33,7 @@ interface SoapCommand {
     val soapAction: String
 
     /** Create the SOAP XML payload for this command */
-    fun createPayload(): String
+    fun toPayload(): String
 }
 
 /**
@@ -47,7 +47,7 @@ class SetAVTransportUriCommand(
     override val actionName = "SetAVTransportURI"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -72,7 +72,7 @@ class PlayCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "Play"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Play"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -94,7 +94,7 @@ class PauseCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "Pause"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Pause"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -115,7 +115,7 @@ class StopCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "Stop"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Stop"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -136,7 +136,7 @@ class NextCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "Next"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Next"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -157,7 +157,7 @@ class PreviousCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "Previous"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Previous"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -178,7 +178,7 @@ class GetTransportInfoCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "GetTransportInfo"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#GetTransportInfo"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
@@ -199,7 +199,7 @@ class GetPositionInfoCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "GetPositionInfo"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#GetPositionInfo"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
@@ -216,7 +216,7 @@ class GetMediaInfoCommand(override val serviceUrl: String) : SoapCommand {
     override val actionName = "GetMediaInfo"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#GetMediaInfo"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <?xml version="1.0" encoding="utf-8"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
@@ -229,7 +229,7 @@ class SeekCommand(override val serviceUrl: String, private val target: String) :
     override val actionName = "Seek"
     override val soapAction = "urn:schemas-upnp-org:service:AVTransport:1#Seek"
 
-    override fun createPayload(): String =
+    override fun toPayload(): String =
         """
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>
         <u:Seek xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID>

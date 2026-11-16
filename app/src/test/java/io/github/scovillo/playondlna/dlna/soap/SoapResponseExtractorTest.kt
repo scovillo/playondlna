@@ -1,5 +1,6 @@
 package io.github.scovillo.playondlna.dlna.soap
 
+import io.github.scovillo.playondlna.dlna.control.soap.SoapResponseExtractor
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

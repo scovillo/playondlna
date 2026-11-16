@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.dlna.soap
+package io.github.scovillo.playondlna.dlna.control.soap
 
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
@@ -47,7 +47,7 @@ class OkHttpSoapClient(
     }
 
     override fun execute(command: SoapCommand): String {
-        val payload = command.createPayload()
+        val payload = command.toPayload()
         Log.i("SoapClient", "${command.actionName}: $payload")
 
         val request =
@@ -62,7 +62,7 @@ class OkHttpSoapClient(
             if (!response.isSuccessful) {
                 Log.e("SoapClient =>", payload)
                 Log.e("SoapClient <=", body)
-                throw UpnpActionException(command.actionName, response.code, body)
+                throw UpnpActionException(command.serviceUrl, command.actionName, response.code, UpnpErrorCode(body))
             }
             body
         }

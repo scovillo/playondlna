@@ -18,6 +18,7 @@
 
 package io.github.scovillo.playondlna.model
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
@@ -26,14 +27,14 @@ import io.github.scovillo.playondlna.dlna.FavoriteDevices
 import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
 import io.github.scovillo.playondlna.dlna.control.PlaybackSession
 import io.github.scovillo.playondlna.dlna.control.PlaybackSessions
-import io.github.scovillo.playondlna.dlna.control.SoapDlnaTransport
 import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
-import io.github.scovillo.playondlna.dlna.control.TransportState
+import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.server.LocalIpAddress
 import io.github.scovillo.playondlna.server.MediaFileResource
 import io.github.scovillo.playondlna.server.ServerPort
 import io.github.scovillo.playondlna.ui.ToastEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,7 +132,7 @@ class PlaybackScreenModel(
     fun selectDevice(device: DlnaDevice) {
         _selectedDevice.value = device
         if (!playbackSessions.has(device.usn)) {
-            playbackSessions.register(PlaybackSession.init(device, Playlist.empty(), TransportState.UNKNOWN))
+            playbackSessions.register(PlaybackSession(device, Playlist.empty(), currentIndex = 0))
         }
     }
 
@@ -139,18 +140,15 @@ class PlaybackScreenModel(
         device: DlnaDevice,
         playlist: Playlist,
     ) {
+        val item = playlist.items.firstOrNull() ?: return
         onPlaybackRequested()
         if (!playbackSessions.has(device.usn)) {
-            playbackSessions.register(PlaybackSession.init(device, playlist, TransportState.UNKNOWN))
+            playbackSessions.register(PlaybackSession(device, playlist, currentIndex = 0))
         } else {
             playbackSessions.update(device.usn, playlist)
         }
-        val session = playbackSessions.get(device.usn)
-        viewModelScope.launch(Dispatchers.IO) {
-            dlnaClient.playFile(
-                device,
-                MediaFileResource(localIpAddress, serverPort, session.currentItem!!),
-            )
+        launchPlaybackAction(R.string.playback_failed) {
+            dlnaClient.playFile(device, MediaFileResource(localIpAddress, serverPort, item))
         }
     }
 
@@ -176,15 +174,15 @@ class PlaybackScreenModel(
         val device = _selectedDevice.value ?: return
         when (command) {
             PlaybackCommand.NEXT, PlaybackCommand.PREVIOUS -> {
-                val session = playbackSessions.get(device.usn)
-                val nextIndex = playbackSessions.get(device.usn).predictIndex(command)
-                viewModelScope.launch(Dispatchers.IO) {
-                    dlnaClient.playFile(device, MediaFileResource(localIpAddress, serverPort, session.playlist[nextIndex]))
+                val session = playbackSessions.all[device.usn] ?: return
+                val item = session.playlist.items.getOrNull(session.predictIndex(command)) ?: return
+                launchPlaybackAction(R.string.playback_failed) {
+                    dlnaClient.playFile(device, MediaFileResource(localIpAddress, serverPort, item))
                 }
             }
 
             else -> {
-                viewModelScope.launch(Dispatchers.IO) {
+                launchPlaybackAction(R.string.playback_failed) {
                     dlnaClient.command(device, command)
                 }
             }
@@ -198,8 +196,25 @@ class PlaybackScreenModel(
     }
 
     fun seekTo(seconds: Double) {
-        _selectedDevice.value?.let {
-            viewModelScope.launch(Dispatchers.IO) { dlnaClient.seekTo(it, seconds) }
+        val device = _selectedDevice.value ?: return
+        launchPlaybackAction(R.string.seek_failed) {
+            dlnaClient.seekTo(device, seconds)
+        }
+    }
+
+    private fun launchPlaybackAction(
+        errorMessage: Int,
+        action: suspend () -> Unit,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                action()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w("PlaybackScreenModel", "DLNA playback action failed", error)
+                _toastEvents.emit(ToastEvent.Show(errorMessage))
+            }
         }
     }
 }

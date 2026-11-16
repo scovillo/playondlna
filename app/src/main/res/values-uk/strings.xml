@@ -12,6 +12,7 @@
     <string name="wlan_disconnected">Wi-Fi відключено! Завантаження скасовано для захисту мобільного трафіку 🔒</string>
     <string name="multicast_disabled">Помилка сканування! Multicast недоступний у вашій мережі</string>
     <string name="playback_failed">Не вдалося відтворити!</string>
+    <string name="seek_failed">Не вдалося змінити позицію відтворення.</string>
     <string name="player_incompatible">Медіаплеєр наразі несумісний!</string>
     <string name="select_player_for_playback">Виберіть програвач для відтворення.</string>
     <string name="cache_cleared">Кеш очищено!</string>

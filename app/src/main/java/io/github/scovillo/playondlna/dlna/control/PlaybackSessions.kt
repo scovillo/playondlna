@@ -2,6 +2,7 @@ package io.github.scovillo.playondlna.dlna.control
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.model.Playlist
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +23,8 @@ data class PlaybackSession(
     val device: DlnaDevice,
     val playlist: Playlist,
     val currentIndex: Int,
-    val currentState: TransportState = TransportState.PLAYING,
-    val positionInfo: PlaybackPositionInfo,
+    val currentState: TransportState = TransportState.UNKNOWN,
+    val positionInfo: PlaybackPositionInfo = PlaybackPositionInfo(),
 ) {
     val id
         get() = device.usn
@@ -32,7 +33,7 @@ data class PlaybackSession(
         get() = playlist.items.lastIndex
 
     val currentItem
-        get() = if (playlist.items.isNotEmpty() && currentIndex < playlist.items.size) playlist[currentIndex] else null
+        get() = playlist.items.getOrNull(currentIndex)
 
     val hasNext: Boolean
         get() = currentIndex in playlist.items.indices && currentIndex < lastIndex
@@ -49,16 +50,6 @@ data class PlaybackSession(
             PlaybackCommand.PREVIOUS -> (currentIndex - 1).takeIf { it >= 0 } ?: currentIndex
             else -> currentIndex
         }
-
-    companion object {
-        fun init(
-            device: DlnaDevice,
-            playlist: Playlist,
-            state: TransportState,
-        ): PlaybackSession {
-            return PlaybackSession(device, playlist, 0, state, PlaybackPositionInfo())
-        }
-    }
 
     fun copy(
         state: TransportState,

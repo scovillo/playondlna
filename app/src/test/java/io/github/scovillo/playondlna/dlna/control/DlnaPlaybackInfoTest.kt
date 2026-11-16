@@ -20,33 +20,33 @@ class DlnaPlaybackInfoTest {
             val position = PlaybackPositionInfo("http://test/video.mp4", 12.0, 1, 60.0)
             val transport =
                 object : DlnaTransport {
-                    override fun playFile(
+                    override suspend fun playFile(
                         device: DlnaDevice,
                         resource: MediaFileResource,
                     ) = Unit
 
-                    override fun command(
+                    override suspend fun command(
                         device: DlnaDevice,
                         command: PlaybackCommand,
                     ) = Unit
 
-                    override fun currentTrackUri(device: DlnaDevice): String = error("Use the combined position response")
+                    override suspend fun currentTrackUri(device: DlnaDevice): String = error("Use the combined position response")
 
-                    override fun currentPositionSeconds(device: DlnaDevice): Double = error("Use the combined position response")
+                    override suspend fun currentPositionSeconds(device: DlnaDevice): Double = error("Use the combined position response")
 
-                    override fun seekTo(
+                    override suspend fun seekTo(
                         device: DlnaDevice,
                         seconds: Double,
                     ) = Unit
 
-                    override fun transportState(device: DlnaDevice): TransportState {
+                    override suspend fun transportState(device: DlnaDevice): TransportState {
                         stateCalls.incrementAndGet()
                         started.countDown()
                         assertTrue(started.await(2, TimeUnit.SECONDS))
                         return TransportState.PLAYING
                     }
 
-                    override fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
+                    override suspend fun positionInfo(device: DlnaDevice): PlaybackPositionInfo {
                         positionCalls.incrementAndGet()
                         started.countDown()
                         assertTrue(started.await(2, TimeUnit.SECONDS))

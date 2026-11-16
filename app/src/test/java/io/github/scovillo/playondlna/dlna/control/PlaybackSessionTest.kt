@@ -58,7 +58,7 @@ class PlaybackSessionTest {
 
     @Test
     fun emptySessionCanBeRegisteredBeforePlayback() {
-        val empty = PlaybackSession.init(testDevice(), Playlist.empty(), TransportState.UNKNOWN)
+        val empty = PlaybackSession(testDevice(), Playlist.empty(), currentIndex = 0)
         assertNull(empty.currentItem)
         assertFalse(empty.hasNext)
         assertFalse(empty.hasPrevious)
