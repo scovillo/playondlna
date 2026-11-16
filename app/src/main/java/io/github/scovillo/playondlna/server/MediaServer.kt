@@ -30,8 +30,8 @@ import fi.iki.elonen.NanoHTTPD
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaApp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.control.PlaylistObservation
-import io.github.scovillo.playondlna.dlna.control.SponsorBlockObservation
+import io.github.scovillo.playondlna.dlna.observation.PlaylistObservation
+import io.github.scovillo.playondlna.dlna.observation.SponsorBlockObservation
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.persistence.LibraryManager
 import io.github.scovillo.playondlna.persistence.PlaylistManager

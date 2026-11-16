@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
 enum class TransportState {
     PLAYING,

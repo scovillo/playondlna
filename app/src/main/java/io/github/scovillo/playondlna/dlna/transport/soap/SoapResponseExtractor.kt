@@ -16,9 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.dlna.control.soap
+package io.github.scovillo.playondlna.dlna.transport.soap
 
-import io.github.scovillo.playondlna.dlna.control.TransportState
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 
 /**
  * Parses SOAP response XML strings from UPnP devices.

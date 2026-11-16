@@ -16,21 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package io.github.scovillo.playondlna.dlna.control.soap
+package io.github.scovillo.playondlna.dlna.transport
 
-class UpnpErrorCode(private val responseBody: String) {
-    private val errorCodeRegex = Regex("""<(?:[A-Za-z_][\w.-]*:)?errorCode>\s*(\d+)\s*</""")
-
-    fun value(): String =
-        errorCodeRegex
-            .find(responseBody)
-            ?.groupValues
-            ?.get(1) ?: "unknown"
+enum class PlaybackCommand {
+    PLAY,
+    PAUSE,
+    STOP,
+    NEXT,
+    PREVIOUS,
 }
-
-class UpnpActionException(
-    serviceUrl: String,
-    action: String,
-    httpCode: Int,
-    upnpErrorCode: UpnpErrorCode,
-) : Exception("$action to $serviceUrl failed: HTTP $httpCode} | UPNP ${upnpErrorCode.value()}")

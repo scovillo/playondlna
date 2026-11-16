@@ -2,13 +2,13 @@ package io.github.scovillo.playondlna.dlna.soap
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
-import io.github.scovillo.playondlna.dlna.control.TransportState
-import io.github.scovillo.playondlna.dlna.control.soap.SoapClient
-import io.github.scovillo.playondlna.dlna.control.soap.SoapCommand
-import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
-import io.github.scovillo.playondlna.dlna.control.testDevice
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.PlaybackPositionInfo
+import io.github.scovillo.playondlna.dlna.transport.TransportState
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapClient
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapCommand
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapDlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.testDevice
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

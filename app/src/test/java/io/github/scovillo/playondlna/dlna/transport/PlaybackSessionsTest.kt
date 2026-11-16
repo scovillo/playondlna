@@ -1,8 +1,9 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.PlayOnDlnaLogStream
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSessions
 import io.github.scovillo.playondlna.model.Playlist
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart

@@ -1,5 +1,7 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
+import io.github.scovillo.playondlna.dlna.observation.SponsorBlockSkipDetector
+import io.github.scovillo.playondlna.dlna.observation.SponsorSegment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

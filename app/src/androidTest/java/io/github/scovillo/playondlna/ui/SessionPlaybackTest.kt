@@ -10,10 +10,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
-import io.github.scovillo.playondlna.dlna.control.PlaybackSession
-import io.github.scovillo.playondlna.dlna.control.TransportState
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.PlaybackPositionInfo
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist

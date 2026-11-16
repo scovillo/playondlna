@@ -1,6 +1,7 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.observation
 
 import io.github.scovillo.playondlna.AppLog
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 import java.net.URI
 
 /**

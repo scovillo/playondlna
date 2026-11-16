@@ -1,5 +1,6 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
 import io.github.scovillo.playondlna.model.Playlist
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

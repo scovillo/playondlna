@@ -1,8 +1,11 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.observation
 
 import io.github.scovillo.playondlna.AppLog
-import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.DlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.TransportState
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.persistence.SponsorBlockCache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharedFlow
@@ -50,7 +53,7 @@ class SponsorBlockObservation(
                 } else {
                     AppLog.d("SponsorBlockObservation", "No sponsorblock segments found for session of ${session.device.friendlyName}")
                 }
-            } catch (error: kotlinx.coroutines.CancellationException) {
+            } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 AppLog.w("SponsorBlock", "Could not monitor ${session.device.friendlyName}: ${error.message}")

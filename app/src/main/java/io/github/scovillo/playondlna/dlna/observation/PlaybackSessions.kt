@@ -1,8 +1,12 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.observation
 
 import io.github.scovillo.playondlna.AppLog
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.DlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.PlaybackPositionInfo
+import io.github.scovillo.playondlna.dlna.transport.TransportState
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.model.Playlist
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

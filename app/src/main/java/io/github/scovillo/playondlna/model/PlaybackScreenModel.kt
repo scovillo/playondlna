@@ -24,11 +24,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackSession
-import io.github.scovillo.playondlna.dlna.control.PlaybackSessions
-import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
-import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSessions
+import io.github.scovillo.playondlna.dlna.observation.SponsorBlockClient
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.persistence.SettingsRepository
 import io.github.scovillo.playondlna.server.LocalIpAddress
 import io.github.scovillo.playondlna.server.MediaFileResource

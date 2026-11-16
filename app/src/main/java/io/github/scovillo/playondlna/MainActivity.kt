@@ -47,7 +47,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.scovillo.playondlna.dlna.FavoriteDevices
-import io.github.scovillo.playondlna.dlna.control.SponsorBlockClient
+import io.github.scovillo.playondlna.dlna.observation.SponsorBlockClient
 import io.github.scovillo.playondlna.download.OkHttpDownloadClient
 import io.github.scovillo.playondlna.model.DeviceDiscoveryModel
 import io.github.scovillo.playondlna.model.LibraryItem

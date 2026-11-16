@@ -1,7 +1,9 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.observation
 
 import io.github.scovillo.playondlna.AppLog
-import io.github.scovillo.playondlna.dlna.control.soap.SoapDlnaTransport
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.TransportState
+import io.github.scovillo.playondlna.dlna.transport.soap.SoapDlnaTransport
 import io.github.scovillo.playondlna.server.LocalIpAddress
 import io.github.scovillo.playondlna.server.MediaFileResource
 import io.github.scovillo.playondlna.server.ServerPort

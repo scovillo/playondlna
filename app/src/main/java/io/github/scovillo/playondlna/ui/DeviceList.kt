@@ -60,7 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
 import io.github.scovillo.playondlna.dlna.DlnaDevice
-import io.github.scovillo.playondlna.dlna.control.PlaybackSession
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
 import io.github.scovillo.playondlna.model.PlaybackScreenModel
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.onSubscription

@@ -1,7 +1,9 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
 import fi.iki.elonen.NanoHTTPD
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
+import io.github.scovillo.playondlna.dlna.observation.PlaylistObservation
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist
@@ -120,6 +122,12 @@ class PlaylistObservationTest {
             listOf("one", "two").map {
                 LibraryItem(LibraryMetadata(it, it, "Uploader", 100, "Audio", true), File("$it.mp3"), null, null)
             }
-        return PlaybackSession(device, Playlist("queue", "Queue", items), 0, TransportState.PLAYING, PlaybackPositionInfo("", 99.0, 1, 100.0))
+        return PlaybackSession(
+            device,
+            Playlist("queue", "Queue", items),
+            0,
+            TransportState.PLAYING,
+            PlaybackPositionInfo("", 99.0, 1, 100.0)
+        )
     }
 }

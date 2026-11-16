@@ -7,8 +7,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.performTouchInput
-import io.github.scovillo.playondlna.dlna.control.PlaybackPositionInfo
-import io.github.scovillo.playondlna.dlna.control.TransportState
+import io.github.scovillo.playondlna.dlna.transport.PlaybackPositionInfo
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

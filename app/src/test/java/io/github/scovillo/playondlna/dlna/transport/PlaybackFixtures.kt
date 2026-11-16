@@ -1,6 +1,7 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
 import io.github.scovillo.playondlna.dlna.DlnaDevice
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
 import io.github.scovillo.playondlna.model.LibraryItem
 import io.github.scovillo.playondlna.model.LibraryMetadata
 import io.github.scovillo.playondlna.model.Playlist

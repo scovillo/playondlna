@@ -51,9 +51,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.scovillo.playondlna.R
-import io.github.scovillo.playondlna.dlna.control.PlaybackCommand
-import io.github.scovillo.playondlna.dlna.control.PlaybackSession
-import io.github.scovillo.playondlna.dlna.control.TransportState
+import io.github.scovillo.playondlna.dlna.observation.PlaybackSession
+import io.github.scovillo.playondlna.dlna.transport.PlaybackCommand
+import io.github.scovillo.playondlna.dlna.transport.TransportState
 import java.io.File
 
 @Composable

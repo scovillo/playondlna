@@ -1,4 +1,4 @@
-package io.github.scovillo.playondlna.dlna.control
+package io.github.scovillo.playondlna.dlna.transport
 
 import io.github.scovillo.playondlna.dlna.DlnaDevice
 import io.github.scovillo.playondlna.server.MediaFileResource
